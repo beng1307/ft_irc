@@ -27,7 +27,7 @@ class Server
 	// Public Methods
 
 	int socket_setup();
-
+	int server_loop();
 };
 
 #endif

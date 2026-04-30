@@ -1,0 +1,29 @@
+#ifndef CLIENT_HPP
+# define CLIENT_HPP
+
+class Client
+{
+	public:
+
+		///////////////////////////////////////////////////////////////////////////////
+		// Public Constructors and destructor
+
+		Client();
+		Client(int socket);
+		Client &operator=(Client &other);
+		Client(Client &other);
+
+		///////////////////////////////////////////////////////////////////////////////
+		// Public Variables
+
+		int				socket;
+		std::string		nickname;
+		std::string		username;
+		std::string		realname;
+
+		///////////////////////////////////////////////////////////////////////////////
+		// Public Methods
+
+};
+
+#endif
