@@ -1,6 +1,6 @@
-COMPILE = c++ -g -Wall -Wextra -WErrorhandler -std=c++98 -fPIE
+COMPILE = c++ -g -Wall -Wextra -Werror -std=c++98 -fPIE
 NAME = ft_irc
-SRCS = main.cpp 
+SRCS = main.cpp Channel.cpp Client.cpp Errorhandler.cpp Server.cpp
 OBJS_FOLDER = obj
 OBJS = $(SRCS:%.cpp=$(OBJS_FOLDER)/%.o)
 HEADERS = 

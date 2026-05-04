@@ -1,9 +1,13 @@
 #include "Server.hpp"
+#include "Client.hpp"
 #include <sys/socket.h>
 #include <string>
 #include <iostream>
 #include <netinet/in.h>
-
+#include <fcntl.h>
+#include <poll.h>
+#include <cerrno>
+#include <unistd.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Consturctors and destructor
@@ -18,12 +22,12 @@ Server::Server(int port, std::string password): port(port), password(password)
 	return ;
 }
 
-Server::Server(Server &other): port(other.port), password(other.password)
+Server::Server(const Server &other): port(other.port), password(other.password)
 {
 	return ;
 }
 
-Server	&Server::operator=(Server &other)
+Server	&Server::operator=(const Server &other)
 {
 	if (this != &other)
 	{
@@ -82,7 +86,85 @@ int	Server::socket_setup()
 	return (0);
 }
 
+
+void	Server::add_fds(int fd, short events, short revents)
+{
+	pollfd poll_filedescriptor;
+
+	poll_filedescriptor.fd = fd;
+	poll_filedescriptor.events = events;
+	poll_filedescriptor.revents = revents;
+
+	fds.push_back(poll_filedescriptor);
+}
+
 void	Server::server_loop()
 {
+	//Makes the Server nonblocking by saving the flags and add O_NONBLOCK to the flags.
+	int flags = fcntl(server_socket, F_GETFL, 0);
+	if (flags == -1)
+	{
+		std::cerr << "Error: fcntl failed!" << std::endl;
+		return;
+	}
 
+	if (fcntl(server_socket, F_SETFL, flags | O_NONBLOCK) == -1)
+	{
+		std::cerr << "Error: fcntl failed!" << std::endl;
+		return;
+	}
+
+	//Adds the server socket to the poll file descriptors
+	add_fds(server_socket, POLLIN, 0);
+
+	while (true)
+	{
+		int ready = poll(fds.data(), fds.size(), -1);
+		if (ready == -1)
+		{
+			if (errno == EINTR)
+				continue;
+			std::cerr << "Error: poll failed!" << std::endl;
+			break;
+		}
+
+		for (size_t i = 0; i < fds.size(); ++i)
+		{
+			if (fds[i].revents & POLLIN)
+			{
+				if (fds[i].fd == server_socket)
+				{
+					int client_socket = accept(server_socket, NULL, NULL);
+					if (client_socket == -1)
+					{
+					    std::cerr << "Error: accept failed!" << std::endl;
+					    continue;
+					}
+
+					if (fcntl(client_socket, F_SETFL, flags | O_NONBLOCK) == -1)
+					{
+					    std::cerr << "Error: fcntl failed!" << std::endl;
+					    close(client_socket);
+					    continue;
+					}
+
+					add_fds(client_socket, POLLIN, 0);
+					clients.insert(std::make_pair(client_socket, Client(client_socket)));
+				}
+				else
+				{
+					char	buffer[512];
+					int		bytes_received = recv(fds[i].fd, buffer, sizeof(buffer) - 1, 0);
+					if (bytes_received > 0)
+					{
+						buffer[bytes_received] = '\0';
+						if (clients.find(fds[i].fd) != clients.end())
+						{
+							std::cout << "Received from client " << fds[i].fd << ": " << buffer << std::endl;
+						}
+					}
+				}
+			}
+		}
+	}
 }

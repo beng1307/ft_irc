@@ -3,22 +3,32 @@
 ///////////////////////////////////////////////////////////////////////////////
 // Consturctors and destructor
 
-Client::Client(): socket(0), nickname(""), username(""), realname("")
+Client::Client():
+	socket(0), nickname(""), username(""),
+	realname(""), is_registered(false), is_admin(false),
+	buffer("")
 {
 	return ;
 }
 
-Client::Client(int socket): socket(socket), nickname(""), username(""), realname("")
+Client::Client(int socket):
+	socket(socket), nickname(""), username(""),
+	realname(""), is_registered(false), is_admin(false),
+	buffer("")
 {
 	return ;
 }
 
-Client::Client(Client &other): socket(other.socket), nickname(other.nickname), username(other.username), realname(other.realname)
-{
+Client::Client(const Client &other):
+	socket(other.socket), nickname(other.nickname),
+	username(other.username), realname(other.realname),
+	is_registered(other.is_registered), is_admin(other.is_admin),
+	buffer(other.buffer)
+	{
 	return ;
 }
 
-Client	&Client::operator=(Client &other)
+Client	&Client::operator=(const Client &other)
 {
 	if (this != &other)
 	{
@@ -26,6 +36,9 @@ Client	&Client::operator=(Client &other)
 		nickname = other.nickname;
 		username = other.username;
 		realname = other.realname;
+		is_registered = other.is_registered;
+		is_admin = other.is_admin;
+		buffer = other.buffer;
 	}
 	return (*this);
 }
