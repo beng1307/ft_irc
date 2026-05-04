@@ -163,6 +163,14 @@ void	Server::server_loop()
 							std::cout << "Received from client " << fds[i].fd << ": " << buffer << std::endl;
 						}
 					}
+					else
+					{
+					    close(fds[i].fd);
+					    clients.erase(fds[i].fd);
+					    fds.erase(fds.begin() + i);
+					    --i;
+					    continue;
+					}
 				}
 			}
 		}
