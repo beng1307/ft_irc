@@ -7,3 +7,19 @@
 
 4. JOIN: Client einem Channel hinzufügen
 	PRIVMSG: an alle Channel-Members außer Absender senden
+
+
+Bereich	Status
+
+Socket-Setup (bind, listen, accept)	✅ fertig
+poll-Loop, mehrere Clients	✅ fertig
+Disconnect-Handling	✅ fertig
+recv + Output	✅ fertig
+Buffer + Line-Parser	❌ fehlt
+PASS / NICK / USER / Registrierung	❌ fehlt
+Channel-Klasse	❌ fehlt
+JOIN / PART	❌ fehlt
+PRIVMSG / Broadcast	❌ fehlt
+KICK / INVITE / TOPIC / MODE	❌ fehlt
+PING/PONG	❌ fehlt
+Echter IRC-Client kompatibel (z.B. irssi)	❌ fehlt
