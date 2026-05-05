@@ -1,6 +1,6 @@
 1. Lineparser machen der bei \r\n abschneidet
 	und das dann weiter verarbeiten laesst.
-
+4
 2. Rechte und Anwesenheit regeln. Nur wenn er Mitglied ist empfaengt der server die Nachricht. PASS+NICK+USER.
 
 3. Channel klasse angehen. std::map<std::string, Channel> channels im Server.
