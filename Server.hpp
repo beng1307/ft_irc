@@ -38,6 +38,7 @@ class Server
 	int		socket_setup();
 	void	server_loop();
 	void	add_fds(int fd, short events, short revents);
+	void	handle_line(const size_t &client_index, const size_t &position);
 
 };
 

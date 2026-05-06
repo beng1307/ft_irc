@@ -98,6 +98,13 @@ void	Server::add_fds(int fd, short events, short revents)
 	fds.push_back(poll_filedescriptor);
 }
 
+void Server::handle_line(const size_t &client_index, const size_t &position)
+{
+	std::string	line;
+
+	line = clients[client_index].buffer.substr(0, position);
+}
+
 void	Server::server_loop()
 {
 	//Makes the Server nonblocking by saving the flags and add O_NONBLOCK to the flags.
@@ -128,11 +135,11 @@ void	Server::server_loop()
 			break;
 		}
 
-		for (size_t i = 0; i < fds.size(); ++i)
+		for (size_t index = 0; index < fds.size(); ++index)
 		{
-			if (fds[i].revents & POLLIN)
+			if (fds[index].revents & POLLIN)
 			{
-				if (fds[i].fd == server_socket)
+				if (fds[index].fd == server_socket)
 				{
 					int client_socket = accept(server_socket, NULL, NULL);
 					if (client_socket == -1)
@@ -153,23 +160,33 @@ void	Server::server_loop()
 				}
 				else
 				{
-					char	buffer[512];
-					int		bytes_received = recv(fds[i].fd, buffer, sizeof(buffer) - 1, 0);
-					if (bytes_received > 0)
+					char	buffer[512]; //Maybe change it
+
+					while (true)
 					{
-						buffer[bytes_received] = '\0';
-						if (clients.find(fds[i].fd) != clients.end())
+						int	bytes_received = recv(fds[index].fd, buffer, sizeof(buffer) - 1, 0);
+						if (bytes_received > 0)
 						{
-							std::cout << "Received from client " << fds[i].fd << ": " << buffer << std::endl;
+							buffer[bytes_received] = '\0';
+
+							std::string	string_buffer(buffer);
+							clients[fds[index].fd].buffer.append(buffer, bytes_received);
+
+							size_t	position = clients[index].buffer.find("\r\n"); //handle the different cases
+							if (position != std::string::npos)
+								handle_line(index, position);
+
+							if (clients.find(fds[index].fd) != clients.end())
+								std::cout << "Received from client " << fds[index].fd << ": " << buffer << std::endl;
 						}
-					}
-					else
-					{
-					    close(fds[i].fd);
-					    clients.erase(fds[i].fd);
-					    fds.erase(fds.begin() + i);
-					    --i;
-					    continue;
+						else
+						{
+							close(fds[index].fd);
+							clients.erase(fds[index].fd);
+							fds.erase(fds.begin() + index);
+							--index;
+							break ;
+						}
 					}
 				}
 			}
