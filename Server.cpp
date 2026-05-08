@@ -107,30 +107,38 @@ void Server::handle_line(Client &client, const size_t &position)
 {
 	std::string	line;
 
-	line = client.buffer.substr(0, position);
-	client.buffer.erase(0, position + 2);
+	line = client.get_buffer().substr(0, position);
+	client.get_buffer().erase(0, position + 2);
 
 	std::string	command = line.substr(0, line.find(" "));
 	if (is_command(command))
 	{
-		if (!client.is_admin)
+		if (!client.get_admin_status()
+			&& (command == "KICK" || command == "INVITE"
+						|| command == "TOPIC" || command == "MODE"))
 		{
 			//not authorized
 			return ;
 		}
+
+		//Get the arguments of the command so u can set it, maybe make a custom split function  
+		std::vector<std::string>	arguments; // = split(line, ' '); Implement later
+
+
+
 		if (command == "PASS")
-			client.set_password();
+			client.set_password(arguments[0]); // Do checks if its the only argument
 		else if (command == "USER")
-			client.set_username();
+			client.set_username(arguments[0]); // Do checks if its the only argument
 		else if (command == "NICK")
-			client.set_nickname();
-		else if (command == "KICK" && client.is_admin)
+			client.set_nickname(arguments[0]); // Do checks if its the only argument
+		else if (command == "KICK" && client.get_admin_status())
 			kick();
-		else if (command == "INVITE" && client.is_admin)
+		else if (command == "INVITE" && client.get_admin_status())
 			invite();
-		else if (command == "TOPIC" && client.is_admin)
+		else if (command == "TOPIC" && client.get_admin_status())
 			topic();
-		else if (command == "MODE" && client.is_admin)
+		else if (command == "MODE" && client.get_admin_status())
 			mode();
 		else
 			send_message_to_channel(line);
@@ -202,9 +210,9 @@ void	Server::server_loop()
 							buffer[bytes_received] = '\0';
 
 							std::string	string_buffer(buffer);
-							clients[fds[index].fd].buffer.append(buffer, bytes_received);
+							clients[fds[index].fd].get_buffer().append(buffer, bytes_received);
 
-							size_t	position = clients[fds[index].fd].buffer.find("\r\n"); //handle the different cases
+							size_t	position = clients[fds[index].fd].get_buffer().find("\r\n"); //handle the different cases
 							if (position != std::string::npos)
 								handle_line(clients[fds[index].fd], position);
 

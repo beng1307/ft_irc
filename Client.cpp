@@ -1,4 +1,6 @@
 #include "Client.hpp"
+#include <iostream>
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // Consturctors and destructor
@@ -51,16 +53,34 @@ void	Client::set_socket(const int &socket)
 void	Client::set_password(const std::string &password)
 {
 	this->password = password;
+
+	if (this->password == "password" && !nickname.empty() && !username.empty()) //Just for testing, chage later to a real password check
+	{
+		std::cout << "Client " << nickname << " registered successfully!" << std::endl;
+		this->is_registered = true;
+	}
 }
 
 void	Client::set_username(const std::string &username)
 {
 	this->username = username;
+
+	if (this->password == "password" && !nickname.empty() && !username.empty()) //Just for testing, chage later to a real password check
+	{
+		std::cout << "Client " << nickname << " registered successfully!" << std::endl;
+		this->is_registered = true;
+	}
 }
 
 void	Client::set_nickname(const std::string &nickname)
 {
 	this->nickname = nickname;
+
+	if (this->password == "password" && !nickname.empty() && !username.empty()) //Just for testing, chage later to a real password check
+	{
+		std::cout << "Client " << nickname << " registered successfully!" << std::endl;
+		this->is_registered = true;
+	}
 }
 
 void	Client::set_admin_status(const bool &admin_status)
