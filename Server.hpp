@@ -7,6 +7,8 @@
 #include <vector>
 #include <poll.h>
 
+
+
 class Server
 {
 	public:
@@ -38,8 +40,14 @@ class Server
 	int		socket_setup();
 	void	server_loop();
 	void	add_fds(int fd, short events, short revents);
-	void	handle_line(const size_t &client_index, const size_t &position);
+	void	handle_line(Client &client, const size_t &position);
+	bool	is_command(const std::string &line);
 
+	void	kick();
+	void	invite();
+	void	topic();
+	void	mode();
+	void	send_message_to_channel(const std::string &line);
 };
 
 #endif

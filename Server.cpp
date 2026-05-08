@@ -98,11 +98,43 @@ void	Server::add_fds(int fd, short events, short revents)
 	fds.push_back(poll_filedescriptor);
 }
 
-void Server::handle_line(const size_t &client_index, const size_t &position)
+bool	Server::is_command(const std::string &line)
+{
+	return (line == "KICK" || line == "INVITE" || line == "TOPIC" || line == "MODE");
+}
+
+void Server::handle_line(Client &client, const size_t &position)
 {
 	std::string	line;
 
-	line = clients[client_index].buffer.substr(0, position);
+	line = client.buffer.substr(0, position);
+	client.buffer.erase(0, position + 2);
+
+	std::string	command = line.substr(0, line.find(" "));
+	if (is_command(command))
+	{
+		if (!client.is_admin)
+		{
+			//not authorized
+			return ;
+		}
+		if (command == "PASS")
+			client.set_password();
+		else if (command == "USER")
+			client.set_username();
+		else if (command == "NICK")
+			client.set_nickname();
+		else if (command == "KICK" && client.is_admin)
+			kick();
+		else if (command == "INVITE" && client.is_admin)
+			invite();
+		else if (command == "TOPIC" && client.is_admin)
+			topic();
+		else if (command == "MODE" && client.is_admin)
+			mode();
+		else
+			send_message_to_channel(line);
+	}
 }
 
 void	Server::server_loop()
@@ -172,9 +204,9 @@ void	Server::server_loop()
 							std::string	string_buffer(buffer);
 							clients[fds[index].fd].buffer.append(buffer, bytes_received);
 
-							size_t	position = clients[index].buffer.find("\r\n"); //handle the different cases
+							size_t	position = clients[fds[index].fd].buffer.find("\r\n"); //handle the different cases
 							if (position != std::string::npos)
-								handle_line(index, position);
+								handle_line(clients[fds[index].fd], position);
 
 							if (clients.find(fds[index].fd) != clients.end())
 								std::cout << "Received from client " << fds[index].fd << ": " << buffer << std::endl;

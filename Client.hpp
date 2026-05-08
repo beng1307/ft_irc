@@ -5,10 +5,26 @@
 
 class Client
 {
+	private:
+		
+		///////////////////////////////////////////////////////////////////////////////
+		// Private Variables
+		
+		int				socket;
+
+		std::string		password;
+		std::string		username;
+		std::string		nickname;
+		
+		bool			is_registered;
+		bool 			is_admin;
+
+		std::string		buffer;
+
 	public:
 
 		///////////////////////////////////////////////////////////////////////////////
-		// Public Constructors and destructor
+		// Constructors and destructor
 
 		Client();
 		Client(int socket);
@@ -16,21 +32,30 @@ class Client
 		Client(const Client &other);
 
 		///////////////////////////////////////////////////////////////////////////////
-		// Public Variables
+		// Setter & Getter
 
-		int				socket;
-		std::string		nickname;
-		std::string		username;
-		std::string		realname;
+		void		set_socket(const int &socket);
+		int			get_socket() const;
 
-		bool			is_registered;
-		bool 			is_admin;
+		void		set_password(const std::string &password);
+		std::string	get_password() const;
 
-		std::string		buffer;
+		void		set_username(const std::string &username);
+		std::string	get_username() const;
 
-		///////////////////////////////////////////////////////////////////////////////
-		// Public Methods
+		void		set_nickname(const std::string &nickname);
+		std::string	get_nickname() const;
+
+		void		set_admin_status(const bool &admin_status);
+		bool		get_admin_status() const;
+
+		void		set_register_status(const bool &register_status);
+		bool		get_register_status() const;
+
+		void		set_buffer(const std::string &nickname);
+		std::string	get_buffer() const;
 
 };
+		
 
 #endif

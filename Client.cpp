@@ -5,7 +5,7 @@
 
 Client::Client():
 	socket(0), nickname(""), username(""),
-	realname(""), is_registered(false), is_admin(false),
+	password(""), is_registered(false), is_admin(false),
 	buffer("")
 {
 	return ;
@@ -13,7 +13,7 @@ Client::Client():
 
 Client::Client(int socket):
 	socket(socket), nickname(""), username(""),
-	realname(""), is_registered(false), is_admin(false),
+	password(""), is_registered(false), is_admin(false),
 	buffer("")
 {
 	return ;
@@ -21,7 +21,7 @@ Client::Client(int socket):
 
 Client::Client(const Client &other):
 	socket(other.socket), nickname(other.nickname),
-	username(other.username), realname(other.realname),
+	username(other.username), password(other.password),
 	is_registered(other.is_registered), is_admin(other.is_admin),
 	buffer(other.buffer)
 	{
@@ -35,7 +35,7 @@ Client	&Client::operator=(const Client &other)
 		socket = other.socket;
 		nickname = other.nickname;
 		username = other.username;
-		realname = other.realname;
+		password = other.password;
 		is_registered = other.is_registered;
 		is_admin = other.is_admin;
 		buffer = other.buffer;
@@ -43,3 +43,37 @@ Client	&Client::operator=(const Client &other)
 	return (*this);
 }
 
+void	Client::set_socket(const int &socket)
+{
+	this->socket = socket;
+}
+
+void	Client::set_password(const std::string &password)
+{
+	this->password = password;
+}
+
+void	Client::set_username(const std::string &username)
+{
+	this->username = username;
+}
+
+void	Client::set_nickname(const std::string &nickname)
+{
+	this->nickname = nickname;
+}
+
+void	Client::set_admin_status(const bool &admin_status)
+{
+	this->is_admin = admin_status;
+}
+
+void	Client::set_register_status(const bool &register_status)
+{
+	this->is_registered = register_status;
+}
+
+void	Client::set_buffer(const std::string &buffer)
+{
+	this->buffer = buffer;
+}
