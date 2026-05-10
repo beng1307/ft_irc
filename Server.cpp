@@ -103,6 +103,56 @@ bool	Server::is_command(const std::string &line)
 	return (line == "KICK" || line == "INVITE" || line == "TOPIC" || line == "MODE");
 }
 
+std::vector<std::string>	Server::split_arguments(const std::string &line)
+{
+	std::vector<std::string>	arguments;
+	size_t						start = line.find(" ");
+	
+	if (start == std::string::npos)
+		return (arguments);
+
+	while (line[start] == ' ')
+		start++;	
+
+	size_t	end = start;
+	while (end != std::string::npos)
+	{
+		while (line[start] == ' ')
+			start++;
+		
+		end = line.find(" ", start);
+		if (end == std::string::npos)
+		{
+			arguments.push_back(line.substr(start));
+			break ;			
+		}
+		
+		arguments.push_back(line.substr(start, end - start));
+	}
+	
+	return (arguments);
+}
+
+// void Server::handle_kick()
+// {
+// }
+
+// void Server::handle_invite()
+// {
+// }
+
+// void Server::handle_topic()
+// {
+// }
+
+// void Server::handle_mode()
+// {
+// }
+
+// void	Server::send_message_to_channel(const std::string &line)
+// {
+// }
+
 void Server::handle_line(Client &client, const size_t &position)
 {
 	std::string	line;
@@ -122,8 +172,7 @@ void Server::handle_line(Client &client, const size_t &position)
 		}
 
 		//Get the arguments of the command so u can set it, maybe make a custom split function  
-		std::vector<std::string>	arguments; // = split(line, ' '); Implement later
-
+		std::vector<std::string>	arguments = split_arguments(line);
 
 
 		if (command == "PASS")
@@ -132,16 +181,16 @@ void Server::handle_line(Client &client, const size_t &position)
 			client.set_username(arguments[0]); // Do checks if its the only argument
 		else if (command == "NICK")
 			client.set_nickname(arguments[0]); // Do checks if its the only argument
-		else if (command == "KICK" && client.get_admin_status())
-			kick();
-		else if (command == "INVITE" && client.get_admin_status())
-			invite();
-		else if (command == "TOPIC" && client.get_admin_status())
-			topic();
-		else if (command == "MODE" && client.get_admin_status())
-			mode();
-		else
-			send_message_to_channel(line);
+		// else if (command == "KICK" && client.get_admin_status())
+		// 	handle_kick();
+		// else if (command == "INVITE" && client.get_admin_status())
+		// 	handle_invite();
+		// else if (command == "TOPIC" && client.get_admin_status())
+		// 	handle_topic();
+		// else if (command == "MODE" && client.get_admin_status())
+		// 	handle_mode();
+		// else
+		// 	send_message_to_channel(line);
 	}
 }
 
@@ -212,7 +261,7 @@ void	Server::server_loop()
 							std::string	string_buffer(buffer);
 							clients[fds[index].fd].get_buffer().append(buffer, bytes_received);
 
-							size_t	position = clients[fds[index].fd].get_buffer().find("\r\n"); //handle the different cases
+							size_t	position = clients[fds[index].fd].get_buffer().find("\r\n");
 							if (position != std::string::npos)
 								handle_line(clients[fds[index].fd], position);
 

@@ -16,7 +16,7 @@ poll-Loop, mehrere Clients	✅ fertig
 Disconnect-Handling	✅ fertig
 recv + Output	✅ fertig
 Buffer + Line-Parser	✅ fertig
-PASS / NICK / USER / Registrierung	❌ fehlt
+PASS / NICK / USER / Registrierung	✅ fertig
 Channel-Klasse	❌ fehlt
 JOIN / PART	❌ fehlt
 PRIVMSG / Broadcast	❌ fehlt
