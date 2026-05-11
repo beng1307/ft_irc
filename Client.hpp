@@ -3,6 +3,7 @@
 
 #include <string>
 
+
 class Client
 {
 	private:
@@ -31,6 +32,13 @@ class Client
 		Client &operator=(const Client &other);
 		Client(const Client &other);
 
+		
+		///////////////////////////////////////////////////////////////////////////////
+		// Methods & helper functions
+		
+		void register_client(const std::string &password);
+
+
 		///////////////////////////////////////////////////////////////////////////////
 		// Setter & Getter
 
@@ -52,7 +60,7 @@ class Client
 		void		set_register_status(const bool &register_status);
 		bool		get_register_status() const;
 
-		void		set_buffer(const std::string &nickname);
+		void		set_buffer(const std::string &buffer);
 		std::string	get_buffer() const;
 
 };

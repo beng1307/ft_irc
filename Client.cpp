@@ -1,5 +1,6 @@
 #include "Client.hpp"
 #include <iostream>
+#include <string>
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -45,61 +46,101 @@ Client	&Client::operator=(const Client &other)
 	return (*this);
 }
 
+
+///////////////////////////////////////////////////////////////////////////////
+// Methods & helper functions
+
+void	Client::register_client(const std::string &password)
+{
+	if (this->password == "password" && !nickname.empty() && !username.empty())
+	{
+		std::cout << "Client " << nickname << " registered successfully!" << std::endl;
+		this->is_registered = true;
+	}
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Setter & Getter
+
 void	Client::set_socket(const int &socket)
 {
 	this->socket = socket;
 }
 
+int	Client::get_socket() const
+{
+	return (socket);
+}
+
+
 void	Client::set_password(const std::string &password)
 {
 	this->password = password;
 
-	//Just for testing, change later
-	//to a real password check and make a own function
-	if (this->password == "password" && !nickname.empty() && !username.empty())
-	{
-		std::cout << "Client " << nickname << " registered successfully!" << std::endl;
-		this->is_registered = true;
-	}
+	register_client(password);
 }
+
+std::string	Client::get_password() const
+{
+	return (password);
+}
+
 
 void	Client::set_username(const std::string &username)
 {
 	this->username = username;
 
-	//Just for testing, change later
-	//to a real password check and make a own function
-	if (this->password == "password" && !nickname.empty() && !username.empty())
-	{
-		std::cout << "Client " << nickname << " registered successfully!" << std::endl;
-		this->is_registered = true;
-	}
+	register_client(password);
 }
+
+std ::string	Client::get_username() const
+{
+	return (username);
+}
+
 
 void	Client::set_nickname(const std::string &nickname)
 {
 	this->nickname = nickname;
 
-	//Just for testing, change later
-	//to a real password check and make a own function
-	if (this->password == "password" && !nickname.empty() && !username.empty())
-	{
-		std::cout << "Client " << nickname << " registered successfully!" << std::endl;
-		this->is_registered = true;
-	}
+	register_client(password);
 }
+
+std::string	Client::get_nickname() const
+{
+	return (nickname);
+}
+
 
 void	Client::set_admin_status(const bool &admin_status)
 {
 	this->is_admin = admin_status;
 }
 
+bool	Client::get_admin_status() const
+{
+	return (is_admin);
+}
+
+
 void	Client::set_register_status(const bool &register_status)
 {
 	this->is_registered = register_status;
 }
 
+bool	Client::get_register_status() const
+{
+	return (is_registered);
+}
+
+
 void	Client::set_buffer(const std::string &buffer)
 {
 	this->buffer = buffer;
+}
+
+std::string	Client::get_buffer() const
+{
+	return (buffer);
 }

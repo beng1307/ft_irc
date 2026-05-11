@@ -17,8 +17,8 @@ Disconnect-Handling	✅ fertig
 recv + Output	✅ fertig
 Buffer + Line-Parser	✅ fertig
 PASS / NICK / USER / Registrierung	✅ fertig
-Channel-Klasse	❌ fehlt
-JOIN / PART	❌ fehlt
+Channel-Klasse	❌ in progress
+JOIN / PART	❌ in progress
 PRIVMSG / Broadcast	❌ fehlt
 KICK / INVITE / TOPIC / MODE	❌ fehlt
 PING/PONG	❌ fehlt

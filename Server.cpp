@@ -1,5 +1,6 @@
 #include "Server.hpp"
 #include "Client.hpp"
+#include "Channel.hpp"
 #include <sys/socket.h>
 #include <string>
 #include <iostream>
@@ -8,6 +9,9 @@
 #include <poll.h>
 #include <cerrno>
 #include <unistd.h>
+#include <algorithm>
+#include <vector>
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // Consturctors and destructor
@@ -17,12 +21,14 @@ Server::Server()
 	return ;
 }
 
-Server::Server(int port, std::string password): port(port), password(password)
+Server::Server(int port, std::string password):
+	port(port), password(password), server_socket(0), clients(), channels(), fds()
 {
 	return ;
 }
 
-Server::Server(const Server &other): port(other.port), password(other.password)
+Server::Server(const Server &other): port(other.port), password(other.password),
+	server_socket(other.server_socket), clients(other.clients), channels(other.channels), fds(other.fds)
 {
 	return ;
 }
@@ -33,10 +39,18 @@ Server	&Server::operator=(const Server &other)
 	{
 		port = other.port;
 		password = other.password;
+		server_socket = other.server_socket;
+		clients = other.clients;
+		channels = other.channels;
+		fds = other.fds;
 	}
 	return (*this);
 }
 
+Server::~Server()
+{
+	return ;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Methods
@@ -100,7 +114,8 @@ void	Server::add_fds(int fd, short events, short revents)
 
 bool	Server::is_command(const std::string &line)
 {
-	return (line == "KICK" || line == "INVITE" || line == "TOPIC" || line == "MODE");
+	return (line == "PASS" || line == "USER" || line == "NICK" || line == "JOIN" 
+		|| line == "KICK" || line == "INVITE" || line == "TOPIC" || line == "MODE");
 }
 
 std::vector<std::string>	Server::split_arguments(const std::string &line)
@@ -149,6 +164,22 @@ std::vector<std::string>	Server::split_arguments(const std::string &line)
 // {
 // }
 
+
+//Check if this function works properly
+void	Server::join_channel(const std::string &channel_name)
+{
+	if (std::find(channels.begin(), channels.end(), channel_name) == channels.end())
+	{
+		channels.push_back(Channel(channel_name));
+		std::cout << "Channel " << channel_name << " created!" << std::endl;
+	}
+	else
+	std::cout << "Client joined channel " << channel_name << "!" << std::endl;
+	//TODO: Add client to channel
+}
+
+
+//TODO: 
 // void	Server::send_message_to_channel(const std::string &line)
 // {
 // }
@@ -167,6 +198,7 @@ void Server::handle_line(Client &client, const size_t &position)
 			&& (command == "KICK" || command == "INVITE"
 						|| command == "TOPIC" || command == "MODE"))
 		{
+			// TODO: Add a correct handle
 			//not authorized
 			return ;
 		}
@@ -174,13 +206,19 @@ void Server::handle_line(Client &client, const size_t &position)
 		//Get the arguments of the command so u can set it, maybe make a custom split function  
 		std::vector<std::string>	arguments = split_arguments(line);
 
-
+		// TODO: Make the functions
 		if (command == "PASS")
 			client.set_password(arguments[0]); // Do checks if its the only argument
 		else if (command == "USER")
 			client.set_username(arguments[0]); // Do checks if its the only argument
 		else if (command == "NICK")
 			client.set_nickname(arguments[0]); // Do checks if its the only argument
+		// else if (command == "JOIN")
+		// 	join_channel(arguments[0]); // Do checks if its the only argument
+		// else if (command == "PRIVMSG")
+		// 	send_message_to_channel(line); // Do checks if its the only argument
+		// else if (command == "PART")
+		// 	part_channel(arguments[0]); // Do checks if its the only argument
 		// else if (command == "KICK" && client.get_admin_status())
 		// 	handle_kick();
 		// else if (command == "INVITE" && client.get_admin_status())
@@ -194,6 +232,7 @@ void Server::handle_line(Client &client, const size_t &position)
 	}
 }
 
+// TODO: Split the loop into smalle functions
 void	Server::server_loop()
 {
 	//Makes the Server nonblocking by saving the flags and add O_NONBLOCK to the flags.
@@ -223,7 +262,6 @@ void	Server::server_loop()
 			std::cerr << "Error: poll failed!" << std::endl;
 			break;
 		}
-
 		for (size_t index = 0; index < fds.size(); ++index)
 		{
 			if (fds[index].revents & POLLIN)
@@ -249,7 +287,7 @@ void	Server::server_loop()
 				}
 				else
 				{
-					char	buffer[512]; //Maybe change it
+					char	buffer[512]; // Check if its the best approach
 
 					while (true)
 					{
@@ -268,6 +306,7 @@ void	Server::server_loop()
 							if (clients.find(fds[index].fd) != clients.end())
 								std::cout << "Received from client " << fds[index].fd << ": " << buffer << std::endl;
 						}
+						// TODO: Check this statement
 						else
 						{
 							close(fds[index].fd);
