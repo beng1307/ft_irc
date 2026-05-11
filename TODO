@@ -1,9 +1,6 @@
-1. Lineparser machen der bei \r\n abschneidet
-	und das dann weiter verarbeiten laesst.
-4
-2. Rechte und Anwesenheit regeln. Nur wenn er Mitglied ist empfaengt der server die Nachricht. PASS+NICK+USER.
+1. Client can part the channel.
 
-3. Channel klasse angehen. std::map<std::string, Channel> channels im Server.
+2. Client can send messages to the channel.
 
 4. JOIN: Client einem Channel hinzufügen
 	PRIVMSG: an alle Channel-Members außer Absender senden
@@ -17,7 +14,7 @@ Disconnect-Handling	✅ fertig
 recv + Output	✅ fertig
 Buffer + Line-Parser	✅ fertig
 PASS / NICK / USER / Registrierung	✅ fertig
-Channel-Klasse	❌ in progress
+Channel-Klasse	✅ in progress
 JOIN / PART	❌ in progress
 PRIVMSG / Broadcast	❌ fehlt
 KICK / INVITE / TOPIC / MODE	❌ fehlt

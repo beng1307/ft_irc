@@ -101,7 +101,7 @@ int	Server::socket_setup()
 	return (0);
 }
 
-
+// TODO: Add comments
 void	Server::add_fds(int fd, short events, short revents)
 {
 	pollfd poll_filedescriptor;
@@ -119,6 +119,7 @@ bool	Server::is_command(const std::string &line)
 		|| line == "KICK" || line == "INVITE" || line == "TOPIC" || line == "MODE");
 }
 
+// TODO: Check function if it works correctly
 std::vector<std::string>	Server::split_arguments(const std::string &line)
 {
 	std::vector<std::string>	arguments;
@@ -167,16 +168,24 @@ std::vector<std::string>	Server::split_arguments(const std::string &line)
 
 
 //Check if this function works properly
-void	Server::join_channel(const std::string &channel_name)
+void	Server::let_client_join_channel(const std::string &channel_name, Client &client)
 {
-	if (std::find(channels.begin(), channels.end(), channel_name) == channels.end())
+	// Checks if the channel already exists, if not it gets created and a client gets added
+	if (channels.find(channel_name) == channels.end())
 	{
-		channels.push_back(Channel(channel_name));
+		channels[channel_name] = Channel(channel_name);
 		std::cout << "Channel " << channel_name << " created!" << std::endl;
+
+		channels[channel_name].add_member(client); // Check if its the correct client that gets added
+		std::cout << "Client joined channel " << channel_name << "!" << std::endl;
 	}
+	// Else if it exisits already only the client gets added to the channel
 	else
-	std::cout << "Client joined channel " << channel_name << "!" << std::endl;
-	//TODO: Add client to channel
+	{
+		//find the channel with the name and add the client to it
+		channels[channel_name].add_member(client);
+		std::cout << "Client joined channel " << channel_name << "!" << std::endl;
+	}
 }
 
 
@@ -196,8 +205,10 @@ void Server::handle_line(Client &client, const size_t &position)
 	if (is_command(command))
 	{
 		if (!client.get_admin_status()
-			&& (command == "KICK" || command == "INVITE"
-						|| command == "TOPIC" || command == "MODE"))
+			&& (command == "KICK" || command == "INVITE" || command == "USER"
+						|| command == "TOPIC" || command == "MODE"
+						|| command == "JOIN" || command == "PART"
+						|| command == "PRIVMSG" || command == "PASS"))
 		{
 			// TODO: Add a correct handle
 			//not authorized
@@ -214,8 +225,8 @@ void Server::handle_line(Client &client, const size_t &position)
 			client.set_username(arguments[0]); // Do checks if its the only argument
 		else if (command == "NICK")
 			client.set_nickname(arguments[0]); // Do checks if its the only argument
-		// else if (command == "JOIN")
-		// 	join_channel(arguments[0]); // Do checks if its the only argument
+		else if (command == "JOIN" && client.get_register_status() == true)
+			let_client_join_channel(arguments[0], client); // Do checks if its the only argument
 		// else if (command == "PRIVMSG")
 		// 	send_message_to_channel(line); // Do checks if its the only argument
 		// else if (command == "PART")
@@ -233,7 +244,7 @@ void Server::handle_line(Client &client, const size_t &position)
 	}
 }
 
-// TODO: Split the loop into smalle functions
+// TODO: Split the loop into smaller functions nad add much more comments to the code
 void	Server::server_loop()
 {
 	//Makes the Server nonblocking by saving the flags and add O_NONBLOCK to the flags.
@@ -253,6 +264,7 @@ void	Server::server_loop()
 	//Adds the server socket to the poll file descriptors
 	add_fds(server_socket, POLLIN, 0);
 
+	// Server loop that continuously checks for events
 	while (true)
 	{
 		int ready = poll(fds.data(), fds.size(), -1);
@@ -263,6 +275,8 @@ void	Server::server_loop()
 			std::cerr << "Error: poll failed!" << std::endl;
 			break;
 		}
+
+		// Goes through all the file descriptors and checks if there are events to handle
 		for (size_t index = 0; index < fds.size(); ++index)
 		{
 			if (fds[index].revents & POLLIN)
