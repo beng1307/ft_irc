@@ -3,6 +3,8 @@
 
 #include <exception>
 
+
+// TODO: Make proper errorhandling
 class Errorhandler
 {
 	public:

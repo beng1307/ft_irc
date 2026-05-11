@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <vector>
 
+// TODO: Make more comments on the functions
 
 ///////////////////////////////////////////////////////////////////////////////
 // Consturctors and destructor
@@ -179,7 +180,7 @@ void	Server::join_channel(const std::string &channel_name)
 }
 
 
-//TODO: 
+//TODO: send message to all clients in channel except sender
 // void	Server::send_message_to_channel(const std::string &line)
 // {
 // }
