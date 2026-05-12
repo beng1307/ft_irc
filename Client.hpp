@@ -61,6 +61,7 @@ class Client
 		bool		get_register_status() const;
 
 		void		set_buffer(const std::string &buffer);
+		std::string	&get_buffer();
 		std::string	get_buffer() const;
 
 };

@@ -116,7 +116,8 @@ void	Server::add_fds(int fd, short events, short revents)
 bool	Server::is_command(const std::string &line)
 {
 	return (line == "PASS" || line == "USER" || line == "NICK" || line == "JOIN" 
-		|| line == "KICK" || line == "INVITE" || line == "TOPIC" || line == "MODE");
+		|| line == "PART" || line == "PRIVMSG" || line == "KICK"
+		|| line == "INVITE" || line == "TOPIC" || line == "MODE");
 }
 
 // TODO: Check function if it works correctly
@@ -128,16 +129,12 @@ std::vector<std::string>	Server::split_arguments(const std::string &line)
 	if (start == std::string::npos)
 		return (arguments);
 
-	while (line[start] == ' ')
+	while (start < line.length() && line[start] == ' ')
 		start++;	
 
-	size_t	end = start;
-	while (end != std::string::npos)
+	while (start < line.length())
 	{
-		while (line[start] == ' ')
-			start++;
-		
-		end = line.find(" ", start);
+		size_t	end = line.find(" ", start);
 		if (end == std::string::npos)
 		{
 			arguments.push_back(line.substr(start));
@@ -145,6 +142,9 @@ std::vector<std::string>	Server::split_arguments(const std::string &line)
 		}
 		
 		arguments.push_back(line.substr(start, end - start));
+		start = end + 1;
+		while (start < line.length() && line[start] == ' ')
+			start++;
 	}
 	
 	return (arguments);
@@ -225,10 +225,8 @@ void Server::handle_line(Client &client, const size_t &position)
 	if (is_command(command))
 	{
 		if (!client.get_admin_status()
-			&& (command == "KICK" || command == "INVITE" || command == "USER"
-						|| command == "TOPIC" || command == "MODE"
-						|| command == "JOIN" || command == "PART"
-						|| command == "PRIVMSG" || command == "PASS"))
+			&& (command == "KICK" || command == "INVITE"
+						|| command == "TOPIC" || command == "MODE"))
 		{
 			// TODO: Add a correct handle
 			//not authorized
@@ -239,14 +237,23 @@ void Server::handle_line(Client &client, const size_t &position)
 		std::vector<std::string>	arguments = split_arguments(line);
 
 		// TODO: Make the functions
+		if (arguments.empty())
+			return ;
+
 		if (command == "PASS")
 			client.set_password(arguments[0]); // Do checks if its the only argument
 		else if (command == "USER")
 			client.set_username(arguments[0]); // Do checks if its the only argument
 		else if (command == "NICK")
 			client.set_nickname(arguments[0]); // Do checks if its the only argument
-		else if (command == "JOIN" && client.get_register_status() == true)
-			let_client_join_channel(arguments[0], client); // Do checks if its the only argument
+		else if (command == "JOIN")
+		{
+			std::cout << "[JOIN] Attempting to join. Register status: " << client.get_register_status() << std::endl;
+			if (client.get_register_status() == true)
+				let_client_join_channel(arguments[0], client); // Do checks if its the only argument
+			else
+				std::cout << "[JOIN] Client not registered yet!" << std::endl;
+		}
 		else if (command == "PART" && client.get_register_status() == true)
 			part_client_from_channel(client); // Do checks if its the only argument
 		// else if (command == "PRIVMSG")
@@ -330,20 +337,32 @@ void	Server::server_loop()
 						if (bytes_received > 0)
 						{
 							buffer[bytes_received] = '\0';
-
-							std::string	string_buffer(buffer);
 							clients[fds[index].fd].get_buffer().append(buffer, bytes_received);
 
 							size_t	position = clients[fds[index].fd].get_buffer().find("\r\n");
-							if (position != std::string::npos)
+
+							while (position != std::string::npos)
+							{
 								handle_line(clients[fds[index].fd], position);
+								position = clients[fds[index].fd].get_buffer().find("\r\n");
+							}
 
 							if (clients.find(fds[index].fd) != clients.end())
 								std::cout << "Received from client " << fds[index].fd << ": " << buffer << std::endl;
 						}
-						// TODO: Check this statement
+						else if (bytes_received == 0)
+						{
+							close(fds[index].fd);
+							clients.erase(fds[index].fd);
+							fds.erase(fds.begin() + index);
+							--index;
+							break ;
+						}
 						else
 						{
+							if (errno == EAGAIN || errno == EWOULDBLOCK)
+								break ;
+
 							close(fds[index].fd);
 							clients.erase(fds[index].fd);
 							fds.erase(fds.begin() + index);

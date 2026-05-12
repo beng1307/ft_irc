@@ -1,6 +1,8 @@
-1. Client can part the channel.
+1. In client the registration if check is wrong.
 
-2. Client can send messages to the channel.
+2. Client can part the channel.
+
+3. Client can send messages to the channel.
 
 4. JOIN: Client einem Channel hinzufügen
 	PRIVMSG: an alle Channel-Members außer Absender senden
@@ -14,8 +16,8 @@ Disconnect-Handling	✅ fertig
 recv + Output	✅ fertig
 Buffer + Line-Parser	✅ fertig
 PASS / NICK / USER / Registrierung	✅ fertig
-Channel-Klasse	✅ in progress
-JOIN / PART	❌ in progress
+Channel-Klasse	✅ fertig
+JOIN / PART	✅ fertig
 PRIVMSG / Broadcast	❌ fehlt
 KICK / INVITE / TOPIC / MODE	❌ fehlt
 PING/PONG	❌ fehlt

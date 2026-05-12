@@ -7,24 +7,24 @@
 // Consturctors and destructor
 
 Client::Client():
-	socket(0), nickname(""), username(""),
-	password(""), is_registered(false), is_admin(false),
+	socket(0), password(""), username(""),
+	nickname(""), is_registered(false), is_admin(false),
 	buffer("")
 {
 	return ;
 }
 
 Client::Client(int socket):
-	socket(socket), nickname(""), username(""),
-	password(""), is_registered(false), is_admin(false),
+	socket(socket), password(""), username(""),
+	nickname(""), is_registered(false), is_admin(false),
 	buffer("")
 {
 	return ;
 }
 
 Client::Client(const Client &other):
-	socket(other.socket), nickname(other.nickname),
-	username(other.username), password(other.password),
+	socket(other.socket), password(other.password),
+	username(other.username), nickname(other.nickname),
 	is_registered(other.is_registered), is_admin(other.is_admin),
 	buffer(other.buffer)
 	{
@@ -52,7 +52,7 @@ Client	&Client::operator=(const Client &other)
 
 void	Client::register_client(const std::string &password)
 {
-	if (this->password == "password" && !nickname.empty() && !username.empty())
+	if ( == password && !nickname.empty() && !username.empty())
 	{
 		std::cout << "Client " << nickname << " registered successfully!" << std::endl;
 		this->is_registered = true;
@@ -77,7 +77,7 @@ int	Client::get_socket() const
 void	Client::set_password(const std::string &password)
 {
 	this->password = password;
-
+	std::cout << "Password set" << std::endl;
 	register_client(password);
 }
 
@@ -90,7 +90,7 @@ std::string	Client::get_password() const
 void	Client::set_username(const std::string &username)
 {
 	this->username = username;
-
+	std::cout << "Username set: " << username << std::endl;
 	register_client(password);
 }
 
@@ -103,7 +103,7 @@ std ::string	Client::get_username() const
 void	Client::set_nickname(const std::string &nickname)
 {
 	this->nickname = nickname;
-
+	std::cout << "Nickname set: " << nickname << std::endl;
 	register_client(password);
 }
 
@@ -138,6 +138,11 @@ bool	Client::get_register_status() const
 void	Client::set_buffer(const std::string &buffer)
 {
 	this->buffer = buffer;
+}
+
+std::string	&Client::get_buffer()
+{
+	return (buffer);
 }
 
 std::string	Client::get_buffer() const

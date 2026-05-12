@@ -23,6 +23,18 @@ Channel::Channel(const Channel &other): name(other.name), topic(other.topic), me
 	return ;
 }
 
+Channel	&Channel::operator=(const Channel &other)
+{
+	if (this != &other)
+	{
+		name = other.name;
+		topic = other.topic;
+		members = other.members;
+	}
+
+	return (*this);
+}
+
 Channel::~Channel()
 {
 	return ;
