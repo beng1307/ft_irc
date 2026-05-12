@@ -8,6 +8,8 @@
 #include <vector>
 #include <poll.h>
 
+typedef std::map<std::string, Channel>	ChannelMap;
+typedef std::map<int, Client> 			ClientMap;
 
 class Server
 {
@@ -33,8 +35,8 @@ class Server
 
 		int  							server_socket;
 
-		std::map<int, Client>			clients; //Check if map is the best option for this, maybe change to vector or list
-		std::map<std::string, Channel>	channels; //Same applies here, maybe change to map with channel name as key
+		ClientMap						clients; //Check if map is the best option for this, maybe change to vector or list
+		ChannelMap						channels; //Same applies here, maybe change to map with channel name as key
 		std::vector<pollfd>				fds;
 
 
@@ -53,6 +55,7 @@ class Server
 		// void 						handle_topic();
 		// void 						handle_mode();
 		void							let_client_join_channel(const std::string &channel_name, Client &client);
+		void							part_client_from_channel(Client &client);
 		// void							send_message_to_channel(const std::string &line);
 		std::vector<std::string>		split_arguments(const std::string &line);
 

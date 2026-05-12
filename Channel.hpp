@@ -37,6 +37,7 @@ class	Channel
 		std::string			get_topic() const;
 
 		void				add_member(const Client &client);
+		bool				has_member(const Client &client) const;
 		void				remove_member(const Client &client);
 		std::vector<Client>	get_members() const;
 };

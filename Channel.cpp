@@ -72,12 +72,33 @@ std::string	Channel::get_topic() const
 
 void	Channel::add_member(const Client &client)
 {
+	if (has_member(client))
+		return ;
+
 	members.push_back(client);
+}
+
+bool	Channel::has_member(const Client &client) const
+{
+	for (std::vector<Client>::const_iterator it = members.begin(); it != members.end(); ++it)
+	{
+		if (it->get_socket() == client.get_socket())
+			return (true);
+	}
+
+	return (false);
 }
 
 void	Channel::remove_member(const Client &client)
 {
-	members.erase(std::remove(members.begin(), members.end(), client), members.end()); //Check this function if it works correctly
+	for (std::vector<Client>::iterator it = members.begin(); it != members.end(); ++it)
+	{
+		if (it->get_socket() == client.get_socket())
+		{
+			members.erase(it);
+			return ;
+		}
+	}
 }
 
 std::vector<Client>	Channel::get_members() const

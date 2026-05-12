@@ -182,9 +182,29 @@ void	Server::let_client_join_channel(const std::string &channel_name, Client &cl
 	// Else if it exisits already only the client gets added to the channel
 	else
 	{
-		//find the channel with the name and add the client to it
+		if (channels[channel_name].has_member(client))
+		{
+			std::cout << "Client is already in channel " << channel_name << "!" << std::endl;
+			return ;
+		}
+
 		channels[channel_name].add_member(client);
 		std::cout << "Client joined channel " << channel_name << "!" << std::endl;
+	}
+}
+
+void	Server::part_client_from_channel(Client &client)
+{
+	for (ChannelMap::iterator it = channels.begin(); it != channels.end(); ++it)
+	{
+		if (it->second.has_member(client))
+		{
+			it->second.remove_member(client);
+			std::cout << "Client left channel " << it->second.get_name() << "!" << std::endl;
+		}
+		else
+			//maybe do it with Errorhandler
+			std::cout << "Client is not in channel!" << std::endl;
 	}
 }
 
@@ -227,10 +247,10 @@ void Server::handle_line(Client &client, const size_t &position)
 			client.set_nickname(arguments[0]); // Do checks if its the only argument
 		else if (command == "JOIN" && client.get_register_status() == true)
 			let_client_join_channel(arguments[0], client); // Do checks if its the only argument
+		else if (command == "PART" && client.get_register_status() == true)
+			part_client_from_channel(client); // Do checks if its the only argument
 		// else if (command == "PRIVMSG")
 		// 	send_message_to_channel(line); // Do checks if its the only argument
-		// else if (command == "PART")
-		// 	part_channel(arguments[0]); // Do checks if its the only argument
 		// else if (command == "KICK" && client.get_admin_status())
 		// 	handle_kick();
 		// else if (command == "INVITE" && client.get_admin_status())
