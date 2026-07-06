@@ -117,7 +117,7 @@ bool	Server::is_command(const std::string &line)
 {
 	return (line == "PASS" || line == "USER" || line == "NICK" || line == "JOIN" 
 		|| line == "PART" || line == "PRIVMSG" || line == "KICK"
-		|| line == "INVITE" || line == "TOPIC" || line == "MODE");
+		|| line == "INVITE" || line == "TOPIC" || line == "MODE" || line == "CAP");
 }
 
 // TODO: Check function if it works correctly
@@ -210,9 +210,79 @@ void	Server::part_client_from_channel(Client &client)
 
 
 //TODO: send message to all clients in channel except sender
-// void	Server::send_message_to_channel(const std::string &line)
-// {
-// }
+void	Server::send_message_to_channel(Client &sender, const std::string &channel_name, const std::string &message)
+{
+	if (channels.find(channel_name) == channels.end())
+	{
+		send_error_reply(sender, "403", channel_name + " :No such channel");
+		return ;
+	}
+
+	std::vector<Client>	members = channels[channel_name].get_members();
+
+	std::string	message_to_send = ":" + sender.get_nickname() + "!" + sender.get_username()
+						+ "@localhost PRIVMSG " + channel_name + " :" + message + "\r\n";
+
+	for (size_t i = 0; i < members.size(); ++i)
+	{
+		if (members[i].get_socket() != sender.get_socket())
+			send(members[i].get_socket(), message_to_send.c_str(), message_to_send.size(), 0);
+	}
+}
+
+Client	*Server::find_client_by_nickname(const std::string &nickname)
+{
+	for (ClientMap::iterator it = clients.begin(); it != clients.end(); ++it)
+	{
+		if (it->second.get_nickname() == nickname)
+			return (&it->second);
+	}
+	return (NULL);
+}
+
+void	Server::send_error_reply(Client &client, const std::string &code, const std::string &message)
+{
+	std::string nick = client.get_nickname();
+
+	if (nick.empty())
+		nick = "*";
+
+	std::string reply = ":localhost " + code + " " + nick + " " + message + "\r\n";
+	send(client.get_socket(), reply.c_str(), reply.size(), 0);
+}
+
+void	Server::send_message_to_user(Client &sender, const std::string &nickname, const std::string &message)
+{
+	Client *target = find_client_by_nickname(nickname);
+
+	if (target == NULL)
+	{
+		send_error_reply(sender, "401", nickname + " :No such nick/channel");
+		return ;
+	}
+
+	std::string message_to_send = ":" + sender.get_nickname() + "!" + sender.get_username()
+						+ "@localhost PRIVMSG " + nickname + " :" + message + "\r\n";
+
+	send(target->get_socket(), message_to_send.c_str(), message_to_send.size(), 0);
+}
+
+void	Server::send_welcome_message(Client &client)
+{
+	std::string nick = client.get_nickname();
+	
+	std::string welcome = ":localhost 001 " + nick + " :Welcome to ft_irc\r\n";
+	send(client.get_socket(), welcome.c_str(), welcome.size(), 0);
+	
+	std::string yourhost = ":localhost 002 " + nick + " :Your host is localhost\r\n";
+	send(client.get_socket(), yourhost.c_str(), yourhost.size(), 0);
+	
+	std::string created = ":localhost 003 " + nick + " :This server was created today\r\n";
+	send(client.get_socket(), created.c_str(), created.size(), 0);
+	
+	std::string myinfo = ":localhost 004 " + nick + " localhost ft_irc 1.0 o o\r\n";
+	send(client.get_socket(), myinfo.c_str(), myinfo.size(), 0);
+}
 
 void Server::handle_line(Client &client, const size_t &position)
 {
@@ -241,23 +311,48 @@ void Server::handle_line(Client &client, const size_t &position)
 			return ;
 
 		if (command == "PASS")
-			client.set_password(arguments[0]); // Do checks if its the only argument
+		{
+			client.set_password(arguments[0]);
+			if (!client.get_register_status() && 
+				!client.get_nickname().empty() && !client.get_username().empty())
+			{
+				client.set_register_status(true);
+				std::cout << "Client " << client.get_nickname() << " registered successfully!" << std::endl;
+				send_welcome_message(client);
+			}
+		}
 		else if (command == "USER")
-			client.set_username(arguments[0]); // Do checks if its the only argument
+		{
+			client.set_username(arguments[0]);
+			if (!client.get_register_status() && 
+				!client.get_nickname().empty() && !client.get_username().empty())
+			{
+				client.set_register_status(true);
+				std::cout << "Client " << client.get_nickname() << " registered successfully!" << std::endl;
+				send_welcome_message(client);
+			}
+		}
 		else if (command == "NICK")
-			client.set_nickname(arguments[0]); // Do checks if its the only argument
+		{
+			client.set_nickname(arguments[0]);
+			if (!client.get_register_status() && 
+				!client.get_nickname().empty() && !client.get_username().empty())
+			{
+				client.set_register_status(true);
+				std::cout << "Client " << client.get_nickname() << " registered successfully!" << std::endl;
+				send_welcome_message(client);
+			}
+		}
 		else if (command == "JOIN")
 		{
-			std::cout << "[JOIN] Attempting to join. Register status: " << client.get_register_status() << std::endl;
 			if (client.get_register_status() == true)
-				let_client_join_channel(arguments[0], client); // Do checks if its the only argument
-			else
-				std::cout << "[JOIN] Client not registered yet!" << std::endl;
+			{
+				if (!arguments.empty() && !arguments[0].empty())
+					let_client_join_channel(arguments[0], client);
+			}
 		}
 		else if (command == "PART" && client.get_register_status() == true)
 			part_client_from_channel(client); // Do checks if its the only argument
-		// else if (command == "PRIVMSG")
-		// 	send_message_to_channel(line); // Do checks if its the only argument
 		// else if (command == "KICK" && client.get_admin_status())
 		// 	handle_kick();
 		// else if (command == "INVITE" && client.get_admin_status())
@@ -266,8 +361,49 @@ void Server::handle_line(Client &client, const size_t &position)
 		// 	handle_topic();
 		// else if (command == "MODE" && client.get_admin_status())
 		// 	handle_mode();
-		// else
-		// 	send_message_to_channel(line);
+		else if (command == "CAP")
+		{
+			if (arguments.size() > 0)
+			{
+				if (arguments[0] == "LS")
+				{
+					std::string cap_response = ":localhost CAP * LS :\r\n";
+					send(client.get_socket(), cap_response.c_str(), cap_response.size(), 0);
+				}
+				else if (arguments[0] == "END")
+				{
+					// CAP negotiation ended
+				}
+			}
+		}
+		else if (command == "PRIVMSG" && client.get_register_status() == true)
+		{
+			if (arguments.empty())
+			{
+				send_error_reply(client, "411", ":No recipient given (PRIVMSG)");
+				return ;
+			}
+
+			std::string	message;
+			std::string	target = arguments[0];
+			size_t		position = line.find(" :");
+
+			if (position != std::string::npos)
+				message = line.substr(position + 2); //needs segfault protection
+			else if (arguments.size() > 1)
+				message = arguments[1];
+
+			if (message.empty())
+			{
+				send_error_reply(client, "412", ":No text to send");
+				return ;
+			}
+
+			if (!target.empty() && target[0] == '#')
+				send_message_to_channel(client, target, message);
+			else
+				send_message_to_user(client, target, message);
+		}
 	}
 }
 

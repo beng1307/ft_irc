@@ -52,7 +52,7 @@ Client	&Client::operator=(const Client &other)
 
 void	Client::register_client(const std::string &password)
 {
-	if ( == password && !nickname.empty() && !username.empty())
+	if (this->password == password && !nickname.empty() && !username.empty())
 	{
 		std::cout << "Client " << nickname << " registered successfully!" << std::endl;
 		this->is_registered = true;
@@ -77,8 +77,6 @@ int	Client::get_socket() const
 void	Client::set_password(const std::string &password)
 {
 	this->password = password;
-	std::cout << "Password set" << std::endl;
-	register_client(password);
 }
 
 std::string	Client::get_password() const
@@ -90,8 +88,6 @@ std::string	Client::get_password() const
 void	Client::set_username(const std::string &username)
 {
 	this->username = username;
-	std::cout << "Username set: " << username << std::endl;
-	register_client(password);
 }
 
 std ::string	Client::get_username() const
@@ -103,8 +99,6 @@ std ::string	Client::get_username() const
 void	Client::set_nickname(const std::string &nickname)
 {
 	this->nickname = nickname;
-	std::cout << "Nickname set: " << nickname << std::endl;
-	register_client(password);
 }
 
 std::string	Client::get_nickname() const
