@@ -18,7 +18,7 @@ Buffer + Line-Parser	✅ fertig
 PASS / NICK / USER / Registrierung	✅ fertig
 Channel-Klasse	✅ fertig
 JOIN / PART	✅ fertig
-PRIVMSG / Broadcast	❌ fehlt
+PRIVMSG / Broadcast	✅ fertig
 KICK / INVITE / TOPIC / MODE	❌ fehlt
 PING/PONG	❌ fehlt
 Echter IRC-Client kompatibel (z.B. irssi)	❌ fehlt

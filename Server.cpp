@@ -150,13 +150,124 @@ std::vector<std::string>	Server::split_arguments(const std::string &line)
 	return (arguments);
 }
 
-// void Server::handle_kick()
-// {
-// }
+void	Server::handle_kick(Client &client, const std::string &line,
+		const std::vector<std::string> &arguments)
+{
+	if (arguments.size() < 2)
+	{
+		send_error_reply(client, "461", "KICK :Not enough parameters");
+		return ;
+	}
 
-// void Server::handle_invite()
-// {
-// }
+	const std::string &channel_name = arguments[0];
+	const std::string &target_nick = arguments[1];
+
+	ChannelMap::iterator channel_it = channels.find(channel_name);
+	if (channel_it == channels.end())
+	{
+		send_error_reply(client, "403", channel_name + " :No such channel");
+		return ;
+	}
+
+	if (!channel_it->second.has_member(client))
+	{
+		send_error_reply(client, "442", channel_name + " :You're not on that channel");
+		return ;
+	}
+
+	if (!client.get_admin_status())
+	{
+		send_error_reply(client, "482", channel_name + " :You're not channel operator");
+		return ;
+	}
+
+	Client *target = find_client_by_nickname(target_nick);
+	if (target == NULL)
+	{
+		send_error_reply(client, "401", target_nick + " :No such nick/channel");
+		return ;
+	}
+
+	if (!channel_it->second.has_member(*target))
+	{
+		send_error_reply(client, "441", target_nick + " " + channel_name
+			+ " :They aren't on that channel");
+		return ;
+	}
+
+	std::string reason = client.get_nickname();
+	size_t reason_pos = line.find(" :");
+	if (reason_pos != std::string::npos && reason_pos + 2 < line.size())
+		reason = line.substr(reason_pos + 2);
+
+	std::string kick_message = ":" + client.get_nickname() + "!" + client.get_username()
+		+ "@localhost KICK " + channel_name + " " + target_nick + " :" + reason + "\r\n";
+
+	std::vector<Client> members = channel_it->second.get_members();
+	for (size_t i = 0; i < members.size(); ++i)
+		send(members[i].get_socket(), kick_message.c_str(), kick_message.size(), 0);
+
+	channel_it->second.remove_member(*target);
+}
+
+void	Server::handle_invite(Client &client,
+		const std::vector<std::string> &arguments)
+{
+	if (arguments.size() < 2)
+	{
+		send_error_reply(client, "461", "INVITE :Not enough parameters");
+		return ;
+	}
+
+	const std::string &target_nick = arguments[0];
+	const std::string &channel_name = arguments[1];
+
+	ChannelMap::iterator channel_it = channels.find(channel_name);
+	if (channel_it == channels.end())
+	{
+		send_error_reply(client, "403", channel_name + " :No such channel");
+		return ;
+	}
+
+	if (!channel_it->second.has_member(client))
+	{
+		send_error_reply(client, "442", channel_name + " :You're not on that channel");
+		return ;
+	}
+
+	if (!client.get_admin_status())
+	{
+		send_error_reply(client, "482", channel_name + " :You're not channel operator");
+		return ;
+	}
+
+	Client *target = find_client_by_nickname(target_nick);
+	if (target == NULL)
+	{
+		send_error_reply(client, "401", target_nick + " :No such nick/channel");
+		return ;
+	}
+
+	if (channel_it->second.has_member(*target))
+	{
+		send_error_reply(client, "443", target_nick + " " + channel_name
+			+ " :is already on channel");
+		return ;
+	}
+
+	std::string invite_message = ":" + client.get_nickname() + "!" + client.get_username()
+		+ "@localhost INVITE " + target_nick + " :" + channel_name + "\r\n";
+	send(target->get_socket(), invite_message.c_str(), invite_message.size(), 0);
+
+	std::string nick = client.get_nickname();
+	if (nick.empty())
+		nick = "*";
+	std::string invite_reply = ":localhost 341 " + nick + " " + target_nick
+		+ " " + channel_name + "\r\n";
+	send(client.get_socket(), invite_reply.c_str(), invite_reply.size(), 0);
+
+	//Client still has to be added to channel
+}
 
 // void Server::handle_topic()
 // {
@@ -295,8 +406,7 @@ void Server::handle_line(Client &client, const size_t &position)
 	if (is_command(command))
 	{
 		if (!client.get_admin_status()
-			&& (command == "KICK" || command == "INVITE"
-						|| command == "TOPIC" || command == "MODE"))
+			&& (command == "TOPIC" || command == "MODE"))
 		{
 			// TODO: Add a correct handle
 			//not authorized
@@ -353,10 +463,10 @@ void Server::handle_line(Client &client, const size_t &position)
 		}
 		else if (command == "PART" && client.get_register_status() == true)
 			part_client_from_channel(client); // Do checks if its the only argument
-		// else if (command == "KICK" && client.get_admin_status())
-		// 	handle_kick();
-		// else if (command == "INVITE" && client.get_admin_status())
-		// 	handle_invite();
+		else if (command == "KICK" && client.get_register_status() == true)
+			handle_kick(client, line, arguments);
+		else if (command == "INVITE" && client.get_register_status() == true)
+			handle_invite(client, arguments);
 		// else if (command == "TOPIC" && client.get_admin_status())
 		// 	handle_topic();
 		// else if (command == "MODE" && client.get_admin_status())
@@ -465,7 +575,7 @@ void	Server::server_loop()
 				}
 				else
 				{
-					char	buffer[512]; // Check if its the best approach
+					char	buffer[512];
 
 					while (true)
 					{

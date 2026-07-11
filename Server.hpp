@@ -50,8 +50,10 @@ class Server
 		bool							is_command(const std::string &line);
 
 
-		// void 						handle_kick();
-		// void 						handle_invite();
+		void							handle_kick(Client &client, const std::string &line,
+											 const std::vector<std::string> &arguments);
+		void						handle_invite(Client &client,
+									  const std::vector<std::string> &arguments);
 		// void 						handle_topic();
 		// void 						handle_mode();
 		void							let_client_join_channel(const std::string &channel_name, Client &client);
