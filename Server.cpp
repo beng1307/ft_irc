@@ -266,7 +266,7 @@ void	Server::handle_invite(Client &client,
 		+ " " + channel_name + "\r\n";
 	send(client.get_socket(), invite_reply.c_str(), invite_reply.size(), 0);
 
-	//Client still has to be added to channel
+	channel_it->second.add_member(*target);
 }
 
 // void Server::handle_topic()
