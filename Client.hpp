@@ -17,6 +17,7 @@ class Client
 		std::string		username;
 		std::string		nickname;
 		
+		bool			pass_ok;
 		bool			is_registered;
 		bool 			is_admin;
 
@@ -47,6 +48,9 @@ class Client
 
 		void		set_password(const std::string &password);
 		std::string	get_password() const;
+
+		void		set_pass_ok(const bool &pass_ok);
+		bool		get_pass_ok() const;
 
 		void		set_username(const std::string &username);
 		std::string	get_username() const;

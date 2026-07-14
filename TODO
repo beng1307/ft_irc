@@ -1,13 +1,3 @@
-1. In client the registration if check is wrong.
-
-2. Client can part the channel.
-
-3. Client can send messages to the channel.
-
-4. JOIN: Client einem Channel hinzufügen
-	PRIVMSG: an alle Channel-Members außer Absender senden
-
-
 Bereich	Status
 
 Socket-Setup (bind, listen, accept)	✅ fertig
@@ -18,7 +8,6 @@ Buffer + Line-Parser	✅ fertig
 PASS / NICK / USER / Registrierung	✅ fertig
 Channel-Klasse	✅ fertig
 JOIN / PART	✅ fertig
-PRIVMSG / Broadcast	✅ fertig
-KICK / INVITE / TOPIC / MODE	❌ fehlt
-PING/PONG	❌ fehlt
+PRIVMSG	✅ fertig
+KICK / INVITE / TOPIC / MODE	✅ fertig
 Echter IRC-Client kompatibel (z.B. irssi)	❌ fehlt

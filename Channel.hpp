@@ -4,6 +4,7 @@
 #include "Client.hpp"
 #include <string>
 #include <vector>
+#include <set>
 
 
 class	Channel
@@ -12,7 +13,15 @@ class	Channel
 
 		std::string			name;
 		std::string			topic;
-		std::vector<Client> members;
+		std::set<int> 		member_fds;
+		std::set<int> 		operator_fds;
+		std::set<int> 		invited_fds;
+		bool				invite_only;
+		bool				topic_restricted;
+		bool				key_enabled;
+		std::string			channel_key;
+		bool				limit_enabled;
+		size_t				user_limit;
 
 
 	public:
@@ -24,11 +33,6 @@ class	Channel
 		Channel &operator=(const Channel &other);
 		~Channel();
 
-		// void	kick();
-		// void	invite();
-		// void	topic();
-		// void	mode();
-
 
 		void				set_name(const std::string &name);
 		std::string			get_name() const;
@@ -36,10 +40,29 @@ class	Channel
 		void				set_topic(const std::string &topic);
 		std::string			get_topic() const;
 
-		void				add_member(const Client &client);
-		bool				has_member(const Client &client) const;
-		void				remove_member(const Client &client);
-		std::vector<Client>	get_members() const;
+		void				add_member(int client_fd);
+		bool				has_member(int client_fd) const;
+		void				remove_member(int client_fd);
+		void				add_operator(int client_fd);
+		bool				is_operator(int client_fd) const;
+		void				remove_operator(int client_fd);
+		void				add_invited(int client_fd);
+		bool				is_invited(int client_fd) const;
+		void				remove_invited(int client_fd);
+
+		void				set_invite_only(bool enabled);
+		bool				is_invite_only() const;
+		void				set_topic_restricted(bool enabled);
+		bool				is_topic_restricted() const;
+		void				set_key(const std::string &key);
+		void				clear_key();
+		bool				has_key() const;
+		std::string			get_key() const;
+		void				set_user_limit(size_t limit);
+		void				clear_user_limit();
+		bool				has_user_limit() const;
+		size_t				get_user_limit() const;
+		std::set<int>		get_member_fds() const;
 };
 
 #endif

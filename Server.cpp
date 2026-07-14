@@ -11,6 +11,9 @@
 #include <unistd.h>
 #include <algorithm>
 #include <vector>
+#include <sstream>
+#include <cctype>
+#include <cstdlib>
 
 // TODO: Make more comments on the functions
 
@@ -101,6 +104,10 @@ int	Server::socket_setup()
 	return (0);
 }
 
+
+///////////////////////////////////////////////////////////////////////////////
+// Helper functions
+
 // TODO: Add comments
 void	Server::add_fds(int fd, short events, short revents)
 {
@@ -118,6 +125,34 @@ bool	Server::is_command(const std::string &line)
 	return (line == "PASS" || line == "USER" || line == "NICK" || line == "JOIN" 
 		|| line == "PART" || line == "PRIVMSG" || line == "KICK"
 		|| line == "INVITE" || line == "TOPIC" || line == "MODE" || line == "CAP");
+}
+
+static void	append_mode_change(std::string &applied_modes, char sign, char mode)
+{
+	if (applied_modes.empty() || applied_modes[applied_modes.size() - 1] != sign)
+		applied_modes.push_back(sign);
+	applied_modes.push_back(mode);
+}
+
+static std::string	to_string_size_t(size_t value)
+{
+	std::ostringstream oss;
+	oss << value;
+	return (oss.str());
+}
+
+static bool	is_positive_number(const std::string &value)
+{
+	if (value.empty())
+		return (false);
+	for (size_t i = 0; i < value.size(); ++i)
+	{
+		if (!std::isdigit(static_cast<unsigned char>(value[i])))
+			return (false);
+	}
+	if (value == "0")
+		return (false);
+	return (true);
 }
 
 // TODO: Check function if it works correctly
@@ -150,6 +185,45 @@ std::vector<std::string>	Server::split_arguments(const std::string &line)
 	return (arguments);
 }
 
+Client	*Server::find_client_by_nickname(const std::string &nickname)
+{
+	for (ClientMap::iterator it = clients.begin(); it != clients.end(); ++it)
+	{
+		if (it->second.get_nickname() == nickname)
+			return (&it->second);
+	}
+	return (NULL);
+}
+
+void	Server::cleanup_client_disconnect(int disconnected_fd)
+{
+	for (ChannelMap::iterator it = channels.begin(); it != channels.end();)
+	{
+		it->second.remove_member(disconnected_fd);
+		if (it->second.get_member_fds().empty())
+			channels.erase(it++);
+		else
+			++it;
+	}
+}
+
+void	Server::try_register_client(Client &client)
+{
+	if (client.get_register_status())
+		return ;
+	if (!client.get_pass_ok())
+		return ;
+	if (client.get_nickname().empty() || client.get_username().empty())
+		return ;
+
+	client.set_register_status(true);
+	std::cout << "Client " << client.get_nickname() << " registered successfully!" << std::endl;
+	send_welcome_message(client);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Command handling functions
+
 void	Server::handle_kick(Client &client, const std::string &line,
 		const std::vector<std::string> &arguments)
 {
@@ -169,13 +243,13 @@ void	Server::handle_kick(Client &client, const std::string &line,
 		return ;
 	}
 
-	if (!channel_it->second.has_member(client))
+	if (!channel_it->second.has_member(client.get_socket()))
 	{
 		send_error_reply(client, "442", channel_name + " :You're not on that channel");
 		return ;
 	}
 
-	if (!client.get_admin_status())
+	if (!channel_it->second.is_operator(client.get_socket()))
 	{
 		send_error_reply(client, "482", channel_name + " :You're not channel operator");
 		return ;
@@ -188,7 +262,7 @@ void	Server::handle_kick(Client &client, const std::string &line,
 		return ;
 	}
 
-	if (!channel_it->second.has_member(*target))
+	if (!channel_it->second.has_member(target->get_socket()))
 	{
 		send_error_reply(client, "441", target_nick + " " + channel_name
 			+ " :They aren't on that channel");
@@ -203,11 +277,11 @@ void	Server::handle_kick(Client &client, const std::string &line,
 	std::string kick_message = ":" + client.get_nickname() + "!" + client.get_username()
 		+ "@localhost KICK " + channel_name + " " + target_nick + " :" + reason + "\r\n";
 
-	std::vector<Client> members = channel_it->second.get_members();
-	for (size_t i = 0; i < members.size(); ++i)
-		send(members[i].get_socket(), kick_message.c_str(), kick_message.size(), 0);
+	std::set<int> member_fds = channel_it->second.get_member_fds();
+	for (std::set<int>::const_iterator it = member_fds.begin(); it != member_fds.end(); ++it)
+		send(*it, kick_message.c_str(), kick_message.size(), 0);
 
-	channel_it->second.remove_member(*target);
+	channel_it->second.remove_member(target->get_socket());
 }
 
 void	Server::handle_invite(Client &client,
@@ -229,13 +303,13 @@ void	Server::handle_invite(Client &client,
 		return ;
 	}
 
-	if (!channel_it->second.has_member(client))
+	if (!channel_it->second.has_member(client.get_socket()))
 	{
 		send_error_reply(client, "442", channel_name + " :You're not on that channel");
 		return ;
 	}
 
-	if (!client.get_admin_status())
+	if (!channel_it->second.is_operator(client.get_socket()))
 	{
 		send_error_reply(client, "482", channel_name + " :You're not channel operator");
 		return ;
@@ -248,7 +322,7 @@ void	Server::handle_invite(Client &client,
 		return ;
 	}
 
-	if (channel_it->second.has_member(*target))
+	if (channel_it->second.has_member(target->get_socket()))
 	{
 		send_error_reply(client, "443", target_nick + " " + channel_name
 			+ " :is already on channel");
@@ -266,61 +340,341 @@ void	Server::handle_invite(Client &client,
 		+ " " + channel_name + "\r\n";
 	send(client.get_socket(), invite_reply.c_str(), invite_reply.size(), 0);
 
-	channel_it->second.add_member(*target);
+	channel_it->second.add_invited(target->get_socket());
+
 }
 
-// void Server::handle_topic()
-// {
-// }
-
-// void Server::handle_mode()
-// {
-// }
-
-
-//Check if this function works properly
-void	Server::let_client_join_channel(const std::string &channel_name, Client &client)
+void	Server::handle_topic(Client &client, const std::string &line,
+		const std::vector<std::string> &arguments)
 {
+	if (arguments.size() < 1)
+	{
+		send_error_reply(client, "461", "TOPIC :Not enough parameters");
+		return ;
+	}
+
+	const std::string &channel_name = arguments[0];
+	ChannelMap::iterator channel_it = channels.find(channel_name);
+	if (channel_it == channels.end())
+	{
+		send_error_reply(client, "403", channel_name + " :No such channel");
+		return ;
+	}
+
+	if (!channel_it->second.has_member(client.get_socket()))
+	{
+		send_error_reply(client, "442", channel_name + " :You're not on that channel");
+		return ;
+	}
+
+	size_t topic_pos = line.find(" :");
+	if (topic_pos == std::string::npos)
+	{
+		std::string nick = client.get_nickname();
+		if (nick.empty())
+			nick = "*";
+
+		std::string topic = channel_it->second.get_topic();
+		if (topic.empty())
+		{
+			std::string no_topic_reply = ":localhost 331 " + nick + " "
+				+ channel_name + " :No topic is set\r\n";
+			send(client.get_socket(), no_topic_reply.c_str(), no_topic_reply.size(), 0);
+		}
+		else
+		{
+			std::string topic_reply = ":localhost 332 " + nick + " "
+				+ channel_name + " :" + topic + "\r\n";
+			send(client.get_socket(), topic_reply.c_str(), topic_reply.size(), 0);
+		}
+		return ;
+	}
+
+	if (channel_it->second.is_topic_restricted()
+		&& !channel_it->second.is_operator(client.get_socket()))
+	{
+		send_error_reply(client, "482", channel_name + " :You're not channel operator");
+		return ;
+	}
+
+	std::string new_topic = line.substr(topic_pos + 2);
+	channel_it->second.set_topic(new_topic);
+
+	std::string topic_message = ":" + client.get_nickname() + "!" + client.get_username()
+		+ "@localhost TOPIC " + channel_name + " :" + new_topic + "\r\n";
+
+	std::set<int> member_fds = channel_it->second.get_member_fds();
+	for (std::set<int>::const_iterator it = member_fds.begin(); it != member_fds.end(); ++it)
+		send(*it, topic_message.c_str(), topic_message.size(), 0);
+}
+void	Server::handle_mode(Client &client, const std::string &line,
+		const std::vector<std::string> &arguments)
+{
+	(void)line;
+	if (arguments.empty())
+	{
+		send_error_reply(client, "461", "MODE :Not enough parameters");
+		return ;
+	}
+
+	const std::string &channel_name = arguments[0];
+	ChannelMap::iterator channel_it = channels.find(channel_name);
+	if (channel_it == channels.end())
+	{
+		send_error_reply(client, "403", channel_name + " :No such channel");
+		return ;
+	}
+
+	if (!channel_it->second.has_member(client.get_socket()))
+	{
+		send_error_reply(client, "442", channel_name + " :You're not on that channel");
+		return ;
+	}
+
+	std::string nick = client.get_nickname();
+	if (nick.empty())
+		nick = "*";
+
+	if (arguments.size() == 1)
+	{
+		std::string current_modes = "+";
+		std::vector<std::string> current_params;
+
+		if (channel_it->second.is_invite_only())
+			current_modes.push_back('i');
+		if (channel_it->second.is_topic_restricted())
+			current_modes.push_back('t');
+		if (channel_it->second.has_key())
+		{
+			current_modes.push_back('k');
+			current_params.push_back(channel_it->second.get_key());
+		}
+		if (channel_it->second.has_user_limit())
+		{
+			current_modes.push_back('l');
+			current_params.push_back(to_string_size_t(channel_it->second.get_user_limit()));
+		}
+
+		std::string mode_reply = ":localhost 324 " + nick + " " + channel_name + " " + current_modes;
+		for (size_t i = 0; i < current_params.size(); ++i)
+			mode_reply += " " + current_params[i];
+		mode_reply += "\r\n";
+		send(client.get_socket(), mode_reply.c_str(), mode_reply.size(), 0);
+		return ;
+	}
+
+	if (!channel_it->second.is_operator(client.get_socket()))
+	{
+		send_error_reply(client, "482", channel_name + " :You're not channel operator");
+		return ;
+	}
+
+	const std::string &mode_string = arguments[1];
+	char sign = 0;
+	size_t param_index = 2;
+	std::string applied_modes;
+	std::vector<std::string> applied_params;
+
+	for (size_t i = 0; i < mode_string.size(); ++i)
+	{
+		char mode = mode_string[i];
+		if (mode == '+' || mode == '-')
+		{
+			sign = mode;
+			continue ;
+		}
+		if (sign == 0)
+			continue ;
+
+		if (mode == 'i')
+		{
+			channel_it->second.set_invite_only(sign == '+');
+			append_mode_change(applied_modes, sign, 'i');
+		}
+		else if (mode == 't')
+		{
+			channel_it->second.set_topic_restricted(sign == '+');
+			append_mode_change(applied_modes, sign, 't');
+		}
+		else if (mode == 'k')
+		{
+			if (sign == '+')
+			{
+				if (param_index >= arguments.size())
+				{
+					send_error_reply(client, "461", "MODE :Not enough parameters");
+					continue ;
+				}
+				channel_it->second.set_key(arguments[param_index]);
+				append_mode_change(applied_modes, sign, 'k');
+				applied_params.push_back(arguments[param_index]);
+				param_index++;
+			}
+			else
+			{
+				if (channel_it->second.has_key())
+				{
+					channel_it->second.clear_key();
+					append_mode_change(applied_modes, sign, 'k');
+				}
+			}
+		}
+		else if (mode == 'o')
+		{
+			if (param_index >= arguments.size())
+			{
+				send_error_reply(client, "461", "MODE :Not enough parameters");
+				continue ;
+			}
+
+			const std::string &target_nick = arguments[param_index];
+			Client *target = find_client_by_nickname(target_nick);
+			if (target == NULL)
+			{
+				send_error_reply(client, "401", target_nick + " :No such nick/channel");
+				param_index++;
+				continue ;
+			}
+			if (!channel_it->second.has_member(target->get_socket()))
+			{
+				send_error_reply(client, "441", target_nick + " " + channel_name
+					+ " :They aren't on that channel");
+				param_index++;
+				continue ;
+			}
+
+			if (sign == '+')
+				channel_it->second.add_operator(target->get_socket());
+			else
+				channel_it->second.remove_operator(target->get_socket());
+
+			append_mode_change(applied_modes, sign, 'o');
+			applied_params.push_back(target_nick);
+			param_index++;
+		}
+		else if (mode == 'l')
+		{
+			if (sign == '+')
+			{
+				if (param_index >= arguments.size() || !is_positive_number(arguments[param_index]))
+				{
+					send_error_reply(client, "461", "MODE :Not enough parameters");
+					if (param_index < arguments.size())
+						param_index++;
+					continue ;
+				}
+				size_t limit_value = static_cast<size_t>(std::atoi(arguments[param_index].c_str()));
+				channel_it->second.set_user_limit(limit_value);
+				append_mode_change(applied_modes, sign, 'l');
+				applied_params.push_back(arguments[param_index]);
+				param_index++;
+			}
+			else
+			{
+				if (channel_it->second.has_user_limit())
+				{
+					channel_it->second.clear_user_limit();
+					append_mode_change(applied_modes, sign, 'l');
+				}
+			}
+		}
+		else
+		{
+			send_error_reply(client, "472", std::string(1, mode) + " :is unknown mode char to me");
+		}
+	}
+
+	if (applied_modes.empty())
+		return ;
+
+	std::string mode_message = ":" + client.get_nickname() + "!" + client.get_username()
+		+ "@localhost MODE " + channel_name + " " + applied_modes;
+	for (size_t i = 0; i < applied_params.size(); ++i)
+		mode_message += " " + applied_params[i];
+	mode_message += "\r\n";
+
+	std::set<int> member_fds = channel_it->second.get_member_fds();
+	for (std::set<int>::const_iterator it = member_fds.begin(); it != member_fds.end(); ++it)
+		send(*it, mode_message.c_str(), mode_message.size(), 0);
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Methods for joining and parting of the client into/from a channel
+
+void	Server::let_client_join_channel(const std::string &channel_name, Client &client, const std::string &key)
+{
+	int client_fd = client.get_socket();
+
 	// Checks if the channel already exists, if not it gets created and a client gets added
 	if (channels.find(channel_name) == channels.end())
 	{
 		channels[channel_name] = Channel(channel_name);
 		std::cout << "Channel " << channel_name << " created!" << std::endl;
-
-		channels[channel_name].add_member(client); // Check if its the correct client that gets added
+ 
+		channels[channel_name].add_member(client_fd); // Check if its the correct client that gets added
+		channels[channel_name].add_operator(client_fd);
 		std::cout << "Client joined channel " << channel_name << "!" << std::endl;
+		return ;
 	}
-	// Else if it exisits already only the client gets added to the channel
-	else
+
+	Channel &channel = channels[channel_name];
+
+	if (channel.has_member(client_fd))
 	{
-		if (channels[channel_name].has_member(client))
-		{
-			std::cout << "Client is already in channel " << channel_name << "!" << std::endl;
-			return ;
-		}
-
-		channels[channel_name].add_member(client);
-		std::cout << "Client joined channel " << channel_name << "!" << std::endl;
+		std::cout << "Client is already in channel " << channel_name << "!" << std::endl;
+		return ;
 	}
+
+	if (channel.is_invite_only() && !channel.is_invited(client_fd)
+		&& !channel.is_operator(client_fd))
+	{
+		send_error_reply(client, "473", channel_name + " :Cannot join channel (+i)");
+		return ;
+	}
+
+	if (channel.has_key() && channel.get_key() != key)
+	{
+		send_error_reply(client, "475", channel_name + " :Cannot join channel (+k)");
+		return ;
+	}
+
+	if (channel.has_user_limit()
+		&& channel.get_member_fds().size() >= channel.get_user_limit())
+	{
+		send_error_reply(client, "471", channel_name + " :Cannot join channel (+l)");
+		return ;
+	}
+
+	channel.add_member(client_fd);
+	channel.remove_invited(client_fd);
+	std::cout << "Client joined channel " << channel_name << "!" << std::endl;
 }
 
-void	Server::part_client_from_channel(Client &client)
+void	Server::part_client_from_channel(Client &client, const std::string &channel_name)
 {
-	for (ChannelMap::iterator it = channels.begin(); it != channels.end(); ++it)
+	ChannelMap::iterator it = channels.find(channel_name);
+	if (it == channels.end())
 	{
-		if (it->second.has_member(client))
-		{
-			it->second.remove_member(client);
-			std::cout << "Client left channel " << it->second.get_name() << "!" << std::endl;
-		}
-		else
-			//maybe do it with Errorhandler
-			std::cout << "Client is not in channel!" << std::endl;
+		send_error_reply(client, "403", channel_name + " :No such channel");
+		return ;
 	}
+
+	if (!it->second.has_member(client.get_socket()))
+	{
+		send_error_reply(client, "442", channel_name + " :You're not on that channel");
+		return ;
+	}
+
+	it->second.remove_member(client.get_socket());
+	std::cout << "Client left channel " << it->second.get_name() << "!" << std::endl;
 }
 
 
-//TODO: send message to all clients in channel except sender
+///////////////////////////////////////////////////////////////////////////////
+// Sending
+
 void	Server::send_message_to_channel(Client &sender, const std::string &channel_name, const std::string &message)
 {
 	if (channels.find(channel_name) == channels.end())
@@ -329,27 +683,18 @@ void	Server::send_message_to_channel(Client &sender, const std::string &channel_
 		return ;
 	}
 
-	std::vector<Client>	members = channels[channel_name].get_members();
+	std::set<int>	member_fds = channels[channel_name].get_member_fds();
 
 	std::string	message_to_send = ":" + sender.get_nickname() + "!" + sender.get_username()
 						+ "@localhost PRIVMSG " + channel_name + " :" + message + "\r\n";
 
-	for (size_t i = 0; i < members.size(); ++i)
+	for (std::set<int>::const_iterator it = member_fds.begin(); it != member_fds.end(); ++it)
 	{
-		if (members[i].get_socket() != sender.get_socket())
-			send(members[i].get_socket(), message_to_send.c_str(), message_to_send.size(), 0);
+		if (*it != sender.get_socket())
+			send(*it, message_to_send.c_str(), message_to_send.size(), 0);
 	}
 }
 
-Client	*Server::find_client_by_nickname(const std::string &nickname)
-{
-	for (ClientMap::iterator it = clients.begin(); it != clients.end(); ++it)
-	{
-		if (it->second.get_nickname() == nickname)
-			return (&it->second);
-	}
-	return (NULL);
-}
 
 void	Server::send_error_reply(Client &client, const std::string &code, const std::string &message)
 {
@@ -395,6 +740,13 @@ void	Server::send_welcome_message(Client &client)
 	send(client.get_socket(), myinfo.c_str(), myinfo.size(), 0);
 }
 
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Line Handling
+
 void Server::handle_line(Client &client, const size_t &position)
 {
 	std::string	line;
@@ -405,72 +757,93 @@ void Server::handle_line(Client &client, const size_t &position)
 	std::string	command = line.substr(0, line.find(" "));
 	if (is_command(command))
 	{
-		if (!client.get_admin_status()
-			&& (command == "TOPIC" || command == "MODE"))
-		{
-			// TODO: Add a correct handle
-			//not authorized
-			return ;
-		}
-
 		//Get the arguments of the command so u can set it, maybe make a custom split function  
 		std::vector<std::string>	arguments = split_arguments(line);
 
-		// TODO: Make the functions
-		if (arguments.empty())
-			return ;
-
 		if (command == "PASS")
 		{
-			client.set_password(arguments[0]);
-			if (!client.get_register_status() && 
-				!client.get_nickname().empty() && !client.get_username().empty())
+			if (arguments.empty())
 			{
-				client.set_register_status(true);
-				std::cout << "Client " << client.get_nickname() << " registered successfully!" << std::endl;
-				send_welcome_message(client);
+				send_error_reply(client, "461", "PASS :Not enough parameters");
+				return ;
 			}
+			if (client.get_register_status())
+			{
+				send_error_reply(client, "462", ":You may not reregister");
+				return ;
+			}
+			if (arguments[0] != password)
+			{
+				client.set_pass_ok(false);
+				send_error_reply(client, "464", ":Password incorrect");
+				return ;
+			}
+			client.set_password(arguments[0]);
+			client.set_pass_ok(true);
+			try_register_client(client);
 		}
 		else if (command == "USER")
 		{
-			client.set_username(arguments[0]);
-			if (!client.get_register_status() && 
-				!client.get_nickname().empty() && !client.get_username().empty())
+			if (arguments.empty())
 			{
-				client.set_register_status(true);
-				std::cout << "Client " << client.get_nickname() << " registered successfully!" << std::endl;
-				send_welcome_message(client);
+				send_error_reply(client, "461", "USER :Not enough parameters");
+				return ;
 			}
+			if (client.get_register_status())
+			{
+				send_error_reply(client, "462", ":You may not reregister");
+				return ;
+			}
+			client.set_username(arguments[0]);
+			try_register_client(client);
 		}
 		else if (command == "NICK")
 		{
-			client.set_nickname(arguments[0]);
-			if (!client.get_register_status() && 
-				!client.get_nickname().empty() && !client.get_username().empty())
+			if (arguments.empty())
 			{
-				client.set_register_status(true);
-				std::cout << "Client " << client.get_nickname() << " registered successfully!" << std::endl;
-				send_welcome_message(client);
+				send_error_reply(client, "431", ":No nickname given");
+				return ;
 			}
+			Client *existing_client = find_client_by_nickname(arguments[0]);
+			if (existing_client != NULL
+				&& existing_client->get_socket() != client.get_socket())
+			{
+				send_error_reply(client, "433", arguments[0] + " :Nickname is already in use");
+				return ;
+			}
+			client.set_nickname(arguments[0]);
+			try_register_client(client);
 		}
 		else if (command == "JOIN")
 		{
 			if (client.get_register_status() == true)
 			{
 				if (!arguments.empty() && !arguments[0].empty())
-					let_client_join_channel(arguments[0], client);
+				{
+					std::string key;
+					if (arguments.size() > 1)
+						key = arguments[1];
+					let_client_join_channel(arguments[0], client, key);
+				}
 			}
 		}
 		else if (command == "PART" && client.get_register_status() == true)
-			part_client_from_channel(client); // Do checks if its the only argument
+		{
+			if (arguments.empty())
+			{
+				send_error_reply(client, "461", "PART :Not enough parameters");
+				return ;
+			}
+			part_client_from_channel(client, arguments[0]);
+		}
 		else if (command == "KICK" && client.get_register_status() == true)
 			handle_kick(client, line, arguments);
 		else if (command == "INVITE" && client.get_register_status() == true)
 			handle_invite(client, arguments);
-		// else if (command == "TOPIC" && client.get_admin_status())
-		// 	handle_topic();
-		// else if (command == "MODE" && client.get_admin_status())
-		// 	handle_mode();
+		else if (command == "TOPIC" && client.get_register_status() == true)
+			handle_topic(client, line, arguments);
+		else if (command == "MODE" && client.get_register_status() == true)
+			handle_mode(client, line, arguments);
 		else if (command == "CAP")
 		{
 			if (arguments.size() > 0)
@@ -516,6 +889,13 @@ void Server::handle_line(Client &client, const size_t &position)
 		}
 	}
 }
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Main Loop
 
 // TODO: Split the loop into smaller functions nad add much more comments to the code
 void	Server::server_loop()
@@ -598,6 +978,8 @@ void	Server::server_loop()
 						}
 						else if (bytes_received == 0)
 						{
+							int disconnected_fd = fds[index].fd;
+							cleanup_client_disconnect(disconnected_fd);
 							close(fds[index].fd);
 							clients.erase(fds[index].fd);
 							fds.erase(fds.begin() + index);
@@ -609,6 +991,8 @@ void	Server::server_loop()
 							if (errno == EAGAIN || errno == EWOULDBLOCK)
 								break ;
 
+							int disconnected_fd = fds[index].fd;
+							cleanup_client_disconnect(disconnected_fd);
 							close(fds[index].fd);
 							clients.erase(fds[index].fd);
 							fds.erase(fds.begin() + index);

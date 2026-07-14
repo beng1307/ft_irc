@@ -8,7 +8,7 @@
 
 Client::Client():
 	socket(0), password(""), username(""),
-	nickname(""), is_registered(false), is_admin(false),
+	nickname(""), pass_ok(false), is_registered(false), is_admin(false),
 	buffer("")
 {
 	return ;
@@ -16,7 +16,7 @@ Client::Client():
 
 Client::Client(int socket):
 	socket(socket), password(""), username(""),
-	nickname(""), is_registered(false), is_admin(false),
+	nickname(""), pass_ok(false), is_registered(false), is_admin(false),
 	buffer("")
 {
 	return ;
@@ -25,7 +25,7 @@ Client::Client(int socket):
 Client::Client(const Client &other):
 	socket(other.socket), password(other.password),
 	username(other.username), nickname(other.nickname),
-	is_registered(other.is_registered), is_admin(other.is_admin),
+	pass_ok(other.pass_ok), is_registered(other.is_registered), is_admin(other.is_admin),
 	buffer(other.buffer)
 	{
 	return ;
@@ -39,6 +39,7 @@ Client	&Client::operator=(const Client &other)
 		nickname = other.nickname;
 		username = other.username;
 		password = other.password;
+		pass_ok = other.pass_ok;
 		is_registered = other.is_registered;
 		is_admin = other.is_admin;
 		buffer = other.buffer;
@@ -82,6 +83,16 @@ void	Client::set_password(const std::string &password)
 std::string	Client::get_password() const
 {
 	return (password);
+}
+
+void	Client::set_pass_ok(const bool &pass_ok)
+{
+	this->pass_ok = pass_ok;
+}
+
+bool	Client::get_pass_ok() const
+{
+	return (pass_ok);
 }
 
 
