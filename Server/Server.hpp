@@ -81,13 +81,13 @@ class Server
 
 		void							handle_kick(Client &client, const std::string &line,
 											 const std::vector<std::string> &arguments);
-		void						handle_invite(Client &client,
-									  const std::vector<std::string> &arguments);
-		void						handle_topic(Client &client, const std::string &line,
-									 const std::vector<std::string> &arguments);
-		void					handle_mode(Client &client, const std::string &line,
-								 const std::vector<std::string> &arguments);
-		void					let_client_join_channel(const std::string &channel_name, Client &client, const std::string &key);
+		void							handle_invite(Client &client,
+									 		 const std::vector<std::string> &arguments);
+		void							handle_topic(Client &client, const std::string &line,
+									 		const std::vector<std::string> &arguments);
+		void							handle_mode(Client &client, const std::string &line,
+											 const std::vector<std::string> &arguments);
+		void							let_client_join_channel(const std::string &channel_name, Client &client, const std::string &key);
 		void							part_client_from_channel(Client &client, const std::string &channel_name);
 		void							send_message_to_channel(Client &sender, const std::string &channel_name, const std::string &message);
 		void							send_message_to_user(Client &sender, const std::string &nickname, const std::string &message);
