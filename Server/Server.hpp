@@ -1,8 +1,8 @@
 #ifndef SERVER_HPP
 # define SERVER_HPP
 
-#include "Client.hpp"
-#include "Channel.hpp"
+#include "../Client/Client.hpp"
+#include "../Channel/Channel.hpp"
 #include <string>
 #include <map>
 #include <vector>
@@ -15,6 +15,19 @@ class Server
 {
 	private:
 
+
+		///////////////////////////////////////////////////////////////////////////////
+		// Variables
+
+		unsigned int					port;
+		std::string						password;
+
+		int  							server_socket;
+
+		ClientMap						clients;
+		ChannelMap						channels;
+		std::vector<pollfd>				fds;
+
 	public:
 
 		///////////////////////////////////////////////////////////////////////////////
@@ -26,19 +39,30 @@ class Server
 		Server(const Server &other);
 		~Server();
 
+
 		///////////////////////////////////////////////////////////////////////////////
-		// Variables
+		// Getter and Setter
 
-		//TODO: Make variables private and add getter and setter if needed
-		unsigned int					port;
-		std::string						password;
+		void							set_port(unsigned int port);
+		unsigned int					get_port() const;
 
-		int  							server_socket;
+		void							set_password(const std::string &password);
+		std::string						get_password() const;
 
-		ClientMap						clients; //Check if map is the best option for this, maybe change to vector or list
-		ChannelMap						channels; //Same applies here, maybe change to map with channel name as key
-		std::vector<pollfd>				fds;
+		void							set_server_socket(int socket);
+		int								get_server_socket() const;
 
+		void							set_clients(const ClientMap &clients);
+		ClientMap						&get_clients();
+		const ClientMap					&get_clients() const;
+
+		void							set_channels(const ChannelMap &channels);
+		ChannelMap						&get_channels();
+		const ChannelMap				&get_channels() const;
+
+		void							set_fds(const std::vector<pollfd> &fds);
+		std::vector<pollfd>				&get_fds();
+		const std::vector<pollfd>		&get_fds() const;
 
 		///////////////////////////////////////////////////////////////////////////////
 		// Methods
@@ -49,6 +73,10 @@ class Server
 		void							handle_line(Client &client, const size_t &position);
 		bool							is_command(const std::string &line);
 		void							try_register_client(Client &client);
+
+		std::string						to_string_size_t(size_t value);
+		bool							is_positive_number(const std::string &value);
+
 
 
 		void							handle_kick(Client &client, const std::string &line,

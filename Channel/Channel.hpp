@@ -1,7 +1,7 @@
 #ifndef CHANNEL_HPP
 # define CHANNEL_HPP
 
-#include "Client.hpp"
+#include "../Client/Client.hpp"
 #include <string>
 #include <vector>
 #include <set>

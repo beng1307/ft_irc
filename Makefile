@@ -1,15 +1,25 @@
 COMPILE = c++ -g -Wall -Wextra -Werror -std=c++98 -fPIE
 NAME = ft_irc
-SRCS = main.cpp Channel.cpp Client.cpp Errorhandler.cpp Server.cpp
+SRCS = main.cpp \
+	   Channel/Channel.cpp \
+	   Client/Client.cpp \
+	   Errorhandler/Errorhandler.cpp \
+	   Server/Server.cpp \
+	   Server/ServerSocket.cpp \
+	   Server/ServerLoop.cpp \
+	   Server/ServerCommands.cpp \
+	   Server/ServerChannelOps.cpp \
+	   Server/ServerMessaging.cpp \
+	   Server/ServerHelper.cpp
 OBJS_FOLDER = obj
 OBJS = $(SRCS:%.cpp=$(OBJS_FOLDER)/%.o)
-HEADERS = 
+HEADERS = Server/Server.hpp Channel/Channel.hpp Client/Client.hpp Errorhandler/Errorhandler.hpp 
 
 $(NAME): $(OBJS)
 	$(COMPILE) $(OBJS) -o $(NAME)	
 
 $(OBJS_FOLDER)/%.o: %.cpp $(HEADERS)
-	@mkdir -p $(OBJS_FOLDER)
+	@mkdir -p $(dir $@)
 	$(COMPILE) -c $< -o $@
 
 all: $(NAME)

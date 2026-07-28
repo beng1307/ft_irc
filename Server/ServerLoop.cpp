@@ -1,28 +1,36 @@
+#include "Server.hpp"
+#include <fcntl.h>
+#include <poll.h>
+#include <unistd.h>
+#include <cerrno>
+#include <iostream>
+#include <sys/socket.h>
+#include <cstring>
 
 
 void	Server::server_loop()
 {
 	//Makes the Server nonblocking by saving the flags and add O_NONBLOCK to the flags.
-	int flags = fcntl(server_socket, F_GETFL, 0);
+	int flags = fcntl(get_server_socket(), F_GETFL, 0);
 	if (flags == -1)
 	{
 		std::cerr << "Error: fcntl failed!" << std::endl;
 		return;
 	}
 
-	if (fcntl(server_socket, F_SETFL, flags | O_NONBLOCK) == -1)
+	if (fcntl(get_server_socket(), F_SETFL, flags | O_NONBLOCK) == -1)
 	{
 		std::cerr << "Error: fcntl failed!" << std::endl;
 		return;
 	}
 
 	//Adds the server socket to the poll file descriptors
-	add_fds(server_socket, POLLIN, 0);
+	add_fds(get_server_socket(), POLLIN, 0);
 
 	// Server loop that continuously checks for events
 	while (true)
 	{
-		int ready = poll(fds.data(), fds.size(), -1);
+		int ready = poll(get_fds().data(), get_fds().size(), -1);
 		if (ready == -1)
 		{
 			if (errno == EINTR)
@@ -32,13 +40,13 @@ void	Server::server_loop()
 		}
 
 		// Goes through all the file descriptors and checks if there are events to handle
-		for (size_t index = 0; index < fds.size(); ++index)
+		for (size_t index = 0; index < get_fds().size(); ++index)
 		{
-			if (fds[index].revents & POLLIN)
+			if (get_fds()[index].revents & POLLIN)
 			{
-				if (fds[index].fd == server_socket)
+				if (get_fds()[index].fd == get_server_socket())
 				{
-					int client_socket = accept(server_socket, NULL, NULL);
+					int client_socket = accept(get_server_socket(), NULL, NULL);
 					if (client_socket == -1)
 					{
 					    std::cerr << "Error: accept failed!" << std::endl;
@@ -53,7 +61,7 @@ void	Server::server_loop()
 					}
 
 					add_fds(client_socket, POLLIN, 0);
-					clients.insert(std::make_pair(client_socket, Client(client_socket)));
+					get_clients().insert(std::make_pair(client_socket, Client(client_socket)));
 				}
 				else
 				{
@@ -61,30 +69,30 @@ void	Server::server_loop()
 
 					while (true)
 					{
-						int	bytes_received = recv(fds[index].fd, buffer, sizeof(buffer) - 1, 0);
+						int	bytes_received = recv(get_fds()[index].fd, buffer, sizeof(buffer) - 1, 0);
 						if (bytes_received > 0)
 						{
 							buffer[bytes_received] = '\0';
-							clients[fds[index].fd].get_buffer().append(buffer, bytes_received);
+							get_clients()[get_fds()[index].fd].get_buffer().append(buffer, bytes_received);
 
-							size_t	position = clients[fds[index].fd].get_buffer().find("\r\n");
+							size_t	position = get_clients()[get_fds()[index].fd].get_buffer().find("\r\n");
 
 							while (position != std::string::npos)
 							{
-								handle_line(clients[fds[index].fd], position);
-								position = clients[fds[index].fd].get_buffer().find("\r\n");
+								handle_line(get_clients()[get_fds()[index].fd], position);
+								position = get_clients()[get_fds()[index].fd].get_buffer().find("\r\n");
 							}
 
-							if (clients.find(fds[index].fd) != clients.end())
-								std::cout << "Received from client " << fds[index].fd << ": " << buffer << std::endl;
+							if (get_clients().find(get_fds()[index].fd) != get_clients().end())
+							std::cout << "Received from client " << get_fds()[index].fd << ": " << buffer << std::endl;
 						}
 						else if (bytes_received == 0)
 						{
-							int disconnected_fd = fds[index].fd;
+							int disconnected_fd = get_fds()[index].fd;
 							cleanup_client_disconnect(disconnected_fd);
-							close(fds[index].fd);
-							clients.erase(fds[index].fd);
-							fds.erase(fds.begin() + index);
+							close(get_fds()[index].fd);
+							get_clients().erase(get_fds()[index].fd);
+							get_fds().erase(get_fds().begin() + index);
 							--index;
 							break ;
 						}
@@ -93,11 +101,11 @@ void	Server::server_loop()
 							if (errno == EAGAIN || errno == EWOULDBLOCK)
 								break ;
 
-							int disconnected_fd = fds[index].fd;
+							int disconnected_fd = get_fds()[index].fd;
 							cleanup_client_disconnect(disconnected_fd);
-							close(fds[index].fd);
-							clients.erase(fds[index].fd);
-							fds.erase(fds.begin() + index);
+							close(get_fds()[index].fd);
+							get_clients().erase(get_fds()[index].fd);
+							get_fds().erase(get_fds().begin() + index);
 							--index;
 							break ;
 						}

@@ -1,7 +1,7 @@
-#include "Server.hpp"
-#include "Channel.hpp"
-#include "Client.hpp"
-#include "Errorhandler.hpp"
+#include "Server/Server.hpp"
+#include "Channel/Channel.hpp"
+#include "Client/Client.hpp"
+#include "Errorhandler/Errorhandler.hpp"
 #include <iostream>
 #include <string>
 #include <cstdlib>

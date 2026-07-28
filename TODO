@@ -1,13 +1,5 @@
-Bereich	Status
+1. Structure Code better
 
-Socket-Setup (bind, listen, accept)	✅ fertig
-poll-Loop, mehrere Clients	✅ fertig
-Disconnect-Handling	✅ fertig
-recv + Output	✅ fertig
-Buffer + Line-Parser	✅ fertig
-PASS / NICK / USER / Registrierung	✅ fertig
-Channel-Klasse	✅ fertig
-JOIN / PART	✅ fertig
-PRIVMSG	✅ fertig
-KICK / INVITE / TOPIC / MODE	✅ fertig
-Echter IRC-Client kompatibel (z.B. irssi)	❌ fehlt
+2. Reread it and remember again what bullshit i wrote
+
+3. Do tests and debug
