@@ -407,6 +407,7 @@ void	Server::handle_topic(Client &client, const std::string &line,
 	for (std::set<int>::const_iterator it = member_fds.begin(); it != member_fds.end(); ++it)
 		send(*it, topic_message.c_str(), topic_message.size(), 0);
 }
+
 void	Server::handle_mode(Client &client, const std::string &line,
 		const std::vector<std::string> &arguments)
 {

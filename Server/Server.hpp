@@ -48,7 +48,7 @@ class Server
 		void							add_fds(int fd, short events, short revents);
 		void							handle_line(Client &client, const size_t &position);
 		bool							is_command(const std::string &line);
-		void					try_register_client(Client &client);
+		void							try_register_client(Client &client);
 
 
 		void							handle_kick(Client &client, const std::string &line,
