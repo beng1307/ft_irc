@@ -139,7 +139,6 @@ bool	Client::get_register_status() const
 	return (is_registered);
 }
 
-
 void	Client::set_buffer(const std::string &buffer)
 {
 	this->buffer = buffer;

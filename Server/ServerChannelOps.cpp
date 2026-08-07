@@ -4,15 +4,96 @@
 #include <cstdlib>
 #include <string>
 
+
+///////////////////////////////////////////////////////////////////////////////
+// OPERATION HELPER
+
 static void	append_mode_change(std::string &applied_modes, char sign, char mode)
 {
+	// Group consecutive mode changes with the same sign for a cleaner output string.
 	if (applied_modes.empty() || applied_modes[applied_modes.size() - 1] != sign)
 		applied_modes.push_back(sign);
 	applied_modes.push_back(mode);
 }
 
+static std::string	build_client_prefix(const Client &client)
+{
+	// Create the IRC-style prefix used in broadcast messages.
+	return ":" + client.get_nickname() + "!" + client.get_username() + "@localhost";
+}
+
+static std::string	get_client_nick_or_wildcard(const Client &client)
+{
+	// Fall back to "*" for replies before the client has a registered nickname.
+	std::string nick = client.get_nickname();
+	if (nick.empty())
+		nick = "*";
+	return nick;
+}
+
+static void	broadcast_to_channel(const Channel &channel, const std::string &message)
+{
+	// Send the message to every member currently in the channel.
+	std::set<int> member_fds = channel.get_member_fds();
+	for (std::set<int>::const_iterator it = member_fds.begin(); it != member_fds.end(); ++it)
+		send(*it, message.c_str(), message.size(), 0);
+}
+
+static bool	ensure_channel_exists(Server &server, Client &client,
+	const std::string &channel_name, ChannelMap::iterator &channel_it)
+{
+	// Verify that the target channel exists and report a standard error if not.
+	channel_it = server.get_channels().find(channel_name);
+	if (channel_it == server.get_channels().end())
+	{
+		server.send_error_reply(client, "403", channel_name + " :No such channel");
+		return false;
+	}
+	return true;
+}
+
+static bool	ensure_channel_member(Server &server, Client &client,
+	const std::string &channel_name, ChannelMap::iterator &channel_it)
+{
+	// Only channel members may execute most channel commands.
+	if (!channel_it->second.has_member(client.get_socket()))
+	{
+		server.send_error_reply(client, "442", channel_name + " :You're not on that channel");
+		return false;
+	}
+	return true;
+}
+
+static bool	ensure_channel_operator(Server &server, Client &client,
+	const std::string &channel_name, ChannelMap::iterator &channel_it)
+{
+	// Some operations require channel operator privileges.
+	if (!channel_it->second.is_operator(client.get_socket()))
+	{
+		server.send_error_reply(client, "482", channel_name + " :You're not channel operator");
+		return false;
+	}
+	return true;
+}
+
+static std::string	build_mode_reply(const Client &client, const std::string &channel_name,
+	const std::string &current_modes, const std::vector<std::string> &current_params)
+{
+	// Build the reply sent when a client requests the current channel modes.
+	std::string mode_reply = ":localhost 324 " + get_client_nick_or_wildcard(client)
+		+ " " + channel_name + " " + current_modes;
+	for (size_t i = 0; i < current_params.size(); ++i)
+		mode_reply += " " + current_params[i];
+	mode_reply += "\r\n";
+	return mode_reply;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// KICK
+
 void	Server::handle_kick(Client &client, const std::string &line,
-		const std::vector<std::string> &arguments)
+	const std::vector<std::string> &arguments)
 {
 	if (arguments.size() < 2)
 	{
@@ -23,24 +104,13 @@ void	Server::handle_kick(Client &client, const std::string &line,
 	const std::string &channel_name = arguments[0];
 	const std::string &target_nick = arguments[1];
 
-	ChannelMap::iterator channel_it = get_channels().find(channel_name);
-	if (channel_it == get_channels().end())
-	{
-		send_error_reply(client, "403", channel_name + " :No such channel");
+	ChannelMap::iterator channel_it;
+	if (!ensure_channel_exists(*this, client, channel_name, channel_it))
 		return ;
-	}
-
-	if (!channel_it->second.has_member(client.get_socket()))
-	{
-		send_error_reply(client, "442", channel_name + " :You're not on that channel");
+	if (!ensure_channel_member(*this, client, channel_name, channel_it))
 		return ;
-	}
-
-	if (!channel_it->second.is_operator(client.get_socket()))
-	{
-		send_error_reply(client, "482", channel_name + " :You're not channel operator");
+	if (!ensure_channel_operator(*this, client, channel_name, channel_it))
 		return ;
-	}
 
 	Client *target = find_client_by_nickname(target_nick);
 	if (target == NULL)
@@ -56,23 +126,24 @@ void	Server::handle_kick(Client &client, const std::string &line,
 		return ;
 	}
 
+	// Extract an optional reason from the IRC command line.
 	std::string reason = client.get_nickname();
 	size_t reason_pos = line.find(" :");
 	if (reason_pos != std::string::npos && reason_pos + 2 < line.size())
 		reason = line.substr(reason_pos + 2);
 
-	std::string kick_message = ":" + client.get_nickname() + "!" + client.get_username()
-		+ "@localhost KICK " + channel_name + " " + target_nick + " :" + reason + "\r\n";
-
-	std::set<int> member_fds = channel_it->second.get_member_fds();
-	for (std::set<int>::const_iterator it = member_fds.begin(); it != member_fds.end(); ++it)
-		send(*it, kick_message.c_str(), kick_message.size(), 0);
-
+	std::string kick_message = build_client_prefix(client) + " KICK " + channel_name
+		+ " " + target_nick + " :" + reason + "\r\n";
+	broadcast_to_channel(channel_it->second, kick_message);
 	channel_it->second.remove_member(target->get_socket());
 }
 
+
+///////////////////////////////////////////////////////////////////////////////
+// INVITE
+
 void	Server::handle_invite(Client &client,
-		const std::vector<std::string> &arguments)
+	const std::vector<std::string> &arguments)
 {
 	if (arguments.size() < 2)
 	{
@@ -83,24 +154,13 @@ void	Server::handle_invite(Client &client,
 	const std::string &target_nick = arguments[0];
 	const std::string &channel_name = arguments[1];
 
-	ChannelMap::iterator channel_it = get_channels().find(channel_name);
-	if (channel_it == get_channels().end())
-	{
-		send_error_reply(client, "403", channel_name + " :No such channel");
+	ChannelMap::iterator channel_it;
+	if (!ensure_channel_exists(*this, client, channel_name, channel_it))
 		return ;
-	}
-
-	if (!channel_it->second.has_member(client.get_socket()))
-	{
-		send_error_reply(client, "442", channel_name + " :You're not on that channel");
+	if (!ensure_channel_member(*this, client, channel_name, channel_it))
 		return ;
-	}
-
-	if (!channel_it->second.is_operator(client.get_socket()))
-	{
-		send_error_reply(client, "482", channel_name + " :You're not channel operator");
+	if (!ensure_channel_operator(*this, client, channel_name, channel_it))
 		return ;
-	}
 
 	Client *target = find_client_by_nickname(target_nick);
 	if (target == NULL)
@@ -116,23 +176,23 @@ void	Server::handle_invite(Client &client,
 		return ;
 	}
 
-	std::string invite_message = ":" + client.get_nickname() + "!" + client.get_username()
-		+ "@localhost INVITE " + target_nick + " :" + channel_name + "\r\n";
+	std::string invite_message = build_client_prefix(client) + " INVITE " + target_nick
+		+ " :" + channel_name + "\r\n";
 	send(target->get_socket(), invite_message.c_str(), invite_message.size(), 0);
 
-	std::string nick = client.get_nickname();
-	if (nick.empty())
-		nick = "*";
-	std::string invite_reply = ":localhost 341 " + nick + " " + target_nick
-		+ " " + channel_name + "\r\n";
+	std::string invite_reply = ":localhost 341 " + get_client_nick_or_wildcard(client)
+		+ " " + target_nick + " " + channel_name + "\r\n";
 	send(client.get_socket(), invite_reply.c_str(), invite_reply.size(), 0);
 
 	channel_it->second.add_invited(target->get_socket());
-
 }
 
+
+///////////////////////////////////////////////////////////////////////////////
+// TOPIC
+
 void	Server::handle_topic(Client &client, const std::string &line,
-		const std::vector<std::string> &arguments)
+	const std::vector<std::string> &arguments)
 {
 	if (arguments.size() < 1)
 	{
@@ -141,26 +201,16 @@ void	Server::handle_topic(Client &client, const std::string &line,
 	}
 
 	const std::string &channel_name = arguments[0];
-	ChannelMap::iterator channel_it = get_channels().find(channel_name);
-	if (channel_it == get_channels().end())
-	{
-		send_error_reply(client, "403", channel_name + " :No such channel");
+	ChannelMap::iterator channel_it;
+	if (!ensure_channel_exists(*this, client, channel_name, channel_it))
 		return ;
-	}
-
-	if (!channel_it->second.has_member(client.get_socket()))
-	{
-		send_error_reply(client, "442", channel_name + " :You're not on that channel");
+	if (!ensure_channel_member(*this, client, channel_name, channel_it))
 		return ;
-	}
 
 	size_t topic_pos = line.find(" :");
 	if (topic_pos == std::string::npos)
 	{
-		std::string nick = client.get_nickname();
-		if (nick.empty())
-			nick = "*";
-
+		std::string nick = get_client_nick_or_wildcard(client);
 		std::string topic = channel_it->second.get_topic();
 		if (topic.empty())
 		{
@@ -187,16 +237,17 @@ void	Server::handle_topic(Client &client, const std::string &line,
 	std::string new_topic = line.substr(topic_pos + 2);
 	channel_it->second.set_topic(new_topic);
 
-	std::string topic_message = ":" + client.get_nickname() + "!" + client.get_username()
-		+ "@localhost TOPIC " + channel_name + " :" + new_topic + "\r\n";
-
-	std::set<int> member_fds = channel_it->second.get_member_fds();
-	for (std::set<int>::const_iterator it = member_fds.begin(); it != member_fds.end(); ++it)
-		send(*it, topic_message.c_str(), topic_message.size(), 0);
+	std::string topic_message = build_client_prefix(client) + " TOPIC " + channel_name
+		+ " :" + new_topic + "\r\n";
+	broadcast_to_channel(channel_it->second, topic_message);
 }
 
+
+///////////////////////////////////////////////////////////////////////////////
+// MODE
+
 void	Server::handle_mode(Client &client, const std::string &line,
-		const std::vector<std::string> &arguments)
+	const std::vector<std::string> &arguments)
 {
 	(void)line;
 	if (arguments.empty())
@@ -206,22 +257,11 @@ void	Server::handle_mode(Client &client, const std::string &line,
 	}
 
 	const std::string &channel_name = arguments[0];
-	ChannelMap::iterator channel_it = get_channels().find(channel_name);
-	if (channel_it == get_channels().end())
-	{
-		send_error_reply(client, "403", channel_name + " :No such channel");
+	ChannelMap::iterator channel_it;
+	if (!ensure_channel_exists(*this, client, channel_name, channel_it))
 		return ;
-	}
-
-	if (!channel_it->second.has_member(client.get_socket()))
-	{
-		send_error_reply(client, "442", channel_name + " :You're not on that channel");
+	if (!ensure_channel_member(*this, client, channel_name, channel_it))
 		return ;
-	}
-
-	std::string nick = client.get_nickname();
-	if (nick.empty())
-		nick = "*";
 
 	if (arguments.size() == 1)
 	{
@@ -243,19 +283,13 @@ void	Server::handle_mode(Client &client, const std::string &line,
 			current_params.push_back(to_string_size_t(channel_it->second.get_user_limit()));
 		}
 
-		std::string mode_reply = ":localhost 324 " + nick + " " + channel_name + " " + current_modes;
-		for (size_t i = 0; i < current_params.size(); ++i)
-			mode_reply += " " + current_params[i];
-		mode_reply += "\r\n";
+		std::string mode_reply = build_mode_reply(client, channel_name, current_modes, current_params);
 		send(client.get_socket(), mode_reply.c_str(), mode_reply.size(), 0);
 		return ;
 	}
 
-	if (!channel_it->second.is_operator(client.get_socket()))
-	{
-		send_error_reply(client, "482", channel_name + " :You're not channel operator");
+	if (!ensure_channel_operator(*this, client, channel_name, channel_it))
 		return ;
-	}
 
 	const std::string &mode_string = arguments[1];
 	char sign = 0;
@@ -375,13 +409,10 @@ void	Server::handle_mode(Client &client, const std::string &line,
 	if (applied_modes.empty())
 		return ;
 
-	std::string mode_message = ":" + client.get_nickname() + "!" + client.get_username()
-		+ "@localhost MODE " + channel_name + " " + applied_modes;
+	std::string mode_message = build_client_prefix(client) + " MODE " + channel_name
+		+ " " + applied_modes;
 	for (size_t i = 0; i < applied_params.size(); ++i)
 		mode_message += " " + applied_params[i];
 	mode_message += "\r\n";
-
-	std::set<int> member_fds = channel_it->second.get_member_fds();
-	for (std::set<int>::const_iterator it = member_fds.begin(); it != member_fds.end(); ++it)
-		send(*it, mode_message.c_str(), mode_message.size(), 0);
+	broadcast_to_channel(channel_it->second, mode_message);
 }

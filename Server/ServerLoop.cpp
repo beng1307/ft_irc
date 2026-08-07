@@ -8,26 +8,95 @@
 #include <cstring>
 
 
-void	Server::server_loop()
+bool	Server::configure_socket_nonblocking(int socket)
 {
-	//Makes the Server nonblocking by saving the flags and add O_NONBLOCK to the flags.
-	int flags = fcntl(get_server_socket(), F_GETFL, 0);
+	// Make the socket non-blocking so recv/accept can return promptly.
+	int flags = fcntl(socket, F_GETFL, 0);
 	if (flags == -1)
 	{
 		std::cerr << "Error: fcntl failed!" << std::endl;
-		return;
+		return false;
 	}
 
-	if (fcntl(get_server_socket(), F_SETFL, flags | O_NONBLOCK) == -1)
+	if (fcntl(socket, F_SETFL, flags | O_NONBLOCK) == -1)
 	{
 		std::cerr << "Error: fcntl failed!" << std::endl;
+		return false;
+	}
+	return true;
+}
+
+void	Server::accept_new_client(int client_socket)
+{
+	// Register a newly accepted client with the poll set and the client map.
+	if (!configure_socket_nonblocking(client_socket))
+	{
+		close(client_socket);
 		return;
 	}
 
-	//Adds the server socket to the poll file descriptors
+	add_fds(client_socket, POLLIN, 0);
+	get_clients().insert(std::make_pair(client_socket, Client(client_socket)));
+}
+
+void	Server::handle_client_input(int client_fd, size_t &index)
+{
+	// Read incoming data for one client, buffer complete lines and dispatch them.
+	char	buffer[512];
+
+	while (true)
+	{
+		int	bytes_received = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
+		if (bytes_received > 0)
+		{
+			buffer[bytes_received] = '\0';
+			Client &client = get_clients()[client_fd];
+			client.get_buffer().append(buffer, bytes_received);
+
+			size_t	position = client.get_buffer().find("\r\n");
+			while (position != std::string::npos)
+			{
+				handle_line(client, position);
+				position = client.get_buffer().find("\r\n");
+			}
+
+			std::cout << "Received from client " << client_fd << ": " << buffer << std::endl;
+		}
+		else if (bytes_received == 0)
+		{
+			disconnect_client(client_fd, index);
+			break ;
+		}
+		else
+		{
+			if (errno == EAGAIN || errno == EWOULDBLOCK)
+				break ;
+
+			disconnect_client(client_fd, index);
+			break ;
+		}
+	}
+}
+
+void	Server::disconnect_client(int client_fd, size_t &index)
+{
+	// Clean up the client state when the connection is closed or broken.
+	cleanup_client_disconnect(client_fd);
+	close(client_fd);
+	get_clients().erase(client_fd);
+	get_fds().erase(get_fds().begin() + index);
+	--index;
+}
+
+void	Server::server_loop()
+{
+	// Main polling loop: wait for activity on the server and client sockets.
+	if (!configure_socket_nonblocking(get_server_socket()))
+		return;
+
+	// Add the listening socket to the poll set so new connections can be detected.
 	add_fds(get_server_socket(), POLLIN, 0);
 
-	// Server loop that continuously checks for events
 	while (true)
 	{
 		int ready = poll(get_fds().data(), get_fds().size(), -1);
@@ -39,79 +108,24 @@ void	Server::server_loop()
 			break;
 		}
 
-		// Goes through all the file descriptors and checks if there are events to handle
+		// Check every registered file descriptor for activity.
 		for (size_t index = 0; index < get_fds().size(); ++index)
 		{
-			if (get_fds()[index].revents & POLLIN)
+			if (!(get_fds()[index].revents & POLLIN))
+				continue;
+
+			if (get_fds()[index].fd == get_server_socket())
 			{
-				if (get_fds()[index].fd == get_server_socket())
+				int client_socket = accept(get_server_socket(), NULL, NULL);
+				if (client_socket == -1)
 				{
-					int client_socket = accept(get_server_socket(), NULL, NULL);
-					if (client_socket == -1)
-					{
-					    std::cerr << "Error: accept failed!" << std::endl;
-					    continue;
-					}
-
-					if (fcntl(client_socket, F_SETFL, flags | O_NONBLOCK) == -1)
-					{
-					    std::cerr << "Error: fcntl failed!" << std::endl;
-					    close(client_socket);
-					    continue;
-					}
-
-					add_fds(client_socket, POLLIN, 0);
-					get_clients().insert(std::make_pair(client_socket, Client(client_socket)));
+					std::cerr << "Error: accept failed!" << std::endl;
+					continue;
 				}
-				else
-				{
-					char	buffer[512];
-
-					while (true)
-					{
-						int	bytes_received = recv(get_fds()[index].fd, buffer, sizeof(buffer) - 1, 0);
-						if (bytes_received > 0)
-						{
-							buffer[bytes_received] = '\0';
-							get_clients()[get_fds()[index].fd].get_buffer().append(buffer, bytes_received);
-
-							size_t	position = get_clients()[get_fds()[index].fd].get_buffer().find("\r\n");
-
-							while (position != std::string::npos)
-							{
-								handle_line(get_clients()[get_fds()[index].fd], position);
-								position = get_clients()[get_fds()[index].fd].get_buffer().find("\r\n");
-							}
-
-							if (get_clients().find(get_fds()[index].fd) != get_clients().end())
-							std::cout << "Received from client " << get_fds()[index].fd << ": " << buffer << std::endl;
-						}
-						else if (bytes_received == 0)
-						{
-							int disconnected_fd = get_fds()[index].fd;
-							cleanup_client_disconnect(disconnected_fd);
-							close(get_fds()[index].fd);
-							get_clients().erase(get_fds()[index].fd);
-							get_fds().erase(get_fds().begin() + index);
-							--index;
-							break ;
-						}
-						else
-						{
-							if (errno == EAGAIN || errno == EWOULDBLOCK)
-								break ;
-
-							int disconnected_fd = get_fds()[index].fd;
-							cleanup_client_disconnect(disconnected_fd);
-							close(get_fds()[index].fd);
-							get_clients().erase(get_fds()[index].fd);
-							get_fds().erase(get_fds().begin() + index);
-							--index;
-							break ;
-						}
-					}
-				}
+				accept_new_client(client_socket);
 			}
+			else
+				handle_client_input(get_fds()[index].fd, index);
 		}
 	}
 }

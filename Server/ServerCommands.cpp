@@ -73,8 +73,171 @@ void	Server::part_client_from_channel(Client &client, const std::string &channel
 	std::cout << "Client left channel " << it->second.get_name() << "!" << std::endl;
 }
 
+void	Server::handle_pass_command(Client &client, const std::vector<std::string> &arguments)
+{
+	// Validate the password before allowing the client to continue registration.
+	if (arguments.empty())
+	{
+		send_error_reply(client, "461", "PASS :Not enough parameters");
+		return ;
+	}
+	if (client.get_register_status())
+	{
+		send_error_reply(client, "462", ":You may not reregister");
+		return ;
+	}
+	if (arguments[0] != get_password())
+	{
+		client.set_pass_ok(false);
+		send_error_reply(client, "464", ":Password incorrect");
+		return ;
+	}
+	client.set_password(arguments[0]);
+	client.set_pass_ok(true);
+	try_register_client(client);
+}
+
+void	Server::handle_user_command(Client &client, const std::vector<std::string> &arguments)
+{
+	// Store the username and try to complete registration.
+	if (arguments.empty())
+	{
+		send_error_reply(client, "461", "USER :Not enough parameters");
+		return ;
+	}
+	if (client.get_register_status())
+	{
+		send_error_reply(client, "462", ":You may not reregister");
+		return ;
+	}
+	client.set_username(arguments[0]);
+	try_register_client(client);
+}
+
+void	Server::handle_nick_command(Client &client, const std::vector<std::string> &arguments)
+{
+	// Ensure the requested nickname is available before accepting it.
+	if (arguments.empty())
+	{
+		send_error_reply(client, "431", ":No nickname given");
+		return ;
+	}
+	Client *existing_client = find_client_by_nickname(arguments[0]);
+	if (existing_client != NULL
+		&& existing_client->get_socket() != client.get_socket())
+	{
+		send_error_reply(client, "433", arguments[0] + " :Nickname is already in use");
+		return ;
+	}
+	client.set_nickname(arguments[0]);
+	try_register_client(client);
+}
+
+void	Server::handle_join_command(Client &client, const std::vector<std::string> &arguments)
+{
+	// Join a channel or create it if it does not exist yet.
+	if (client.get_register_status() == true)
+	{
+		if (!arguments.empty() && !arguments[0].empty())
+		{
+			std::string key;
+			if (arguments.size() > 1)
+				key = arguments[1];
+			let_client_join_channel(arguments[0], client, key);
+		}
+	}
+}
+
+void	Server::handle_part_command(Client &client, const std::vector<std::string> &arguments)
+{
+	// Leave a channel after validating the request parameters.
+	if (arguments.empty())
+	{
+		send_error_reply(client, "461", "PART :Not enough parameters");
+		return ;
+	}
+	part_client_from_channel(client, arguments[0]);
+}
+
+void	Server::handle_cap_command(Client &client, const std::vector<std::string> &arguments)
+{
+	// Respond to lightweight capability negotiation requests.
+	if (arguments.size() > 0)
+	{
+		if (arguments[0] == "LS")
+		{
+			std::string cap_response = ":localhost CAP * LS :\r\n";
+			send(client.get_socket(), cap_response.c_str(), cap_response.size(), 0);
+		}
+		else if (arguments[0] == "END")
+		{
+			// CAP negotiation ended
+		}
+	}
+}
+
+void	Server::handle_privmsg_command(Client &client, const std::string &line,
+		const std::vector<std::string> &arguments)
+{
+	// Send a private message to either a channel or another user.
+	if (arguments.empty())
+	{
+		send_error_reply(client, "411", ":No recipient given (PRIVMSG)");
+		return ;
+	}
+
+	std::string	message;
+	std::string	target = arguments[0];
+	size_t		position = line.find(" :");
+
+	if (position != std::string::npos)
+		message = line.substr(position + 2);
+	else if (arguments.size() > 1)
+		message = arguments[1];
+
+	if (message.empty())
+	{
+		send_error_reply(client, "412", ":No text to send");
+		return ;
+	}
+
+	if (!target.empty() && target[0] == '#')
+		send_message_to_channel(client, target, message);
+	else
+		send_message_to_user(client, target, message);
+}
+
+void	Server::dispatch_command(Client &client, const std::string &command,
+		const std::string &line, const std::vector<std::string> &arguments)
+{
+	// Route the parsed command to the matching handler.
+	if (command == "PASS")
+		handle_pass_command(client, arguments);
+	else if (command == "USER")
+		handle_user_command(client, arguments);
+	else if (command == "NICK")
+		handle_nick_command(client, arguments);
+	else if (command == "JOIN")
+		handle_join_command(client, arguments);
+	else if (command == "PART" && client.get_register_status() == true)
+		handle_part_command(client, arguments);
+	else if (command == "KICK" && client.get_register_status() == true)
+		handle_kick(client, line, arguments);
+	else if (command == "INVITE" && client.get_register_status() == true)
+		handle_invite(client, arguments);
+	else if (command == "TOPIC" && client.get_register_status() == true)
+		handle_topic(client, line, arguments);
+	else if (command == "MODE" && client.get_register_status() == true)
+		handle_mode(client, line, arguments);
+	else if (command == "CAP")
+		handle_cap_command(client, arguments);
+	else if (command == "PRIVMSG" && client.get_register_status() == true)
+		handle_privmsg_command(client, line, arguments);
+}
+
 void Server::handle_line(Client &client, const size_t &position)
 {
+	// Extract one complete IRC line from the client's buffer and dispatch it.
 	std::string	line;
 
 	line = client.get_buffer().substr(0, position);
@@ -83,135 +246,7 @@ void Server::handle_line(Client &client, const size_t &position)
 	std::string	command = line.substr(0, line.find(" "));
 	if (is_command(command))
 	{
-		//Get the arguments of the command so u can set it, maybe make a custom split function  
 		std::vector<std::string>	arguments = split_arguments(line);
-
-		if (command == "PASS")
-		{
-			if (arguments.empty())
-			{
-				send_error_reply(client, "461", "PASS :Not enough parameters");
-				return ;
-			}
-			if (client.get_register_status())
-			{
-				send_error_reply(client, "462", ":You may not reregister");
-				return ;
-			}
-			if (arguments[0] != get_password())
-			{
-				client.set_pass_ok(false);
-				send_error_reply(client, "464", ":Password incorrect");
-				return ;
-			}
-			client.set_password(arguments[0]);
-			client.set_pass_ok(true);
-			try_register_client(client);
-		}
-		else if (command == "USER")
-		{
-			if (arguments.empty())
-			{
-				send_error_reply(client, "461", "USER :Not enough parameters");
-				return ;
-			}
-			if (client.get_register_status())
-			{
-				send_error_reply(client, "462", ":You may not reregister");
-				return ;
-			}
-			client.set_username(arguments[0]);
-			try_register_client(client);
-		}
-		else if (command == "NICK")
-		{
-			if (arguments.empty())
-			{
-				send_error_reply(client, "431", ":No nickname given");
-				return ;
-			}
-			Client *existing_client = find_client_by_nickname(arguments[0]);
-			if (existing_client != NULL
-				&& existing_client->get_socket() != client.get_socket())
-			{
-				send_error_reply(client, "433", arguments[0] + " :Nickname is already in use");
-				return ;
-			}
-			client.set_nickname(arguments[0]);
-			try_register_client(client);
-		}
-		else if (command == "JOIN")
-		{
-			if (client.get_register_status() == true)
-			{
-				if (!arguments.empty() && !arguments[0].empty())
-				{
-					std::string key;
-					if (arguments.size() > 1)
-						key = arguments[1];
-					let_client_join_channel(arguments[0], client, key);
-				}
-			}
-		}
-		else if (command == "PART" && client.get_register_status() == true)
-		{
-			if (arguments.empty())
-			{
-				send_error_reply(client, "461", "PART :Not enough parameters");
-				return ;
-			}
-			part_client_from_channel(client, arguments[0]);
-		}
-		else if (command == "KICK" && client.get_register_status() == true)
-			handle_kick(client, line, arguments);
-		else if (command == "INVITE" && client.get_register_status() == true)
-			handle_invite(client, arguments);
-		else if (command == "TOPIC" && client.get_register_status() == true)
-			handle_topic(client, line, arguments);
-		else if (command == "MODE" && client.get_register_status() == true)
-			handle_mode(client, line, arguments);
-		else if (command == "CAP")
-		{
-			if (arguments.size() > 0)
-			{
-				if (arguments[0] == "LS")
-				{
-					std::string cap_response = ":localhost CAP * LS :\r\n";
-					send(client.get_socket(), cap_response.c_str(), cap_response.size(), 0);
-				}
-				else if (arguments[0] == "END")
-				{
-					// CAP negotiation ended
-				}
-			}
-		}
-		else if (command == "PRIVMSG" && client.get_register_status() == true)
-		{
-			if (arguments.empty())
-			{
-				send_error_reply(client, "411", ":No recipient given (PRIVMSG)");
-				return ;
-			}
-
-			std::string	message;
-			std::string	target = arguments[0];
-			size_t		position = line.find(" :");
-
-			if (position != std::string::npos)
-				message = line.substr(position + 2); //needs segfault protection
-			else if (arguments.size() > 1)
-				message = arguments[1];
-
-			if (message.empty())
-			{
-				send_error_reply(client, "412", ":No text to send");
-				return ;
-			}
-
-			if (!target.empty() && target[0] == '#')
-				send_message_to_channel(client, target, message);
-			else
-				send_message_to_user(client, target, message);
-		}
+		dispatch_command(client, command, line, arguments);
 	}
 }

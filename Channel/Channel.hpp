@@ -11,6 +11,9 @@ class	Channel
 {
 	private:
 
+///////////////////////////////////////////////////////////////////////////////
+// Variables
+
 		std::string			name;
 		std::string			topic;
 		std::set<int> 		member_fds;
@@ -26,6 +29,8 @@ class	Channel
 
 	public:
 
+///////////////////////////////////////////////////////////////////////////////
+// Consturctors and destructor
 
 		Channel();
 		Channel(const std::string &name);
@@ -34,11 +39,24 @@ class	Channel
 		~Channel();
 
 
+///////////////////////////////////////////////////////////////////////////////
+// Setter, Getter & Helper
+
 		void				set_name(const std::string &name);
 		std::string			get_name() const;
 
 		void				set_topic(const std::string &topic);
 		std::string			get_topic() const;
+		
+		void				set_key(const std::string &key);
+		std::string			get_key() const;
+
+		void				set_user_limit(size_t limit);
+		size_t				get_user_limit() const;
+		
+		std::set<int>		get_member_fds() const;
+
+		void				set_invite_only(bool enabled);
 
 		void				add_member(int client_fd);
 		bool				has_member(int client_fd) const;
@@ -49,20 +67,13 @@ class	Channel
 		void				add_invited(int client_fd);
 		bool				is_invited(int client_fd) const;
 		void				remove_invited(int client_fd);
-
-		void				set_invite_only(bool enabled);
 		bool				is_invite_only() const;
 		void				set_topic_restricted(bool enabled);
 		bool				is_topic_restricted() const;
-		void				set_key(const std::string &key);
 		void				clear_key();
 		bool				has_key() const;
-		std::string			get_key() const;
-		void				set_user_limit(size_t limit);
 		void				clear_user_limit();
 		bool				has_user_limit() const;
-		size_t				get_user_limit() const;
-		std::set<int>		get_member_fds() const;
 };
 
 #endif

@@ -59,7 +59,7 @@ Channel::~Channel()
 
 
 ///////////////////////////////////////////////////////////////////////////////
-// Setter & Getter
+// Setter, Getter & Helper
 
 void	Channel::set_name(const std::string &name)
 {

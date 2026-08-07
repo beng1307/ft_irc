@@ -28,6 +28,14 @@ class Server
 		ChannelMap						channels;
 		std::vector<pollfd>				fds;
 
+		///////////////////////////////////////////////////////////////////////////////
+		// Helper methods for the main loop
+
+		bool							configure_socket_nonblocking(int socket);
+		void							accept_new_client(int client_socket);
+		void							handle_client_input(int client_fd, size_t &index);
+		void							disconnect_client(int client_fd, size_t &index);
+
 	public:
 
 		///////////////////////////////////////////////////////////////////////////////
@@ -71,14 +79,21 @@ class Server
 		void							server_loop();
 		void							add_fds(int fd, short events, short revents);
 		void							handle_line(Client &client, const size_t &position);
+		void							dispatch_command(Client &client, const std::string &command,
+												const std::string &line,
+												const std::vector<std::string> &arguments);
+		void							handle_pass_command(Client &client, const std::vector<std::string> &arguments);
+		void							handle_user_command(Client &client, const std::vector<std::string> &arguments);
+		void							handle_nick_command(Client &client, const std::vector<std::string> &arguments);
+		void							handle_join_command(Client &client, const std::vector<std::string> &arguments);
+		void							handle_part_command(Client &client, const std::vector<std::string> &arguments);
+		void							handle_cap_command(Client &client, const std::vector<std::string> &arguments);
+		void							handle_privmsg_command(Client &client, const std::string &line,
+												const std::vector<std::string> &arguments);
 		bool							is_command(const std::string &line);
 		void							try_register_client(Client &client);
-
 		std::string						to_string_size_t(size_t value);
 		bool							is_positive_number(const std::string &value);
-
-
-
 		void							handle_kick(Client &client, const std::string &line,
 											 const std::vector<std::string> &arguments);
 		void							handle_invite(Client &client,
