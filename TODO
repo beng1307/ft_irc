@@ -3,3 +3,18 @@
 2. Reread it and remember again what bullshit i wrote
 
 3. Do tests and debug
+
+4. Implement PING/PONG
+
+5. Add a joining message to the channel if a new member joins
+
+//////////////////////////////////
+// TO DEBUG
+
+1. Do a check if port is correct, currently it takes everything and doesnt seem to throw a error
+
+2. On registraion comes "user:No such channel" Check why
+
+3. Also it registers with only the password, make a check so it registers only when nick and user are set
+
+4. User Disconnect after some time, check if its also because of ping pong or something else

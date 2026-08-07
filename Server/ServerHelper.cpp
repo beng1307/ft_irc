@@ -23,7 +23,6 @@ bool	Server::is_positive_number(const std::string &value)
 	return (true);
 }
 
-// TODO: Add comments
 void	Server::add_fds(int fd, short events, short revents)
 {
 	pollfd poll_filedescriptor;
@@ -42,7 +41,6 @@ bool	Server::is_command(const std::string &line)
 		|| line == "INVITE" || line == "TOPIC" || line == "MODE" || line == "CAP");
 }
 
-// TODO: Check function if it works correctly
 std::vector<std::string>	Server::split_arguments(const std::string &line)
 {
 	std::vector<std::string>	arguments;

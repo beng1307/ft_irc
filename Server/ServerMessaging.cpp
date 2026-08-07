@@ -3,7 +3,7 @@
 #include <string>
 #include <set>
 
-
+//Sends a message into the channel
 void	Server::send_message_to_channel(Client &sender, const std::string &channel_name, const std::string &message)
 {
 	if (get_channels().find(channel_name) == get_channels().end())
@@ -24,7 +24,7 @@ void	Server::send_message_to_channel(Client &sender, const std::string &channel_
 	}
 }
 
-
+//Sends the error to a client
 void	Server::send_error_reply(Client &client, const std::string &code, const std::string &message)
 {
 	std::string nick = client.get_nickname();
@@ -36,6 +36,8 @@ void	Server::send_error_reply(Client &client, const std::string &code, const std
 	send(client.get_socket(), reply.c_str(), reply.size(), 0);
 }
 
+
+//Sends a message to a client
 void	Server::send_message_to_user(Client &sender, const std::string &nickname, const std::string &message)
 {
 	Client *target = find_client_by_nickname(nickname);
@@ -52,6 +54,7 @@ void	Server::send_message_to_user(Client &sender, const std::string &nickname, c
 	send(target->get_socket(), message_to_send.c_str(), message_to_send.size(), 0);
 }
 
+//Sends a welcoming message to client
 void	Server::send_welcome_message(Client &client)
 {
 	std::string nick = client.get_nickname();

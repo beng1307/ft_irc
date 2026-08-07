@@ -9,13 +9,12 @@ void	Server::let_client_join_channel(const std::string &channel_name, Client &cl
 {
 	int client_fd = client.get_socket();
 
-	// Checks if the channel already exists, if not it gets created and a client gets added
 	if (get_channels().find(channel_name) == get_channels().end())
 	{
 		get_channels()[channel_name] = Channel(channel_name);
 		std::cout << "Channel " << channel_name << " created!" << std::endl;
  
-		get_channels()[channel_name].add_member(client_fd); // Check if its the correct client that gets added
+		get_channels()[channel_name].add_member(client_fd);
 		get_channels()[channel_name].add_operator(client_fd);
 		std::cout << "Client joined channel " << channel_name << "!" << std::endl;
 		return ;
@@ -75,7 +74,6 @@ void	Server::part_client_from_channel(Client &client, const std::string &channel
 
 void	Server::handle_pass_command(Client &client, const std::vector<std::string> &arguments)
 {
-	// Validate the password before allowing the client to continue registration.
 	if (arguments.empty())
 	{
 		send_error_reply(client, "461", "PASS :Not enough parameters");
@@ -99,10 +97,14 @@ void	Server::handle_pass_command(Client &client, const std::vector<std::string> 
 
 void	Server::handle_user_command(Client &client, const std::vector<std::string> &arguments)
 {
-	// Store the username and try to complete registration.
 	if (arguments.empty())
 	{
 		send_error_reply(client, "461", "USER :Not enough parameters");
+		return ;
+	}
+	if (!client.get_pass_ok())
+	{
+		send_error_reply(client, "451", ":You have not registered");
 		return ;
 	}
 	if (client.get_register_status())
@@ -116,7 +118,6 @@ void	Server::handle_user_command(Client &client, const std::vector<std::string> 
 
 void	Server::handle_nick_command(Client &client, const std::vector<std::string> &arguments)
 {
-	// Ensure the requested nickname is available before accepting it.
 	if (arguments.empty())
 	{
 		send_error_reply(client, "431", ":No nickname given");
@@ -135,7 +136,6 @@ void	Server::handle_nick_command(Client &client, const std::vector<std::string> 
 
 void	Server::handle_join_command(Client &client, const std::vector<std::string> &arguments)
 {
-	// Join a channel or create it if it does not exist yet.
 	if (client.get_register_status() == true)
 	{
 		if (!arguments.empty() && !arguments[0].empty())
@@ -150,7 +150,6 @@ void	Server::handle_join_command(Client &client, const std::vector<std::string> 
 
 void	Server::handle_part_command(Client &client, const std::vector<std::string> &arguments)
 {
-	// Leave a channel after validating the request parameters.
 	if (arguments.empty())
 	{
 		send_error_reply(client, "461", "PART :Not enough parameters");
@@ -161,7 +160,6 @@ void	Server::handle_part_command(Client &client, const std::vector<std::string> 
 
 void	Server::handle_cap_command(Client &client, const std::vector<std::string> &arguments)
 {
-	// Respond to lightweight capability negotiation requests.
 	if (arguments.size() > 0)
 	{
 		if (arguments[0] == "LS")
@@ -169,17 +167,13 @@ void	Server::handle_cap_command(Client &client, const std::vector<std::string> &
 			std::string cap_response = ":localhost CAP * LS :\r\n";
 			send(client.get_socket(), cap_response.c_str(), cap_response.size(), 0);
 		}
-		else if (arguments[0] == "END")
-		{
-			// CAP negotiation ended
-		}
+		else if (arguments[0] == "END") {}
 	}
 }
 
 void	Server::handle_privmsg_command(Client &client, const std::string &line,
 		const std::vector<std::string> &arguments)
 {
-	// Send a private message to either a channel or another user.
 	if (arguments.empty())
 	{
 		send_error_reply(client, "411", ":No recipient given (PRIVMSG)");
@@ -210,7 +204,6 @@ void	Server::handle_privmsg_command(Client &client, const std::string &line,
 void	Server::dispatch_command(Client &client, const std::string &command,
 		const std::string &line, const std::vector<std::string> &arguments)
 {
-	// Route the parsed command to the matching handler.
 	if (command == "PASS")
 		handle_pass_command(client, arguments);
 	else if (command == "USER")
@@ -237,7 +230,6 @@ void	Server::dispatch_command(Client &client, const std::string &command,
 
 void Server::handle_line(Client &client, const size_t &position)
 {
-	// Extract one complete IRC line from the client's buffer and dispatch it.
 	std::string	line;
 
 	line = client.get_buffer().substr(0, position);

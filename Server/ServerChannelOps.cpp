@@ -10,7 +10,6 @@
 
 static void	append_mode_change(std::string &applied_modes, char sign, char mode)
 {
-	// Group consecutive mode changes with the same sign for a cleaner output string.
 	if (applied_modes.empty() || applied_modes[applied_modes.size() - 1] != sign)
 		applied_modes.push_back(sign);
 	applied_modes.push_back(mode);
@@ -18,13 +17,11 @@ static void	append_mode_change(std::string &applied_modes, char sign, char mode)
 
 static std::string	build_client_prefix(const Client &client)
 {
-	// Create the IRC-style prefix used in broadcast messages.
 	return ":" + client.get_nickname() + "!" + client.get_username() + "@localhost";
 }
 
 static std::string	get_client_nick_or_wildcard(const Client &client)
 {
-	// Fall back to "*" for replies before the client has a registered nickname.
 	std::string nick = client.get_nickname();
 	if (nick.empty())
 		nick = "*";
@@ -33,7 +30,6 @@ static std::string	get_client_nick_or_wildcard(const Client &client)
 
 static void	broadcast_to_channel(const Channel &channel, const std::string &message)
 {
-	// Send the message to every member currently in the channel.
 	std::set<int> member_fds = channel.get_member_fds();
 	for (std::set<int>::const_iterator it = member_fds.begin(); it != member_fds.end(); ++it)
 		send(*it, message.c_str(), message.size(), 0);
@@ -42,7 +38,6 @@ static void	broadcast_to_channel(const Channel &channel, const std::string &mess
 static bool	ensure_channel_exists(Server &server, Client &client,
 	const std::string &channel_name, ChannelMap::iterator &channel_it)
 {
-	// Verify that the target channel exists and report a standard error if not.
 	channel_it = server.get_channels().find(channel_name);
 	if (channel_it == server.get_channels().end())
 	{
@@ -55,7 +50,6 @@ static bool	ensure_channel_exists(Server &server, Client &client,
 static bool	ensure_channel_member(Server &server, Client &client,
 	const std::string &channel_name, ChannelMap::iterator &channel_it)
 {
-	// Only channel members may execute most channel commands.
 	if (!channel_it->second.has_member(client.get_socket()))
 	{
 		server.send_error_reply(client, "442", channel_name + " :You're not on that channel");
@@ -67,7 +61,6 @@ static bool	ensure_channel_member(Server &server, Client &client,
 static bool	ensure_channel_operator(Server &server, Client &client,
 	const std::string &channel_name, ChannelMap::iterator &channel_it)
 {
-	// Some operations require channel operator privileges.
 	if (!channel_it->second.is_operator(client.get_socket()))
 	{
 		server.send_error_reply(client, "482", channel_name + " :You're not channel operator");
@@ -79,7 +72,6 @@ static bool	ensure_channel_operator(Server &server, Client &client,
 static std::string	build_mode_reply(const Client &client, const std::string &channel_name,
 	const std::string &current_modes, const std::vector<std::string> &current_params)
 {
-	// Build the reply sent when a client requests the current channel modes.
 	std::string mode_reply = ":localhost 324 " + get_client_nick_or_wildcard(client)
 		+ " " + channel_name + " " + current_modes;
 	for (size_t i = 0; i < current_params.size(); ++i)
@@ -126,7 +118,6 @@ void	Server::handle_kick(Client &client, const std::string &line,
 		return ;
 	}
 
-	// Extract an optional reason from the IRC command line.
 	std::string reason = client.get_nickname();
 	size_t reason_pos = line.find(" :");
 	if (reason_pos != std::string::npos && reason_pos + 2 < line.size())

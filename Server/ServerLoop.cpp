@@ -10,7 +10,6 @@
 
 bool	Server::configure_socket_nonblocking(int socket)
 {
-	// Make the socket non-blocking so recv/accept can return promptly.
 	int flags = fcntl(socket, F_GETFL, 0);
 	if (flags == -1)
 	{
@@ -28,7 +27,6 @@ bool	Server::configure_socket_nonblocking(int socket)
 
 void	Server::accept_new_client(int client_socket)
 {
-	// Register a newly accepted client with the poll set and the client map.
 	if (!configure_socket_nonblocking(client_socket))
 	{
 		close(client_socket);
@@ -41,7 +39,6 @@ void	Server::accept_new_client(int client_socket)
 
 void	Server::handle_client_input(int client_fd, size_t &index)
 {
-	// Read incoming data for one client, buffer complete lines and dispatch them.
 	char	buffer[512];
 
 	while (true)
@@ -80,7 +77,6 @@ void	Server::handle_client_input(int client_fd, size_t &index)
 
 void	Server::disconnect_client(int client_fd, size_t &index)
 {
-	// Clean up the client state when the connection is closed or broken.
 	cleanup_client_disconnect(client_fd);
 	close(client_fd);
 	get_clients().erase(client_fd);
@@ -90,11 +86,9 @@ void	Server::disconnect_client(int client_fd, size_t &index)
 
 void	Server::server_loop()
 {
-	// Main polling loop: wait for activity on the server and client sockets.
 	if (!configure_socket_nonblocking(get_server_socket()))
 		return;
 
-	// Add the listening socket to the poll set so new connections can be detected.
 	add_fds(get_server_socket(), POLLIN, 0);
 
 	while (true)
@@ -108,7 +102,6 @@ void	Server::server_loop()
 			break;
 		}
 
-		// Check every registered file descriptor for activity.
 		for (size_t index = 0; index < get_fds().size(); ++index)
 		{
 			if (!(get_fds()[index].revents & POLLIN))
