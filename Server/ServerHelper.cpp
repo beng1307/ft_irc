@@ -2,6 +2,7 @@
 #include <sstream>
 #include <iostream>
 
+//Returns a string converted from size_t
 std::string	Server::to_string_size_t(size_t value)
 {
 	std::ostringstream oss;
@@ -9,6 +10,7 @@ std::string	Server::to_string_size_t(size_t value)
 	return (oss.str());
 }
 
+//Checks if the string is a positive number above 0
 bool	Server::is_positive_number(const std::string &value)
 {
 	if (value.empty())
@@ -23,6 +25,10 @@ bool	Server::is_positive_number(const std::string &value)
 	return (true);
 }
 
+
+//Creates a new filedescriptor and adds it to the fds.
+//Events are the events to monitor and the reevents are
+//the events that have occurred.
 void	Server::add_fds(int fd, short events, short revents)
 {
 	pollfd poll_filedescriptor;
@@ -34,6 +40,7 @@ void	Server::add_fds(int fd, short events, short revents)
 	get_fds().push_back(poll_filedescriptor);
 }
 
+//Checks if it's a legit command from the client.
 bool	Server::is_command(const std::string &line)
 {
 	return (line == "PASS" || line == "USER" || line == "NICK" || line == "JOIN" 
@@ -41,6 +48,7 @@ bool	Server::is_command(const std::string &line)
 		|| line == "INVITE" || line == "TOPIC" || line == "MODE" || line == "CAP");
 }
 
+//A splitting function for the arguments.
 std::vector<std::string>	Server::split_arguments(const std::string &line)
 {
 	std::vector<std::string>	arguments;
@@ -70,6 +78,7 @@ std::vector<std::string>	Server::split_arguments(const std::string &line)
 	return (arguments);
 }
 
+//It goes through the clients and if he gets found per name, he gets returned.
 Client	*Server::find_client_by_nickname(const std::string &nickname)
 {
 	for (ClientMap::iterator it = get_clients().begin(); it != get_clients().end(); ++it)
@@ -80,6 +89,8 @@ Client	*Server::find_client_by_nickname(const std::string &nickname)
 	return (NULL);
 }
 
+//Removes the disconnected client from all channels and deletes any channels
+//that have no members left.
 void	Server::cleanup_client_disconnect(int disconnected_fd)
 {
 	for (ChannelMap::iterator it = get_channels().begin(); it != get_channels().end();)
@@ -92,8 +103,11 @@ void	Server::cleanup_client_disconnect(int disconnected_fd)
 	}
 }
 
+//Registers the client once the password, nickname, and username are valid
+//and sends welcome message.
 void	Server::try_register_client(Client &client)
 {
+	//TODO: Check if the behaviour is correct and if Error messages need to be added
 	if (client.get_register_status())
 		return ;
 	if (!client.get_pass_ok())
