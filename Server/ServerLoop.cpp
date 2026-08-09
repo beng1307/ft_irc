@@ -10,17 +10,8 @@
 // Sets the socket to non-blocking mode and returns false if it fails.
 bool	Server::configure_socket_nonblocking(int socket)
 {
-	//fcntl gets the current flags from the socket with F_GETFL
-	//so they can be changed.
-	int flags = fcntl(socket, F_GETFL, 0); //TODO: Maybe a mistake per evalsheet.
-	if (flags == -1)
-	{
-		std::cerr << "Error: fcntl failed!" << std::endl;
-		return false;
-	}
-
 	//fcntl sets the socket flags to nonblocking with F_SETFL
-	if (fcntl(socket, F_SETFL, flags | O_NONBLOCK) == -1)
+	if (fcntl(socket, F_SETFL, O_NONBLOCK) == -1)
 	{
 		std::cerr << "Error: fcntl failed!" << std::endl;
 		return false;
@@ -44,6 +35,8 @@ void	Server::accept_new_client(int client_socket)
 	get_clients().insert(std::make_pair(client_socket, Client(client_socket)));
 }
 
+//Disconnects the client from channels, closes its socket and removes it from the server.
+//Decrements the index so the next client is not skipped.
 void	Server::disconnect_client(int client_fd, size_t &index)
 {
 	cleanup_client_disconnect(client_fd);
@@ -58,43 +51,42 @@ void	Server::handle_client_input(int client_fd, size_t &index)
 {
 	char	buffer[512];
 
-	while (true)
+	//Recieves the message from client and saves it into the buffer.
+	int	bytes_received = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
+	if (bytes_received > 0)
 	{
-		//Recieves the message from client and saves it into the buffer.
-		int	bytes_received = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
-		if (bytes_received > 0)
-		{
-			//Nullterminates the message in the buffer, deklares the current client
-			//and appends the buffer to the Clients buffer.
-			buffer[bytes_received] = '\0';
-			Client &client = get_clients()[client_fd];
-			client.get_buffer().append(buffer, bytes_received);
+		//Nullterminates the message in the buffer, deklares the current client
+		//and appends the buffer to the Clients buffer.
+		buffer[bytes_received] = '\0';
+		Client &client = get_clients()[client_fd];
+		client.get_buffer().append(buffer, bytes_received);
 
-			//If the end of a message is found, it gets processed.
-			size_t	position = client.get_buffer().find("\r\n");
-			while (position != std::string::npos)
-			{
-				handle_line(client, position);
-				position = client.get_buffer().find("\r\n");
-			}
-
-			std::cout << "Received from client " << client_fd << ": " << buffer << std::endl;
-		}
-		else if (bytes_received == 0)
+		//If the end of a message is found, it gets processed.
+		size_t	position = client.get_buffer().find("\r\n");
+		while (position != std::string::npos)
 		{
-			disconnect_client(client_fd, index);
-			break ;
+			handle_line(client, position);
+			position = client.get_buffer().find("\r\n");
 		}
-		else
-		{
-			if (errno == EAGAIN || errno == EWOULDBLOCK)
-				break ;
 
-			disconnect_client(client_fd, index);
-			break ;
-		}
+		std::cout << "Received from client " << client_fd << ": " << buffer << std::endl;
+	}
+	else if (bytes_received == 0)
+	{
+		//Client closed the connection. So he has to be removed.
+		disconnect_client(client_fd, index);
+	}
+	else
+	{
+		// With a non-blocking socket, recv() can return -1 with
+		// EAGAIN/EWOULDBLOCK if no data is currently available.
+		// The client stays connected and we return to poll().
+		if (errno == EAGAIN || errno == EWOULDBLOCK)
+			return ;
+		disconnect_client(client_fd, index);
 	}
 }
+
 
 //The main logic and loop of the server.
 void	Server::server_loop()
@@ -116,10 +108,10 @@ void	Server::server_loop()
 		int ready = poll(get_fds().data(), get_fds().size(), -1);
 		if (ready == -1)
 		{
-			if (errno == EINTR) //TODO: Maybe a mistake by evalsheet
+			if (errno == EINTR)
 				continue;
 			std::cerr << "Error: poll failed!" << std::endl;
-			break; //TODO: Check if it has to send a message to the clients.
+			break ; //TODO: Check if it has to send a message to the clients.
 		}
 
 		//Loops over the fds 

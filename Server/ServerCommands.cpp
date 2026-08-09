@@ -201,6 +201,7 @@ void	Server::handle_privmsg_command(Client &client, const std::string &line,
 		send_message_to_user(client, target, message);
 }
 
+//Checks which command it is and uses the right function for it.
 void	Server::dispatch_command(Client &client, const std::string &command,
 		const std::string &line, const std::vector<std::string> &arguments)
 {
@@ -228,17 +229,38 @@ void	Server::dispatch_command(Client &client, const std::string &command,
 		handle_privmsg_command(client, line, arguments);
 }
 
+
+//Handles the message from client.
 void Server::handle_line(Client &client, const size_t &position)
 {
+	//Saves the message in line and removes the message form the client buffer.
 	std::string	line;
 
 	line = client.get_buffer().substr(0, position);
+	if (line.empty())
+		return ;
 	client.get_buffer().erase(0, position + 2);
 
-	std::string	command = line.substr(0, line.find(" "));
+	//It gets the first word of the message, because it's a potential command.
+	//It also makes it uppercase for checks. Because the commands are case insensetive.
+	std::string command;
+	size_t 		space = line.find(' ');
+
+	if (space == std::string::npos)
+		command = line;
+	else
+		command = line.substr(0, space);
+
+	std::transform(command.begin(), command.end(), command.begin(), ::toupper);
+	
+	//Checks if it's a command.
+	//If it is, it extracts the arguments and handles the command.
+	//Else it sends a error reply.
 	if (is_command(command))
 	{
 		std::vector<std::string>	arguments = split_arguments(line);
 		dispatch_command(client, command, line, arguments);
 	}
+	else
+		send_error_reply(client, "421", "Unknown command.");
 }

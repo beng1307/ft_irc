@@ -1,12 +1,16 @@
-2. Reread it and remember again what bullshit i wrote
+1. Reread it and remember again what bullshit i wrote
 
-3. Do tests and debug
+2. Do tests and debug
 
-4. Implement PING/PONG
+3. Implement PING/PONG
 
-5. Add a joining message to the channel if a new member joins
+4. Add a joining message to the channel if a new member joins
 
 5. Write a README
+
+6. Remove stuff that the eval sheet doesn't want
+
+7. Handle signals and Memory leaks on signals
 
 //////////////////////////////////
 // TO DEBUG

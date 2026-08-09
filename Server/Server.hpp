@@ -7,6 +7,7 @@
 #include <map>
 #include <vector>
 #include <poll.h>
+#include <algorithm>
 
 typedef std::map<std::string, Channel>	ChannelMap;
 typedef std::map<int, Client> 			ClientMap;
