@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TESTRUNNER_BIN="${SCRIPT_DIR}/testrunner"
+
+# Build testrunner executable if missing
+if [ ! -f "$TESTRUNNER_BIN" ]; then
+    make -C "$SCRIPT_DIR" || exit 1
+fi
+
+HOST="${HOST:-127.0.0.1}"
+PORT="${PORT:-6667}"
+SCENARIOS_DIR="${SCRIPT_DIR}/scenarios"
+
+SPECS=()
+
+add_spec_by_num() {
+    local num_str="$1"
+    # Format single digit to 2 digits (e.g. 1 -> 01)
+    if [[ "$num_str" =~ ^[0-9]+$ ]]; then
+        local formatted
+        formatted=$(printf "%02d" "$num_str" 2>/dev/null || echo "$num_str")
+        for f in "$SCENARIOS_DIR"/${formatted}*.spec "$SCENARIOS_DIR"/${num_str}*.spec; do
+            if [ -f "$f" ]; then
+                if [[ ! " ${SPECS[*]} " =~ " ${f} " ]]; then
+                    SPECS+=("$f")
+                    return 0
+                fi
+            fi
+        done
+    fi
+    return 1
+}
+
+if [ $# -eq 0 ]; then
+    # Without args: run all specs
+    for f in "$SCENARIOS_DIR"/*.spec; do
+        if [ -f "$f" ]; then
+            SPECS+=("$f")
+        fi
+    done
+else
+    # Process specified numbers / arguments
+    for arg in "$@"; do
+        if ! add_spec_by_num "$arg"; then
+            # If argument like '13' didn't match a scenario 13, split digits (e.g. '1' and '3')
+            if [[ "$arg" =~ ^[0-9]+$ ]] && [ ${#arg} -gt 1 ]; then
+                for (( i=0; i<${#arg}; i++ )); do
+                    digit="${arg:$i:1}"
+                    add_spec_by_num "$digit"
+                done
+            else
+                # Fallback: substring / filename glob search
+                for f in "$SCENARIOS_DIR"/*"$arg"*.spec; do
+                    if [ -f "$f" ]; then
+                        if [[ ! " ${SPECS[*]} " =~ " ${f} " ]]; then
+                            SPECS+=("$f")
+                        fi
+                    fi
+                done
+            fi
+        fi
+    done
+fi
+
+if [ ${#SPECS[@]} -eq 0 ]; then
+    echo "No matching test spec files found to execute."
+    exit 1
+fi
+
+failed=0
+total=0
+
+for spec in "${SPECS[@]}"; do
+    total=$((total + 1))
+    spec_rel="${spec#${SCRIPT_DIR}/}"
+    echo "----------------------------------------"
+    echo "Running tester/${spec_rel}..."
+    "$TESTRUNNER_BIN" --host "$HOST" --port "$PORT" "$spec" || failed=$((failed + 1))
+done
+
+echo "----------------------------------------"
+echo "Summary: $((total - failed))/$total scenarios passed."
+
+if [ $failed -gt 0 ]; then
+    exit 1
+fi
