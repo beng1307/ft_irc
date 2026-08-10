@@ -63,6 +63,9 @@ class	Channel
 
 		void				add_member(int client_fd);
 		bool				has_member(int client_fd) const;
+		void				remove_member_from_channel(int client_fd);
+		void				remove_invited(int client_fd);
+		void				remove_operator(int client_fd);
 		void				remove_member(int client_fd);
 		void				add_operator(int client_fd);
 		bool				is_operator(int client_fd) const;

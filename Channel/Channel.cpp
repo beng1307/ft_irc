@@ -95,10 +95,25 @@ bool	Channel::has_member(int client_fd) const
 }
 
 //Erases member from the member/operater/invited fds.
-void	Channel::remove_member(int client_fd)
+void	Channel::remove_member_from_channel(int client_fd)
+{
+	remove_invited(client_fd);
+	remove_operator(client_fd);
+	remove_member(client_fd);
+}
+
+void	Channel::remove_operator(int client_fd)
+{
+	operator_fds.erase(client_fd);
+}
+
+void	Channel::remove_invited(int client_fd)
 {
 	invited_fds.erase(client_fd);
-	operator_fds.erase(client_fd);
+}
+
+void	Channel::remove_member(int client_fd)
+{
 	member_fds.erase(client_fd);
 }
 

@@ -126,7 +126,7 @@ void	Server::handle_kick(Client &client, const std::string &line,
 	std::string kick_message = build_client_prefix(client) + " KICK " + channel_name
 		+ " " + target_nick + " :" + reason + "\r\n";
 	broadcast_to_channel(channel_it->second, kick_message);
-	channel_it->second.remove_member(target->get_socket());
+	channel_it->second.remove_member_from_channel(target->get_socket());
 }
 
 

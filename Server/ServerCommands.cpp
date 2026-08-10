@@ -79,7 +79,7 @@ void	Server::part_client_from_channel(Client &client, const std::string &channel
 		return ;
 	}
 
-	it->second.remove_member(client.get_socket());
+	it->second.remove_member_from_channel(client.get_socket());
 	std::cout << "Client left channel " << it->second.get_name() << "!" << std::endl;
 }
 
