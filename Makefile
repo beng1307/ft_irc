@@ -3,7 +3,6 @@ NAME = ft_irc
 SRCS = main.cpp \
 	   Channel/Channel.cpp \
 	   Client/Client.cpp \
-	   Errorhandler/Errorhandler.cpp \
 	   Server/Server.cpp \
 	   Server/ServerSocket.cpp \
 	   Server/ServerLoop.cpp \
@@ -13,7 +12,7 @@ SRCS = main.cpp \
 	   Server/ServerHelper.cpp
 OBJS_FOLDER = obj
 OBJS = $(SRCS:%.cpp=$(OBJS_FOLDER)/%.o)
-HEADERS = Server/Server.hpp Channel/Channel.hpp Client/Client.hpp Errorhandler/Errorhandler.hpp 
+HEADERS = Server/Server.hpp Channel/Channel.hpp Client/Client.hpp 
 
 $(NAME): $(OBJS)
 	$(COMPILE) $(OBJS) -o $(NAME)	

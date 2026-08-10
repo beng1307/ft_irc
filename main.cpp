@@ -1,7 +1,6 @@
 #include "Server/Server.hpp"
 #include "Channel/Channel.hpp"
 #include "Client/Client.hpp"
-#include "Errorhandler/Errorhandler.hpp"
 #include <iostream>
 #include <string>
 #include <cstdlib>
@@ -9,7 +8,7 @@
 
 int main(int ac, char **av)
 {
-	if (!Errorhandler::right_amount_of_args(ac))
+	if (ac != 3)
 	{
 		std::cout << "Expected input: \"./ircserv <port> <password>\"";
 		return (1);
