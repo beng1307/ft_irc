@@ -5,10 +5,13 @@
 #include <sys/socket.h>
 #include <iostream>
 
+
+//Joins the client to a channel after checking access restrictions.
 void	Server::let_client_join_channel(const std::string &channel_name, Client &client, const std::string &key)
 {
 	int client_fd = client.get_socket();
 
+	//If the channel doesn't exist yet, it gets created and the clients gets added as operator.
 	if (get_channels().find(channel_name) == get_channels().end())
 	{
 		get_channels()[channel_name] = Channel(channel_name);
@@ -21,6 +24,8 @@ void	Server::let_client_join_channel(const std::string &channel_name, Client &cl
 	}
 
 	Channel &channel = get_channels()[channel_name];
+
+	//It gets checked if the client has the right to join.
 
 	if (channel.has_member(client_fd))
 	{
@@ -48,11 +53,17 @@ void	Server::let_client_join_channel(const std::string &channel_name, Client &cl
 		return ;
 	}
 
+	//Client gets added to the Channel, his invite gets reset
+	//and all members in the channel get informed.
 	channel.add_member(client_fd);
 	channel.remove_invited(client_fd);
+	broadcast_join_to_channel(client, channel.get_name());
 	std::cout << "Client joined channel " << channel_name << "!" << std::endl;
+
 }
 
+
+//Parts the given client from the channel.
 void	Server::part_client_from_channel(Client &client, const std::string &channel_name)
 {
 	ChannelMap::iterator it = get_channels().find(channel_name);
@@ -72,6 +83,10 @@ void	Server::part_client_from_channel(Client &client, const std::string &channel
 	std::cout << "Client left channel " << it->second.get_name() << "!" << std::endl;
 }
 
+//Handles a password input.
+//If a password is there, the client is not registered yet and the password
+//is correct, the password gets set.
+//If nick, user and pass are set, he gets registered.
 void	Server::handle_pass_command(Client &client, const std::vector<std::string> &arguments)
 {
 	if (arguments.empty())
@@ -95,16 +110,13 @@ void	Server::handle_pass_command(Client &client, const std::vector<std::string> 
 	try_register_client(client);
 }
 
+//Handles the new username.
+//If nick, user and pass are set, he gets registered.
 void	Server::handle_user_command(Client &client, const std::vector<std::string> &arguments)
 {
 	if (arguments.empty())
 	{
 		send_error_reply(client, "461", "USER :Not enough parameters");
-		return ;
-	}
-	if (!client.get_pass_ok())
-	{
-		send_error_reply(client, "451", ":You have not registered");
 		return ;
 	}
 	if (client.get_register_status())
@@ -116,6 +128,9 @@ void	Server::handle_user_command(Client &client, const std::vector<std::string> 
 	try_register_client(client);
 }
 
+//Handles the new nickname.
+//First it checks if the nickname is already in use.
+//If not and nick, user and pass are set, he gets registered.
 void	Server::handle_nick_command(Client &client, const std::vector<std::string> &arguments)
 {
 	if (arguments.empty())
@@ -123,6 +138,7 @@ void	Server::handle_nick_command(Client &client, const std::vector<std::string> 
 		send_error_reply(client, "431", ":No nickname given");
 		return ;
 	}
+	// TODO: maybe check if the nickname is valid.
 	Client *existing_client = find_client_by_nickname(arguments[0]);
 	if (existing_client != NULL
 		&& existing_client->get_socket() != client.get_socket())
@@ -134,20 +150,24 @@ void	Server::handle_nick_command(Client &client, const std::vector<std::string> 
 	try_register_client(client);
 }
 
+
+//Handles the join command.
+//If there is a key, it will gets set. And used for joining.
 void	Server::handle_join_command(Client &client, const std::vector<std::string> &arguments)
 {
-	if (client.get_register_status() == true)
+	if (arguments.empty())
 	{
-		if (!arguments.empty() && !arguments[0].empty())
-		{
-			std::string key;
-			if (arguments.size() > 1)
-				key = arguments[1];
-			let_client_join_channel(arguments[0], client, key);
-		}
+		send_error_reply(client, "461", "JOIN :Not enough parameters");
+		return ;
 	}
+
+	std::string key;
+	if (arguments.size() > 1)
+		key = arguments[1];
+	let_client_join_channel(arguments[0], client, key);
 }
 
+//Parts the given client from the channel.
 void	Server::handle_part_command(Client &client, const std::vector<std::string> &arguments)
 {
 	if (arguments.empty())
@@ -158,6 +178,7 @@ void	Server::handle_part_command(Client &client, const std::vector<std::string> 
 	part_client_from_channel(client, arguments[0]);
 }
 
+//When the client asks about extra capabilities of the server on connect, it gives a response that it doesn't have them.
 void	Server::handle_cap_command(Client &client, const std::vector<std::string> &arguments)
 {
 	if (arguments.size() > 0)
@@ -205,13 +226,14 @@ void	Server::handle_privmsg_command(Client &client, const std::string &line,
 void	Server::dispatch_command(Client &client, const std::string &command,
 		const std::string &line, const std::vector<std::string> &arguments)
 {
+	// TODO: Maybe put the register check in the functions and send a errormessage.
 	if (command == "PASS")
 		handle_pass_command(client, arguments);
 	else if (command == "USER")
 		handle_user_command(client, arguments);
 	else if (command == "NICK")
 		handle_nick_command(client, arguments);
-	else if (command == "JOIN")
+	else if (command == "JOIN" && client.get_register_status() == true)
 		handle_join_command(client, arguments);
 	else if (command == "PART" && client.get_register_status() == true)
 		handle_part_command(client, arguments);

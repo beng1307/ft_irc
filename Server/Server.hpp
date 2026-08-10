@@ -106,6 +106,8 @@ class Server
 		void							let_client_join_channel(const std::string &channel_name, Client &client, const std::string &key);
 		void							part_client_from_channel(Client &client, const std::string &channel_name);
 		void							send_message_to_channel(Client &sender, const std::string &channel_name, const std::string &message);
+		void							broadcast_join_to_channel(Client &joining_client, const std::string &channel_name);
+
 		void							send_message_to_user(Client &sender, const std::string &nickname, const std::string &message);
 		void							send_welcome_message(Client &client);
 		void							send_error_reply(Client &client, const std::string &code, const std::string &message);

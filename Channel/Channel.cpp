@@ -94,10 +94,11 @@ bool	Channel::has_member(int client_fd) const
 	return (member_fds.find(client_fd) != member_fds.end());
 }
 
+//Erases member from the member/operater/invited fds.
 void	Channel::remove_member(int client_fd)
 {
-	remove_operator(client_fd);
-	remove_invited(client_fd);
+	invited_fds.erase(client_fd);
+	operator_fds.erase(client_fd);
 	member_fds.erase(client_fd);
 }
 
@@ -113,11 +114,6 @@ bool	Channel::is_operator(int client_fd) const
 	return (operator_fds.find(client_fd) != operator_fds.end());
 }
 
-void	Channel::remove_operator(int client_fd)
-{
-	operator_fds.erase(client_fd);
-}
-
 void	Channel::add_invited(int client_fd)
 {
 	invited_fds.insert(client_fd);
@@ -126,11 +122,6 @@ void	Channel::add_invited(int client_fd)
 bool	Channel::is_invited(int client_fd) const
 {
 	return (invited_fds.find(client_fd) != invited_fds.end());
-}
-
-void	Channel::remove_invited(int client_fd)
-{
-	invited_fds.erase(client_fd);
 }
 
 void	Channel::set_invite_only(bool enabled)

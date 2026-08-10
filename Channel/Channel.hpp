@@ -16,11 +16,14 @@ class	Channel
 
 		std::string			name;
 		std::string			topic;
+
 		std::set<int> 		member_fds;
 		std::set<int> 		operator_fds;
 		std::set<int> 		invited_fds;
+
 		bool				invite_only;
 		bool				topic_restricted;
+
 		bool				key_enabled;
 		std::string			channel_key;
 		bool				limit_enabled;
@@ -63,10 +66,8 @@ class	Channel
 		void				remove_member(int client_fd);
 		void				add_operator(int client_fd);
 		bool				is_operator(int client_fd) const;
-		void				remove_operator(int client_fd);
 		void				add_invited(int client_fd);
 		bool				is_invited(int client_fd) const;
-		void				remove_invited(int client_fd);
 		bool				is_invite_only() const;
 		void				set_topic_restricted(bool enabled);
 		bool				is_topic_restricted() const;

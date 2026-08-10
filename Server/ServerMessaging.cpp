@@ -54,6 +54,25 @@ void	Server::send_message_to_user(Client &sender, const std::string &nickname, c
 	send(target->get_socket(), message_to_send.c_str(), message_to_send.size(), 0);
 }
 
+
+//Informs the members of a channel, that a new client joined.
+void	Server::broadcast_join_to_channel(Client &joining_client, const std::string &channel_name)
+{
+	if (get_channels().find(channel_name) == get_channels().end())
+	{
+		send_error_reply(joining_client, "403", channel_name + " :No such channel");
+		return ;
+	}
+
+	std::set<int>	member_fds = get_channels()[channel_name].get_member_fds();
+
+	std::string join_message = ":" + joining_client.get_nickname() + "!"
+    + joining_client.get_username() + "@localhost JOIN " + channel_name + "\r\n";
+
+	for (std::set<int>::const_iterator it = member_fds.begin(); it != member_fds.end(); ++it)
+		send(*it, join_message.c_str(), join_message.size(), 0);
+}
+
 //Sends a welcoming message to client
 void	Server::send_welcome_message(Client &client)
 {
