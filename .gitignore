@@ -1,2 +1,6 @@
 .DS_Store
 .history
+tester/logs
+*.o
+ft_irc
+testrunner
