@@ -31,4 +31,7 @@ fclean:	clean
 
 re: fclean all
 
+run: all
+	@./ft_irc 6667 1234
+
 .PHONY: all clean fclean re
