@@ -17,6 +17,8 @@
 #include <netdb.h>
 #include <poll.h>
 #include <sys/time.h>
+#include <signal.h>
+#include <netinet/tcp.h>
 
 // -----------------------------------------------------------------------------
 // Glob Pattern Matching Helper
@@ -96,6 +98,22 @@ static int parse_duration_ms(const std::string& s) {
     return atoi(str.c_str()) * multiplier;
 }
 
+// Decode the small escape vocabulary used in .spec files for SEND_RAW.
+// Keeping the source specs printable makes fragmented IRC frames readable.
+static std::string decode_raw_escapes(const std::string& input) {
+    std::string output;
+    for (size_t i = 0; i < input.size(); ++i) {
+        if (input[i] == '\\' && i + 1 < input.size()) {
+            char escaped = input[i + 1];
+            if (escaped == 'r') { output += '\r'; ++i; continue; }
+            if (escaped == 'n') { output += '\n'; ++i; continue; }
+            if (escaped == '\\') { output += '\\'; ++i; continue; }
+        }
+        output += input[i];
+    }
+    return output;
+}
+
 // -----------------------------------------------------------------------------
 // Logger
 // -----------------------------------------------------------------------------
@@ -135,8 +153,9 @@ struct VirtualClient {
     bool connected;
     std::string recv_buf;
     std::vector<std::string> line_queue;
+    bool reading;
 
-    VirtualClient() : fd(-1), connected(false) {}
+    VirtualClient() : fd(-1), connected(false), reading(true) {}
 };
 
 // -----------------------------------------------------------------------------
@@ -146,13 +165,23 @@ enum DirectiveType {
     DIR_CLIENTS,
     DIR_SEND,
     DIR_F_SEND,
-    DIR_SENDPART,
-    DIR_F_SENDPART,
+    DIR_SEND_RAW,
+    DIR_F_SEND_RAW,
     DIR_EXPECT,
     DIR_WAIT_RECV,
     DIR_WAIT,
     DIR_EXPECT_DISCONNECT,
     DIR_EXPECT_CONNECTED,
+    DIR_EXPECT_NONE,
+    DIR_EXPECT_COUNT,
+    DIR_CLOSE_SOCKET,
+    DIR_CLOSE_WRITE,
+    DIR_RESET,
+    DIR_RECONNECT,
+    DIR_PAUSE,
+    DIR_RESUME,
+    DIR_FLOOD,
+    DIR_TIMEOUT,
     DIR_UNKNOWN
 };
 
@@ -162,6 +191,7 @@ struct Instruction {
     std::string payload;
     std::string original_line;
     int line_number;
+    Instruction() : type(DIR_UNKNOWN), line_number(0) {}
 };
 
 // -----------------------------------------------------------------------------
@@ -265,7 +295,7 @@ public:
             std::vector<std::string> ids;
 
             for (std::map<std::string, VirtualClient>::iterator it = clients.begin(); it != clients.end(); ++it) {
-                if (it->second.connected && it->second.fd != -1) {
+                if (it->second.connected && it->second.fd != -1 && it->second.reading) {
                     struct pollfd pfd;
                     pfd.fd = it->second.fd;
                     pfd.events = POLLIN;
@@ -306,7 +336,7 @@ public:
     }
 
     void read_client(VirtualClient& vc) {
-        if (!vc.connected || vc.fd == -1) return;
+        if (!vc.connected || vc.fd == -1 || !vc.reading) return;
 
         char buf[1024];
         ssize_t bytes = recv(vc.fd, buf, sizeof(buf) - 1, 0);
@@ -379,13 +409,43 @@ public:
             logger.log(vc.id, "ERROR", "Cannot send data: socket not connected");
             return false;
         }
-        ssize_t res = send(vc.fd, data.c_str(), data.length(), 0);
-        if (res < 0) {
+        size_t sent = 0;
+        while (sent < data.length()) {
+            ssize_t res = send(vc.fd, data.c_str() + sent, data.length() - sent, MSG_NOSIGNAL);
+            if (res > 0) { sent += static_cast<size_t>(res); continue; }
+            if (res < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+                struct pollfd pfd; pfd.fd = vc.fd; pfd.events = POLLOUT; pfd.revents = 0;
+                if (poll(&pfd, 1, timeout_ms) <= 0) res = -1;
+                else continue;
+            }
             logger.log(vc.id, "ERROR", "Failed to send data: " + std::string(strerror(errno)));
             vc.connected = false;
             return false;
         }
         return true;
+    }
+
+    void close_client(VirtualClient& vc, bool reset) {
+        if (vc.fd == -1) return;
+        if (reset) {
+            struct linger linger_opt; linger_opt.l_onoff = 1; linger_opt.l_linger = 0;
+            setsockopt(vc.fd, SOL_SOCKET, SO_LINGER, &linger_opt, sizeof(linger_opt));
+        }
+        close(vc.fd); vc.fd = -1; vc.connected = false; vc.reading = true;
+        logger.log(vc.id, "SYS", reset ? "Peer reset" : "Peer closed");
+    }
+
+    bool assert_none(VirtualClient& vc, int quiet_ms) {
+        poll_all_clients(quiet_ms);
+        if (!vc.line_queue.empty()) return false;
+        return vc.connected;
+    }
+
+    int count_matching(VirtualClient& vc, const std::string& pattern) {
+        int count = 0;
+        for (size_t i = 0; i < vc.line_queue.size(); ++i)
+            if (match_pattern(vc.line_queue[i], pattern)) ++count;
+        return count;
     }
 
     // Determine implicit pattern expected for standard success commands
@@ -460,6 +520,9 @@ public:
             } else if (token1 == "WAIT") {
                 inst.type = DIR_WAIT;
                 iss >> inst.payload;
+            } else if (token1 == "TIMEOUT") {
+                inst.type = DIR_TIMEOUT;
+                iss >> inst.payload;
             } else {
                 inst.client_id = token1;
                 std::string token2;
@@ -469,6 +532,21 @@ public:
                     inst.type = DIR_EXPECT_DISCONNECT;
                 } else if (token2 == "EXPECT_CONNECTED") {
                     inst.type = DIR_EXPECT_CONNECTED;
+                } else if (token2 == "EXPECT_NONE") {
+                    inst.type = DIR_EXPECT_NONE;
+                    iss >> inst.payload;
+                    if (inst.payload.empty()) inst.payload = "200ms";
+                } else if (token2 == "EXPECT_COUNT") {
+                    inst.type = DIR_EXPECT_COUNT;
+                    std::getline(iss, inst.payload); trim(inst.payload);
+                } else if (token2 == "SEND_RAW") {
+                    inst.type = DIR_SEND_RAW;
+                    std::getline(iss, inst.payload); if (!inst.payload.empty() && inst.payload[0] == ' ') inst.payload.erase(0, 1);
+                } else if (token2 == "CLOSE_SOCKET" || token2 == "CLOSE_WRITE" || token2 == "RESET" || token2 == "RECONNECT" || token2 == "PAUSE" || token2 == "RESUME") {
+                    inst.type = token2 == "CLOSE_SOCKET" ? DIR_CLOSE_SOCKET : token2 == "CLOSE_WRITE" ? DIR_CLOSE_WRITE : token2 == "RESET" ? DIR_RESET : token2 == "RECONNECT" ? DIR_RECONNECT : token2 == "PAUSE" ? DIR_PAUSE : DIR_RESUME;
+                } else if (token2 == "FLOOD") {
+                    inst.type = DIR_FLOOD;
+                    std::getline(iss, inst.payload); trim(inst.payload);
                 } else if (token2 == "EXPECT") {
                     inst.type = DIR_EXPECT;
                     std::string rest;
@@ -480,12 +558,6 @@ public:
                     std::string rest;
                     std::getline(iss, rest);
                     trim(rest);
-                    inst.payload = rest;
-                } else if (token2 == "SENDPART") {
-                    inst.type = DIR_SENDPART;
-                    std::string rest;
-                    std::getline(iss, rest);
-                    if (!rest.empty() && rest[0] == ' ') rest.erase(0, 1);
                     inst.payload = rest;
                 } else if (token2 == "SEND") {
                     inst.type = DIR_SEND;
@@ -501,11 +573,11 @@ public:
                         inst.client_id = token2; // wait, if line was C1 F SEND ... token1=C1, token2=F
                     }
                     if (token2 == "F") {
-                        iss >> token3; // SEND or SENDPART
+                        iss >> token3; // SEND or SEND_RAW
                         if (token3 == "SEND") {
                             inst.type = DIR_F_SEND;
-                        } else if (token3 == "SENDPART") {
-                            inst.type = DIR_F_SENDPART;
+                        } else if (token3 == "SEND_RAW") {
+                            inst.type = DIR_F_SEND_RAW;
                         }
                     }
                     std::string rest;
@@ -540,6 +612,9 @@ public:
             } else if (inst.type == DIR_WAIT) {
                 int duration = parse_duration_ms(inst.payload);
                 poll_all_clients(duration);
+            } else if (inst.type == DIR_TIMEOUT) {
+                timeout_ms = parse_duration_ms(inst.payload);
+                if (timeout_ms <= 0) timeout_ms = 1;
             } else if (inst.type == DIR_EXPECT_DISCONNECT) {
                 VirtualClient& vc = clients[inst.client_id];
                 poll_all_clients(200);
@@ -558,13 +633,32 @@ public:
                     return false;
                 }
                 logger.log(inst.client_id, "SYS", "Asserted CONNECTED successfully");
-            } else if (inst.type == DIR_SENDPART || inst.type == DIR_F_SENDPART) {
+            } else if (inst.type == DIR_SEND_RAW || inst.type == DIR_F_SEND_RAW) {
                 VirtualClient& vc = clients[inst.client_id];
-                logger.log(inst.client_id, (inst.type == DIR_F_SENDPART ? "F SENDPART" : "SENDPART"), inst.payload);
-                if (!send_raw(vc, inst.payload)) {
-                    std::cerr << "FAIL [" << logger.spec_name << "] Line " << inst.line_number << ": Sendpart failed for " << inst.client_id << std::endl;
+                logger.log(inst.client_id, (inst.type == DIR_F_SEND_RAW ? "F SEND_RAW" : "SEND_RAW"), inst.payload);
+                if (!send_raw(vc, decode_raw_escapes(inst.payload))) {
+                    std::cerr << "FAIL [" << logger.spec_name << "] Line " << inst.line_number << ": SEND_RAW failed for " << inst.client_id << std::endl;
                     return false;
                 }
+            } else if (inst.type == DIR_CLOSE_SOCKET || inst.type == DIR_RESET) {
+                close_client(clients[inst.client_id], inst.type == DIR_RESET);
+            } else if (inst.type == DIR_CLOSE_WRITE) {
+                VirtualClient& vc = clients[inst.client_id];
+                if (vc.fd != -1) { shutdown(vc.fd, SHUT_WR); logger.log(vc.id, "SYS", "Write half-closed"); }
+            } else if (inst.type == DIR_RECONNECT) {
+                VirtualClient& vc = clients[inst.client_id];
+                close_client(vc, false);
+                if (!connect_client(inst.client_id)) return false;
+            } else if (inst.type == DIR_PAUSE || inst.type == DIR_RESUME) {
+                clients[inst.client_id].reading = (inst.type == DIR_RESUME);
+                logger.log(inst.client_id, "SYS", inst.type == DIR_RESUME ? "Reading resumed" : "Reading paused");
+            } else if (inst.type == DIR_FLOOD) {
+                VirtualClient& vc = clients[inst.client_id];
+                std::istringstream fs(inst.payload); int count = 0; fs >> count;
+                std::string payload; std::getline(fs, payload); trim(payload);
+                if (count < 1 || count > 10000 || payload.empty()) return false;
+                for (int n = 0; n < count; ++n) if (!send_raw(vc, payload + "\r\n")) return false;
+                logger.log(inst.client_id, "FLOOD", payload);
             } else if (inst.type == DIR_SEND) {
                 VirtualClient& vc = clients[inst.client_id];
                 logger.log(inst.client_id, "SEND", inst.payload);
@@ -616,6 +710,18 @@ public:
                     logger.log(inst.client_id, "ERROR", "EXPECT assertion failed for pattern: " + inst.payload);
                     std::cerr << "FAIL [" << logger.spec_name << "] Line " << inst.line_number << ": EXPECT assertion failed for " << inst.client_id << " pattern: " << inst.payload << std::endl;
                     return false;
+                }
+            } else if (inst.type == DIR_EXPECT_NONE) {
+                VirtualClient& vc = clients[inst.client_id];
+                if (!assert_none(vc, parse_duration_ms(inst.payload))) {
+                    logger.log(inst.client_id, "ERROR", "EXPECT_NONE observed queued data or disconnect"); return false;
+                }
+            } else if (inst.type == DIR_EXPECT_COUNT) {
+                VirtualClient& vc = clients[inst.client_id]; std::istringstream es(inst.payload);
+                int expected = 0; es >> expected; std::string pattern; std::getline(es, pattern); trim(pattern);
+                poll_all_clients(timeout_ms);
+                if (count_matching(vc, pattern) != expected) {
+                    logger.log(inst.client_id, "ERROR", "EXPECT_COUNT mismatch: " + inst.payload); return false;
                 }
             } else if (inst.type == DIR_WAIT_RECV) {
                 VirtualClient& vc = clients[inst.client_id];

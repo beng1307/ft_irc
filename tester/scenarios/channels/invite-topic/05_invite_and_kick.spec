@@ -10,7 +10,8 @@ C2 SEND USER bob 0 * :Bob
 
 C1 SEND JOIN #42
 C1 SEND MODE #42 +i
-C2 F SEND JOIN #42
+C2 SEND JOIN #42
+C2 EXPECT 473 Bob #42 :Cannot join channel (+i)
 
 C1 SEND INVITE Bob #42
 C2 WAIT_RECV :Alice!* INVITE Bob :#42

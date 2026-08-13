@@ -50,8 +50,8 @@ changes.
 
 | Suite/folder | Current scenarios | Covered behavior and gaps |
 | --- | --- | --- |
-| `registration/` | `01_pass_failure`, `02_fragmentation`, `03_basic_registration` | Correct PASS success/failure, fragmented NICK buffering, registration, duplicate-client messaging setup. The failure case does not assert the documented disconnect despite the scenario documentation showing it. |
-| `messaging/` | `03_basic_registration`, `04_channel_join_and_broadcast`, `10_client_disconnect` | User-to-user, channel broadcast to another member, QUIT broadcast, and one socket-liveness check. No negative recipient/text/unknown-target cases. |
+| `registration/` | `01_pass_failure`, `02_fragmentation`, `11_parameter_errors`, `12_duplicate_nick_recovery`, `13_command_case_and_fragmentation` | Correct PASS failure, fragmented NICK buffering, parameter errors, duplicate nickname recovery, and command case handling. |
+| `messaging/` | `03_basic_registration_and_privmsg`, `14_negative_targets`, `15_recipient_isolation` | User-to-user delivery, distinct negative target errors, and recipient isolation. |
 | `channels/access/` | `04`, `05`, `06`, `07` | Create/join, invite-only, key, user limit, invite then join, kick. No PART, rejoin-after-kick, mode removal, or invalid channel names. |
 | `channels/topic/` | `08` | +t restriction and topic broadcast. No topic query/empty topic, missing channel, or persistence after PART/rejoin. |
 | `channels/ops/` | `09` | Non-op rejection, +o, then operator KICK. No -o, operator handoff/removal, or invalid target paths. |

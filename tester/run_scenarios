@@ -10,6 +10,18 @@ fi
 
 HOST="${HOST:-127.0.0.1}"
 PORT="${PORT:-6667}"
+SERVER_PID=""
+
+# Optional isolated server lifecycle. Existing users can continue to start the
+# server themselves; when SERVER_BIN is set it receives PORT, PASSWORD, and
+# shell-word-split SERVER_EXTRA_ARGS in that order.
+if [ -n "${SERVER_BIN:-}" ]; then
+    read -r -a EXTRA_ARGS <<< "${SERVER_EXTRA_ARGS:-}"
+    "$SERVER_BIN" "$PORT" "${PASSWORD:-}" "${EXTRA_ARGS[@]}" &
+    SERVER_PID=$!
+    trap 'if [ -n "$SERVER_PID" ]; then kill "$SERVER_PID" 2>/dev/null || true; wait "$SERVER_PID" 2>/dev/null || true; fi' EXIT INT TERM
+    sleep "${SERVER_START_DELAY:-0.1}"
+fi
 SCENARIOS_DIR="${SCRIPT_DIR}/scenarios"
 
 SPECS=()
@@ -20,25 +32,25 @@ add_spec_by_num() {
     if [[ "$num_str" =~ ^[0-9]+$ ]]; then
         local formatted
         formatted=$(printf "%02d" "$num_str" 2>/dev/null || echo "$num_str")
-        for f in "$SCENARIOS_DIR"/${formatted}*.spec "$SCENARIOS_DIR"/${num_str}*.spec; do
+        while IFS= read -r f; do
             if [ -f "$f" ]; then
                 if [[ ! " ${SPECS[*]} " =~ " ${f} " ]]; then
                     SPECS+=("$f")
                     return 0
                 fi
             fi
-        done
+        done < <(find "$SCENARIOS_DIR" -type f -name "${formatted}*.spec" -o -type f -name "${num_str}*.spec" | sort)
     fi
     return 1
 }
 
 if [ $# -eq 0 ]; then
     # Without args: run all specs
-    for f in "$SCENARIOS_DIR"/*.spec; do
+    while IFS= read -r f; do
         if [ -f "$f" ]; then
             SPECS+=("$f")
         fi
-    done
+    done < <(find "$SCENARIOS_DIR" -type f -name '*.spec' | sort)
 else
     # Process specified numbers / arguments
     for arg in "$@"; do

@@ -14,7 +14,8 @@ C1 WAIT_RECV :Bob!* JOIN #topicchan
 
 C1 SEND MODE #topicchan +t
 
-C2 F SEND TOPIC #topicchan :Unauthorised Topic Change
+C2 SEND TOPIC #topicchan :Unauthorised Topic Change
+C2 EXPECT 482 Bob #topicchan :You're not channel operator
 
 C1 SEND TOPIC #topicchan :Official Channel Topic
 C2 WAIT_RECV :Alice!* TOPIC #topicchan :Official Channel Topic

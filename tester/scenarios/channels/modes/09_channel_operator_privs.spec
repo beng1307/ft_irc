@@ -17,8 +17,9 @@ C2 SEND JOIN #opchan
 C3 SEND JOIN #opchan
 C1 WAIT_RECV :Charlie!* JOIN #opchan
 
-# C2 is regular user -> non-op cannot kick C3
-C2 F SEND KICK #opchan Charlie :Out!
+# C2 is a regular user and must receive the operator error.
+C2 SEND KICK #opchan Charlie :Out!
+C2 EXPECT 482 Bob #opchan :You're not channel operator
 
 # C1 grants op to C2
 C1 SEND MODE #opchan +o Bob

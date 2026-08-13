@@ -13,13 +13,16 @@ It manages multiple virtual TCP client connections within a single process to ex
 * **Single Test Runner**: Manages an arbitrary number of virtual TCP client sockets (`C1`, `C2`, ...).
 * **Linear Execution**: Processes script instructions top-to-bottom.
 * **Implicit Command Response Handling**: Commands that trigger standard successful responses automatically await their corresponding echo/confirmation from the server before moving to the next script line.
-  * `SEND USER` $\rightarrow$ Implicitly awaits `001 RPL_WELCOME` (and mandatory initial registration burst).
-  * `SEND JOIN #chan` $\rightarrow$ Implicitly awaits `:Sender!* JOIN #chan` (and channel topic/names list).
+  * `SEND USER` $\rightarrow$ Implicitly awaits `001 RPL_WELCOME`.
+  * `SEND JOIN #chan` $\rightarrow$ Implicitly awaits `:Sender!* JOIN #chan`.
   * `SEND MODE #chan +i` $\rightarrow$ Implicitly awaits `:Sender!* MODE #chan +i`.
   * `SEND KICK #chan Target` $\rightarrow$ Implicitly awaits `:Sender!* KICK #chan Target ...`.
   * `SEND TOPIC #chan :topic` $\rightarrow$ Implicitly awaits `:Sender!* TOPIC #chan :topic`.
   * `SEND INVITE Target #chan` $\rightarrow$ Implicitly awaits `341 RPL_INVITING`.
-* **Failure Expectation Modifier (`F`)**: Prefixing a command with `F` (e.g. `C1 F SEND USER alice 0 * :Alice` or `C2 F SEND JOIN #42`) inverts the implicit expectation. Instead of expecting a success response (or 001/JOIN echo), the runner asserts that an **IRC error numeric reply (4xx / 5xx)** is received from the server.
+* **Broad Failure Modifier (`F`)**: Prefixing a command with `F` accepts any IRC
+  error numeric (4xx / 5xx). It is retained for exploratory use only. Scenario
+  contracts must use `SEND` followed by an explicit `EXPECT` for the required
+  numeric and parameters.
 * **Explicit Assertions (`EXPECT`) for Specificity**: Overrides default implicit matching. Used when multiple response types are valid or when asserting exact parameter patterns, exact numeric codes, or non-standard server responses (e.g. distinguishing between `403 ERR_NOSUCHCHANNEL` vs `475 ERR_BADCHANNELKEY`).
 * **Cross-Client Notifications (`WAIT_RECV`)**: Used when a client needs to wait for an **asynchronous broadcast** triggered by another client (e.g., `C2` waiting for `C1`'s `PRIVMSG`, `JOIN`, `KICK`, or `INVITE`).
 * **Single Log File per Spec**: All client activity (`C1`, `C2`, etc.) and system events for `test_name.spec` are written to `tester/logs/test_name.log` in chronological order.
@@ -40,13 +43,21 @@ Declares all virtual client identifiers used in the test file.
 | Directive | Syntax Example | Description |
 | :--- | :--- | :--- |
 | `SEND` | `C1 SEND JOIN #42` | Sends raw string to server (`\r\n` appended). Automatically awaits default successful response on sending client. |
-| `F SEND` | `C1 F SEND USER alice 0 * :Alice` | Sends command expecting an **IRC error reply (4xx/5xx)** instead of success. |
-| `SENDPART` / `F SENDPART` | `C1 SENDPART NICK Al` | Sends raw string without trailing `\r\n` (tests TCP fragmentation and server command buffering). |
+| `F SEND` | `C1 F SEND USER alice 0 * :Alice` | Accepts any error reply; do not use it in a contract test when the expected numeric is known. |
 | `EXPECT` | `C2 EXPECT 475 #42 :*` | Overrides implicit matching to assert a specific response pattern/numeric reply when multiple responses are possible. |
 | `WAIT_RECV` | `C2 WAIT_RECV :C1!* PRIVMSG #42 :Hello` | Blocks until matching incoming message is received on specified client (for cross-client broadcasts). |
 | `WAIT` | `WAIT 500ms` | Delays script execution for specified time. |
 | `EXPECT_DISCONNECT` | `C1 EXPECT_DISCONNECT` | Asserts that the TCP socket for the client was closed by the server. |
 | `EXPECT_CONNECTED` | `C1 EXPECT_CONNECTED` | Asserts that the TCP socket for the client is open and alive. |
+| `SEND_RAW` | `C1 SEND_RAW PING\r\n` | Sends exact bytes; no CRLF is appended. |
+| `CLOSE_SOCKET` / `RESET` | `C1 CLOSE_SOCKET` | Abruptly closes the peer; `RESET` requests an RST where supported. |
+| `CLOSE_WRITE` | `C1 CLOSE_WRITE` | Shuts down only this client’s write side. |
+| `RECONNECT` | `C1 RECONNECT` | Closes and reconnects the named peer. |
+| `PAUSE` / `RESUME` | `C1 PAUSE` | Stops/starts reading while the TCP peer remains connected. |
+| `FLOOD` | `C1 FLOOD 50 PRIVMSG #x :x` | Sends a finite bounded sequence (maximum 10,000). |
+| `EXPECT_NONE` | `C1 EXPECT_NONE 200ms` | Requires no queued response during the quiet window. |
+| `EXPECT_COUNT` | `C1 EXPECT_COUNT 2 * PRIVMSG *` | Checks the count of queued matches. |
+| `TIMEOUT` | `TIMEOUT 750ms` | Sets the default timeout for subsequent assertions. |
 
 ---
 
@@ -58,7 +69,7 @@ Declares all virtual client identifiers used in the test file.
 ### Log Prefix Formats
 * Outgoing client packet: `<CLIENT> SEND <RAW_TEXT>`
 * Outgoing failed-expect packet: `<CLIENT> F SEND <RAW_TEXT>`
-* Outgoing partial packet: `<CLIENT> SENDPART <RAW_TEXT>`
+* Outgoing raw packet: `<CLIENT> SEND_RAW <RAW_TEXT>`
 * Incoming server packet: `<CLIENT> RECV <RAW_TEXT>`
 * System / Internal socket check: `<CLIENT> SYS <INFO>`
 * Assertion / Timeout / Disconnect error: `<CLIENT> ERROR <DETAILS>`
@@ -72,10 +83,11 @@ Declares all virtual client identifiers used in the test file.
 CLIENTS C1
 
 C1 SEND PASS WRONGPASSWORD
+C1 EXPECT 464 * :Password incorrect
 C1 SEND NICK Alice
-# Prefix 'F' asserts that USER registration fails (receives 464 ERR_PASSWDMISMATCH or 4xx error)
-C1 F SEND USER alice 0 * :Alice
-C1 EXPECT_DISCONNECT
+C1 SEND_RAW USER alice 0 * :Alice\r\n
+C1 EXPECT_NONE 200ms
+C1 EXPECT_CONNECTED
 ```
 
 ### Scenario B: Fragmented Packet Buffering (`test_fragmentation.spec`)
@@ -83,9 +95,9 @@ C1 EXPECT_DISCONNECT
 CLIENTS C1
 
 C1 SEND PASS 1234
-C1 SENDPART NICK Al
+C1 SEND_RAW NICK Al
 WAIT 200ms
-C1 SENDPART ice\r\n
+C1 SEND_RAW ice\r\n
 C1 SEND USER alice 0 * :Alice
 # Implicitly awaits 001 RPL_WELCOME for C1
 ```
