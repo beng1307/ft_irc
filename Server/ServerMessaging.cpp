@@ -73,6 +73,21 @@ void	Server::broadcast_join_to_channel(Client &joining_client, const std::string
 		send(*it, join_message.c_str(), join_message.size(), 0);
 }
 
+// Informs the members of a channel that a member left.
+void	Server::broadcast_part_to_channel(Client &parting_client, const std::string &channel_name,
+		const std::string &reason)
+{
+	std::set<int> member_fds = get_channels()[channel_name].get_member_fds();
+	std::string part_message = ":" + parting_client.get_nickname() + "!"
+		+ parting_client.get_username() + "@localhost PART " + channel_name;
+
+	if (!reason.empty())
+		part_message += " :" + reason;
+	part_message += "\r\n";
+	for (std::set<int>::const_iterator it = member_fds.begin(); it != member_fds.end(); ++it)
+		send(*it, part_message.c_str(), part_message.size(), 0);
+}
+
 //Sends a welcoming message to client
 void	Server::send_welcome_message(Client &client)
 {

@@ -66,7 +66,8 @@ void	Server::let_client_join_channel(const std::string &channel_name, Client &cl
 
 
 //Parts the given client from the channel.
-void	Server::part_client_from_channel(Client &client, const std::string &channel_name)
+void	Server::part_client_from_channel(Client &client, const std::string &channel_name,
+		const std::string &reason)
 {
 	ChannelMap::iterator it = get_channels().find(channel_name);
 	if (it == get_channels().end())
@@ -81,6 +82,7 @@ void	Server::part_client_from_channel(Client &client, const std::string &channel
 		return ;
 	}
 
+	broadcast_part_to_channel(client, channel_name, reason);
 	it->second.remove_member_from_channel(client.get_socket());
 	std::cout << "Client left channel " << it->second.get_name() << "!" << std::endl;
 }
@@ -179,14 +181,19 @@ void	Server::handle_join_command(Client &client, const std::vector<std::string> 
 }
 
 //Parts the given client from the channel.
-void	Server::handle_part_command(Client &client, const std::vector<std::string> &arguments)
+void	Server::handle_part_command(Client &client, const std::string &line,
+		const std::vector<std::string> &arguments)
 {
 	if (arguments.empty())
 	{
 		send_error_reply(client, "461", "PART :Not enough parameters");
 		return ;
 	}
-	part_client_from_channel(client, arguments[0]);
+	std::string reason;
+	size_t reason_start = line.find(" :");
+	if (reason_start != std::string::npos)
+		reason = line.substr(reason_start + 2);
+	part_client_from_channel(client, arguments[0], reason);
 }
 
 //When the client asks about extra capabilities of the server on connect, it gives a response that it doesn't have them.
@@ -247,7 +254,7 @@ void	Server::dispatch_command(Client &client, const std::string &command,
 	else if (command == "JOIN" && client.get_register_status() == true)
 		handle_join_command(client, arguments);
 	else if (command == "PART" && client.get_register_status() == true)
-		handle_part_command(client, arguments);
+		handle_part_command(client, line, arguments);
 	else if (command == "KICK" && client.get_register_status() == true)
 		handle_kick(client, line, arguments);
 	else if (command == "INVITE" && client.get_register_status() == true)
