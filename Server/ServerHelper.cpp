@@ -45,7 +45,8 @@ bool	Server::is_command(const std::string &line)
 {
 	return (line == "PASS" || line == "USER" || line == "NICK" || line == "JOIN" 
 		|| line == "PART" || line == "PRIVMSG" || line == "KICK"
-		|| line == "INVITE" || line == "TOPIC" || line == "MODE" || line == "CAP");
+		|| line == "INVITE" || line == "TOPIC" || line == "MODE" || line == "CAP"
+		|| line == "PING" || line == "QUIT");
 }
 
 //A splitting function for the arguments.

@@ -8,9 +8,7 @@
 
 5. Write a README
 
-6. Remove stuff that the eval sheet doesn't want
-
-7. Handle signals and Memory leaks on signals
+6. Handle signals
 
 //////////////////////////////////
 // TO DEBUG

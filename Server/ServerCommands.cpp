@@ -3,6 +3,7 @@
 #include <vector>
 #include <cstring>
 #include <sys/socket.h>
+#include <unistd.h>
 #include <iostream>
 
 
@@ -146,7 +147,16 @@ void	Server::handle_nick_command(Client &client, const std::vector<std::string> 
 		send_error_reply(client, "433", arguments[0] + " :Nickname is already in use");
 		return ;
 	}
-	client.set_nickname(arguments[0]);
+
+	//Updates the nickname and informs the client
+	std::string old_nick = client.get_nickname();
+	std::string new_nick = arguments[0];
+
+	std::string nick_message = ":" + old_nick + "!"
+    	+ client.get_username() + "@localhost NICK :" + new_nick + "\r\n";
+
+	send(client.get_socket(), nick_message.c_str(), nick_message.size(), 0);	
+	client.set_nickname(new_nick);
 	try_register_client(client);
 }
 
@@ -249,6 +259,18 @@ void	Server::dispatch_command(Client &client, const std::string &command,
 		handle_cap_command(client, arguments);
 	else if (command == "PRIVMSG" && client.get_register_status() == true)
 		handle_privmsg_command(client, line, arguments);
+	else if (command == "PING")
+	{
+		std::string token = arguments.empty() ? "localhost" : arguments[0];
+		std::string pong = ":localhost PONG localhost :" + token + "\r\n";
+		send(client.get_socket(), pong.c_str(), pong.size(), 0);
+	}
+	else if (command == "QUIT")
+	{
+		std::string bye = "ERROR :Closing connection\r\n";
+		send(client.get_socket(), bye.c_str(), bye.size(), 0);
+		close(client.get_socket());
+	}
 }
 
 

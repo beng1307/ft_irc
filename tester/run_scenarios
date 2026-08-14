@@ -22,6 +22,7 @@ if [ -n "${SERVER_BIN:-}" ]; then
     trap 'if [ -n "$SERVER_PID" ]; then kill "$SERVER_PID" 2>/dev/null || true; wait "$SERVER_PID" 2>/dev/null || true; fi' EXIT INT TERM
     sleep "${SERVER_START_DELAY:-0.1}"
 fi
+PORT="${PORT:-6667}"0
 SCENARIOS_DIR="${SCRIPT_DIR}/scenarios"
 
 SPECS=()

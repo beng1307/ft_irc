@@ -248,6 +248,10 @@ void	Server::handle_mode(Client &client, const std::string &line,
 	}
 
 	const std::string &channel_name = arguments[0];
+
+	if (channel_name.empty() || channel_name[0] != '#')
+		return ;
+
 	ChannelMap::iterator channel_it;
 	if (!ensure_channel_exists(*this, client, channel_name, channel_it))
 		return ;
