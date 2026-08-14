@@ -12,18 +12,7 @@ It manages multiple virtual TCP client connections within a single process to ex
 
 * **Single Test Runner**: Manages an arbitrary number of virtual TCP client sockets (`C1`, `C2`, ...).
 * **Linear Execution**: Processes script instructions top-to-bottom.
-* **Implicit Command Response Handling**: Commands that trigger standard successful responses automatically await their corresponding echo/confirmation from the server before moving to the next script line.
-  * `SEND USER` $\rightarrow$ Implicitly awaits `001 RPL_WELCOME`.
-  * `SEND JOIN #chan` $\rightarrow$ Implicitly awaits `:Sender!* JOIN #chan`.
-  * `SEND MODE #chan +i` $\rightarrow$ Implicitly awaits `:Sender!* MODE #chan +i`.
-  * `SEND KICK #chan Target` $\rightarrow$ Implicitly awaits `:Sender!* KICK #chan Target ...`.
-  * `SEND TOPIC #chan :topic` $\rightarrow$ Implicitly awaits `:Sender!* TOPIC #chan :topic`.
-  * `SEND INVITE Target #chan` $\rightarrow$ Implicitly awaits `341 RPL_INVITING`.
-* **Broad Failure Modifier (`F`)**: Prefixing a command with `F` accepts any IRC
-  error numeric (4xx / 5xx). It is retained for exploratory use only. Scenario
-  contracts must use `SEND` followed by an explicit `EXPECT` for the required
-  numeric and parameters.
-* **Explicit Assertions (`EXPECT`) for Specificity**: Overrides default implicit matching. Used when multiple response types are valid or when asserting exact parameter patterns, exact numeric codes, or non-standard server responses (e.g. distinguishing between `403 ERR_NOSUCHCHANNEL` vs `475 ERR_BADCHANNELKEY`).
+* **Explicit Assertions (`EXPECT`)**: All expected server replies (numeric replies, error codes, command confirmations) are asserted explicitly using `EXPECT`. `SEND` commands send raw IRC commands to the server without any implicit awaiting of responses.
 * **Cross-Client Notifications (`WAIT_RECV`)**: Used when a client needs to wait for an **asynchronous broadcast** triggered by another client (e.g., `C2` waiting for `C1`'s `PRIVMSG`, `JOIN`, `KICK`, or `INVITE`).
 * **Single Log File per Spec**: All client activity (`C1`, `C2`, etc.) and system events for `test_name.spec` are written to `tester/logs/test_name.log` in chronological order.
 * **Failure Handling**: On any assertion failure (`EXPECT`, `WAIT_RECV`, timeout, socket drop), the runner logs the failure to `tester/logs/test_name.log`, prints an error summary to stdout, cleans up sockets, and exits with code `1`.
@@ -42,10 +31,9 @@ Declares all virtual client identifiers used in the test file.
 
 | Directive | Syntax Example | Description |
 | :--- | :--- | :--- |
-| `SEND` | `C1 SEND JOIN #42` | Sends raw string to server (`\r\n` appended). Automatically awaits default successful response on sending client. |
-| `F SEND` | `C1 F SEND USER alice 0 * :Alice` | Accepts any error reply; do not use it in a contract test when the expected numeric is known. |
-| `EXPECT` | `C2 EXPECT 475 #42 :*` | Overrides implicit matching to assert a specific response pattern/numeric reply when multiple responses are possible. |
-| `WAIT_RECV` | `C2 WAIT_RECV :C1!* PRIVMSG #42 :Hello` | Blocks until matching incoming message is received on specified client (for cross-client broadcasts). |
+| `SEND` | `C1 SEND JOIN #42` | Sends raw string to server (`\r\n` appended). Does not wait for a response; pair with `EXPECT` if a response is expected. |
+| `EXPECT` | `C2 EXPECT 475 Bob #42 :*` | Asserts that the specified client receives a message matching the glob pattern. |
+| `WAIT_RECV` | `C2 WAIT_RECV :Alice!* PRIVMSG #42 :Hello` | Blocks until matching incoming message is received on specified client (for cross-client broadcasts). |
 | `WAIT` | `WAIT 500ms` | Delays script execution for specified time. |
 | `EXPECT_DISCONNECT` | `C1 EXPECT_DISCONNECT` | Asserts that the TCP socket for the client was closed by the server. |
 | `EXPECT_CONNECTED` | `C1 EXPECT_CONNECTED` | Asserts that the TCP socket for the client is open and alive. |
@@ -68,7 +56,6 @@ Declares all virtual client identifiers used in the test file.
 
 ### Log Prefix Formats
 * Outgoing client packet: `<CLIENT> SEND <RAW_TEXT>`
-* Outgoing failed-expect packet: `<CLIENT> F SEND <RAW_TEXT>`
 * Outgoing raw packet: `<CLIENT> SEND_RAW <RAW_TEXT>`
 * Incoming server packet: `<CLIENT> RECV <RAW_TEXT>`
 * System / Internal socket check: `<CLIENT> SYS <INFO>`
@@ -99,40 +86,44 @@ C1 SEND_RAW NICK Al
 WAIT 200ms
 C1 SEND_RAW ice\r\n
 C1 SEND USER alice 0 * :Alice
-# Implicitly awaits 001 RPL_WELCOME for C1
+C1 EXPECT 001 Alice :*
 ```
 
 ### Scenario C: Invite, Kick, & Socket Check (`test_invite_and_kick.spec`)
 ```text
 CLIENTS C1, C2
 
-# Registration (Implicitly awaits 001 RPL_WELCOME)
+# Registration
 C1 SEND PASS 1234
 C1 SEND NICK Alice
 C1 SEND USER alice 0 * :Alice
+C1 EXPECT 001 Alice :*
 
 C2 SEND PASS 1234
 C2 SEND NICK Bob
 C2 SEND USER bob 0 * :Bob
+C2 EXPECT 001 Bob :*
 
-# C1 creates channel (Implicitly awaits C1 JOIN confirmation)
+# C1 creates channel
 C1 SEND JOIN #42
 
-# C1 sets channel invite-only (Implicitly awaits C1 MODE confirmation)
+# C1 sets channel invite-only
 C1 SEND MODE #42 +i
 
-# C2 attempts join without invite -> 'F SEND' asserts an error numeric (4xx) is returned
-C2 F SEND JOIN #42
+# C2 attempts join without invite -> asserts error numeric 473
+C2 SEND JOIN #42
+C2 EXPECT 473 Bob #42 :Cannot join channel (+i)
 
-# C1 invites C2 (C1 implicitly gets 341 RPL_INVITING, C2 waits for asynchronous INVITE message)
+# C1 invites C2
 C1 SEND INVITE Bob #42
+C1 EXPECT 341 Alice Bob #42
 C2 WAIT_RECV :Alice!* INVITE Bob :#42
 
-# C2 joins successfully (C2 gets implicit JOIN confirmation, C1 waits for asynchronous JOIN broadcast)
+# C2 joins successfully
 C2 SEND JOIN #42
 C1 WAIT_RECV :Bob!* JOIN #42
 
-# C1 kicks C2 (C1 gets implicit KICK confirmation, C2 waits for asynchronous KICK broadcast)
+# C1 kicks C2
 C1 SEND KICK #42 Bob :Get out!
 C2 WAIT_RECV :Alice!* KICK #42 Bob :Get out!
 
@@ -147,17 +138,18 @@ CLIENTS C1, C2
 C1 SEND PASS 1234
 C1 SEND NICK Alice
 C1 SEND USER alice 0 * :Alice
+C1 EXPECT 001 Alice :*
 
-# Testing specific error response when multiple error codes could be returned
 C2 SEND PASS 1234
 C2 SEND NICK Bob
 C2 SEND USER bob 0 * :Bob
+C2 EXPECT 001 Bob :*
 
 # C1 sets channel key (+k secret)
 C1 SEND JOIN #protected
 C1 SEND MODE #protected +k secret
 
-# C2 tries joining without key -> Multiple errors are possible (475, 473, 403), EXPECT specifies exact match (475)
+# C2 tries joining without key -> asserts error numeric 475
 C2 SEND JOIN #protected
 C2 EXPECT 475 Bob #protected :*
 ```

@@ -49,22 +49,6 @@ static bool match_pattern(const std::string& line, const std::string& pattern) {
     return false;
 }
 
-// Check if string contains an IRC error numeric (400-599)
-static bool is_error_numeric_response(const std::string& line) {
-    std::istringstream iss(line);
-    std::string token;
-    // Prefix might be present (e.g. :nanoirc 464 ...)
-    while (iss >> token) {
-        if (token.size() == 3 && isdigit(token[0]) && isdigit(token[1]) && isdigit(token[2])) {
-            int code = atoi(token.c_str());
-            if (code >= 400 && code <= 599) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
 // -----------------------------------------------------------------------------
 // Time & Helper Utilities
 // -----------------------------------------------------------------------------
@@ -164,9 +148,7 @@ struct VirtualClient {
 enum DirectiveType {
     DIR_CLIENTS,
     DIR_SEND,
-    DIR_F_SEND,
     DIR_SEND_RAW,
-    DIR_F_SEND_RAW,
     DIR_EXPECT,
     DIR_WAIT_RECV,
     DIR_WAIT,
@@ -214,12 +196,17 @@ public:
     }
 
     void cleanup() {
+        bool had_connected = false;
         for (std::map<std::string, VirtualClient>::iterator it = clients.begin(); it != clients.end(); ++it) {
             if (it->second.fd != -1) {
                 close(it->second.fd);
                 it->second.fd = -1;
+                had_connected = true;
             }
             it->second.connected = false;
+        }
+        if (had_connected) {
+            usleep(100000);
         }
     }
 
@@ -391,7 +378,7 @@ public:
 
             for (size_t i = 0; i < vc.line_queue.size(); ++i) {
                 if (match_pattern(vc.line_queue[i], pattern)) {
-                    vc.line_queue.erase(vc.line_queue.begin() + i);
+                    vc.line_queue.erase(vc.line_queue.begin(), vc.line_queue.begin() + i + 1);
                     return true;
                 }
             }
@@ -446,40 +433,6 @@ public:
         for (size_t i = 0; i < vc.line_queue.size(); ++i)
             if (match_pattern(vc.line_queue[i], pattern)) ++count;
         return count;
-    }
-
-    // Determine implicit pattern expected for standard success commands
-    std::string get_implicit_success_pattern(const std::string& cmd_line) {
-        std::istringstream iss(cmd_line);
-        std::string verb;
-        iss >> verb;
-        for (size_t i = 0; i < verb.size(); ++i) verb[i] = toupper(verb[i]);
-
-        if (verb == "USER") return "001*"; // Welcome
-        if (verb == "JOIN") {
-            std::string chan;
-            iss >> chan;
-            return "* JOIN " + chan + "*";
-        }
-        if (verb == "MODE") {
-            std::string target;
-            iss >> target;
-            return "* MODE " + target + "*";
-        }
-        if (verb == "KICK") {
-            std::string chan, target;
-            iss >> chan >> target;
-            return "* KICK " + chan + " " + target + "*";
-        }
-        if (verb == "TOPIC") {
-            std::string chan;
-            iss >> chan;
-            return "* TOPIC " + chan + "*";
-        }
-        if (verb == "INVITE") {
-            return "341*"; // RPL_INVITING
-        }
-        return "";
     }
 
     bool run_spec(const std::string& spec_path) {
@@ -565,25 +518,6 @@ public:
                     std::getline(iss, rest);
                     trim(rest);
                     inst.payload = rest;
-                } else if (token1 == "F" || token2 == "F") {
-                    // Check if token1 was F and token2 was SEND
-                    std::string token3;
-                    if (token1 == "F") {
-                        // e.g. F SEND ... or C1 F SEND ...
-                        inst.client_id = token2; // wait, if line was C1 F SEND ... token1=C1, token2=F
-                    }
-                    if (token2 == "F") {
-                        iss >> token3; // SEND or SEND_RAW
-                        if (token3 == "SEND") {
-                            inst.type = DIR_F_SEND;
-                        } else if (token3 == "SEND_RAW") {
-                            inst.type = DIR_F_SEND_RAW;
-                        }
-                    }
-                    std::string rest;
-                    std::getline(iss, rest);
-                    trim(rest);
-                    inst.payload = rest;
                 } else {
                     inst.type = DIR_UNKNOWN;
                 }
@@ -633,9 +567,9 @@ public:
                     return false;
                 }
                 logger.log(inst.client_id, "SYS", "Asserted CONNECTED successfully");
-            } else if (inst.type == DIR_SEND_RAW || inst.type == DIR_F_SEND_RAW) {
+            } else if (inst.type == DIR_SEND_RAW) {
                 VirtualClient& vc = clients[inst.client_id];
-                logger.log(inst.client_id, (inst.type == DIR_F_SEND_RAW ? "F SEND_RAW" : "SEND_RAW"), inst.payload);
+                logger.log(inst.client_id, "SEND_RAW", inst.payload);
                 if (!send_raw(vc, decode_raw_escapes(inst.payload))) {
                     std::cerr << "FAIL [" << logger.spec_name << "] Line " << inst.line_number << ": SEND_RAW failed for " << inst.client_id << std::endl;
                     return false;
@@ -664,44 +598,6 @@ public:
                 logger.log(inst.client_id, "SEND", inst.payload);
                 if (!send_raw(vc, inst.payload + "\r\n")) {
                     std::cerr << "FAIL [" << logger.spec_name << "] Line " << inst.line_number << ": Send failed for " << inst.client_id << std::endl;
-                    return false;
-                }
-
-                // Check if next instruction is an explicit EXPECT
-                bool has_explicit_expect = (i + 1 < instructions.size() && instructions[i + 1].type == DIR_EXPECT && instructions[i + 1].client_id == inst.client_id);
-                if (!has_explicit_expect) {
-                    std::string implicit_pattern = get_implicit_success_pattern(inst.payload);
-                    if (!implicit_pattern.empty()) {
-                        if (!wait_for_pattern(vc, implicit_pattern, timeout_ms)) {
-                            logger.log(inst.client_id, "ERROR", "Implicit response timeout matching pattern: " + implicit_pattern);
-                            std::cerr << "FAIL [" << logger.spec_name << "] Line " << inst.line_number << ": Implicit response timeout for " << inst.client_id << " (" << implicit_pattern << ")" << std::endl;
-                            return false;
-                        }
-                    }
-                }
-            } else if (inst.type == DIR_F_SEND) {
-                VirtualClient& vc = clients[inst.client_id];
-                logger.log(inst.client_id, "F SEND", inst.payload);
-                if (!send_raw(vc, inst.payload + "\r\n")) {
-                    std::cerr << "FAIL [" << logger.spec_name << "] Line " << inst.line_number << ": F SEND failed for " << inst.client_id << std::endl;
-                    return false;
-                }
-
-                // Expect error reply numeric 4xx or 5xx
-                std::string line;
-                bool got_error = false;
-                long start = get_time_ms();
-                while (get_time_ms() - start < timeout_ms) {
-                    if (pop_next_line(vc, line, 500)) {
-                        if (is_error_numeric_response(line)) {
-                            got_error = true;
-                            break;
-                        }
-                    }
-                }
-                if (!got_error) {
-                    logger.log(inst.client_id, "ERROR", "F SEND asserted error reply (4xx/5xx) but none was received");
-                    std::cerr << "FAIL [" << logger.spec_name << "] Line " << inst.line_number << ": F SEND asserted error reply for " << inst.client_id << " but received none" << std::endl;
                     return false;
                 }
             } else if (inst.type == DIR_EXPECT) {

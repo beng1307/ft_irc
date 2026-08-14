@@ -20,9 +20,8 @@ if [ -n "${SERVER_BIN:-}" ]; then
     "$SERVER_BIN" "$PORT" "${PASSWORD:-}" "${EXTRA_ARGS[@]}" &
     SERVER_PID=$!
     trap 'if [ -n "$SERVER_PID" ]; then kill "$SERVER_PID" 2>/dev/null || true; wait "$SERVER_PID" 2>/dev/null || true; fi' EXIT INT TERM
-    sleep "${SERVER_START_DELAY:-0.1}"
+    sleep "${SERVER_START_DELAY:-0.5}"
 fi
-PORT="${PORT:-6667}"0
 SCENARIOS_DIR="${SCRIPT_DIR}/scenarios"
 
 SPECS=()
@@ -90,6 +89,7 @@ for spec in "${SPECS[@]}"; do
     echo "----------------------------------------"
     echo "Running tester/${spec_rel}..."
     "$TESTRUNNER_BIN" --host "$HOST" --port "$PORT" "$spec" || failed=$((failed + 1))
+    sleep 0.05
 done
 
 echo "----------------------------------------"

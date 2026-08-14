@@ -8,4 +8,6 @@ C1 SEND USER
 C1 EXPECT 461 * USER :Not enough parameters
 C1 SEND NICK Alice
 C1 SEND USER alice 0 * :Alice
+C1 EXPECT 001 Alice :*
 C1 EXPECT_CONNECTED
+

@@ -32,12 +32,10 @@ example `scenarios/registration/ID_new_test_sequence.spec`.
 
 ### ADVERSARIAL DIRECTIVES
 
-The original directives remain compatible. Additional transport and oracle
-controls are `SEND_RAW`, `CLOSE_SOCKET`, `CLOSE_WRITE`, `RESET`,
+The supported directives include `SEND_RAW`, `CLOSE_SOCKET`, `CLOSE_WRITE`, `RESET`,
 `RECONNECT`, `PAUSE`, `RESUME`, `FLOOD count payload`, `EXPECT_NONE duration`,
-`EXPECT_COUNT n pattern`, and `TIMEOUT duration`. The old spellings
-`SENDPART` and `F SENDPART` have been replaced by `SEND_RAW` and
-`F SEND_RAW`. In `SEND_RAW`, use `\\r`, `\\n`, and `\\\\` to send carriage
+`EXPECT_COUNT n pattern`, and `TIMEOUT duration`. The old `SENDPART` spelling
+has been replaced by `SEND_RAW`. In `SEND_RAW`, use `\\r`, `\\n`, and `\\\\` to send carriage
 return, newline, and backslash bytes respectively.
 
 Traffic generation is finite and capped at 10,000 lines. `RESET` requests an

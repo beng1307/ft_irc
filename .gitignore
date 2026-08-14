@@ -5,3 +5,4 @@ tester/logs
 *.o
 ft_irc
 testrunner
+filters.toml
