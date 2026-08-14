@@ -20,6 +20,7 @@ void	Server::let_client_join_channel(const std::string &channel_name, Client &cl
  
 		get_channels()[channel_name].add_member(client_fd);
 		get_channels()[channel_name].add_operator(client_fd);
+		broadcast_join_to_channel(client, channel_name);
 		std::cout << "Client joined channel " << channel_name << "!" << std::endl;
 		return ;
 	}
