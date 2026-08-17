@@ -99,6 +99,7 @@ class Server
 		void							try_register_client(Client &client);
 		std::string						to_string_size_t(size_t value);
 		bool							is_positive_number(const std::string &value);
+		bool							is_valid_nickname(const std::string &nickname);
 		void							handle_kick(Client &client, const std::string &line,
 											 const std::vector<std::string> &arguments);
 		void							handle_invite(Client &client,

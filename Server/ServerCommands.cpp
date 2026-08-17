@@ -144,7 +144,11 @@ void	Server::handle_nick_command(Client &client, const std::vector<std::string> 
 		send_error_reply(client, "431", ":No nickname given");
 		return ;
 	}
-	// TODO: maybe check if the nickname is valid.
+	if (!is_valid_nickname(arguments[0]))
+	{
+		send_error_reply(client, "432", arguments[0] + " :Erroneous nickname");
+		return ;
+	}
 	Client *existing_client = find_client_by_nickname(arguments[0]);
 	if (existing_client != NULL
 		&& existing_client->get_socket() != client.get_socket()

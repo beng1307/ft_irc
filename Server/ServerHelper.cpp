@@ -25,6 +25,20 @@ bool	Server::is_positive_number(const std::string &value)
 	return (true);
 }
 
+//Checks if the nickname is valid: non-empty, contains only letters (a-z, A-Z), digits (0-9), and underscore (_)
+bool	Server::is_valid_nickname(const std::string &nickname)
+{
+	if (nickname.empty())
+		return (false);
+	for (size_t i = 0; i < nickname.size(); ++i)
+	{
+		char c = nickname[i];
+		if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_')
+			return (false);
+	}
+	return (true);
+}
+
 
 //Creates a new filedescriptor and adds it to the fds.
 //Events are the events to monitor and the reevents are
