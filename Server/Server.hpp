@@ -92,6 +92,8 @@ class Server
 		void							handle_cap_command(Client &client, const std::vector<std::string> &arguments);
 		void							handle_privmsg_command(Client &client, const std::string &line,
 												const std::vector<std::string> &arguments);
+		void							handle_quit_command(Client &client, const std::string &line,
+												const std::vector<std::string> &arguments);
 		bool							is_command(const std::string &line);
 		void							try_register_client(Client &client);
 		std::string						to_string_size_t(size_t value);

@@ -240,6 +240,48 @@ void	Server::handle_privmsg_command(Client &client, const std::string &line,
 		send_message_to_user(client, target, message);
 }
 
+void	Server::handle_quit_command(Client &client, const std::string &line,
+		const std::vector<std::string> &arguments)
+{
+	std::string reason = "Leaving server";
+	size_t reason_start = line.find(" :");
+	if (reason_start != std::string::npos)
+		reason = line.substr(reason_start + 2);
+	else if (!arguments.empty())
+		reason = arguments[0];
+
+	std::string nick = client.get_nickname();
+	std::string user = client.get_username();
+	std::string prefix = ":" + nick + "!" + user + "@localhost";
+	std::string quit_message = prefix + " QUIT :" + reason + "\r\n";
+
+	std::set<int> recipient_fds;
+	for (ChannelMap::const_iterator cit = get_channels().begin(); cit != get_channels().end(); ++cit)
+	{
+		if (cit->second.has_member(client.get_socket()))
+		{
+			const std::set<int> &members = cit->second.get_member_fds();
+			for (std::set<int>::const_iterator mit = members.begin(); mit != members.end(); ++mit)
+			{
+				if (*mit != client.get_socket())
+					recipient_fds.insert(*mit);
+			}
+		}
+	}
+
+	for (std::set<int>::const_iterator rit = recipient_fds.begin(); rit != recipient_fds.end(); ++rit)
+	{
+		send(*rit, quit_message.c_str(), quit_message.size(), 0);
+	}
+
+	std::string bye = "ERROR :Closing connection\r\n";
+	send(client.get_socket(), bye.c_str(), bye.size(), 0);
+
+	cleanup_client_disconnect(client.get_socket());
+	close(client.get_socket());
+	client.get_buffer().clear();
+}
+
 //Checks which command it is and uses the right function for it.
 void	Server::dispatch_command(Client &client, const std::string &command,
 		const std::string &line, const std::vector<std::string> &arguments)
@@ -274,11 +316,7 @@ void	Server::dispatch_command(Client &client, const std::string &command,
 		send(client.get_socket(), pong.c_str(), pong.size(), 0);
 	}
 	else if (command == "QUIT")
-	{
-		std::string bye = "ERROR :Closing connection\r\n";
-		send(client.get_socket(), bye.c_str(), bye.size(), 0);
-		close(client.get_socket());
-	}
+		handle_quit_command(client, line, arguments);
 }
 
 
