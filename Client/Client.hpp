@@ -2,6 +2,7 @@
 # define CLIENT_HPP
 
 #include <string>
+#include "../helpers/Wire.hpp"
 
 
 class Client
@@ -13,15 +14,15 @@ class Client
 		
 		int				socket;
 
-		std::string		password;
-		std::string		username;
-		std::string		nickname;
+		Wire			password;
+		Wire			username;
+		Wire			nickname;
 		
 		bool			pass_ok;
 		bool			is_registered;
 		bool 			is_admin;
 
-		std::string		buffer;
+		Wire			buffer;
 
 	public:
 
@@ -37,7 +38,7 @@ class Client
 		///////////////////////////////////////////////////////////////////////////////
 		// Methods & helper functions
 		
-		void register_client(const std::string &password);
+		void register_client(const Wire &password);
 
 
 		///////////////////////////////////////////////////////////////////////////////
@@ -46,17 +47,17 @@ class Client
 		void		set_socket(const int &socket);
 		int			get_socket() const;
 
-		void		set_password(const std::string &password);
-		std::string	get_password() const;
+		void		set_password(const Wire &password);
+		Wire		get_password() const;
 
 		void		set_pass_ok(const bool &pass_ok);
 		bool		get_pass_ok() const;
 
-		void		set_username(const std::string &username);
-		std::string	get_username() const;
+		void		set_username(const Wire &username);
+		Wire		get_username() const;
 
-		void		set_nickname(const std::string &nickname);
-		std::string	get_nickname() const;
+		void		set_nickname(const Wire &nickname);
+		Wire		get_nickname() const;
 
 		void		set_admin_status(const bool &admin_status);
 		bool		get_admin_status() const;
@@ -64,9 +65,9 @@ class Client
 		void		set_register_status(const bool &register_status);
 		bool		get_register_status() const;
 
-		void		set_buffer(const std::string &buffer);
-		std::string	&get_buffer();
-		std::string	get_buffer() const;
+		void		set_buffer(const Wire &buffer);
+		Wire		&get_buffer();
+		Wire		get_buffer() const;
 
 };
 		

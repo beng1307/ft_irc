@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string>
 #include "../helpers/print.hpp"
+#include "../helpers/Wire.hpp"
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -52,7 +53,7 @@ Client	&Client::operator=(const Client &other)
 ///////////////////////////////////////////////////////////////////////////////
 // Methods & helper functions
 
-void	Client::register_client(const std::string &password)
+void	Client::register_client(const Wire &password)
 {
 	if (this->password == password && !nickname.empty() && !username.empty())
 	{
@@ -76,12 +77,12 @@ int	Client::get_socket() const
 }
 
 
-void	Client::set_password(const std::string &password)
+void	Client::set_password(const Wire &password)
 {
 	this->password = password;
 }
 
-std::string	Client::get_password() const
+Wire	Client::get_password() const
 {
 	return (password);
 }
@@ -97,23 +98,23 @@ bool	Client::get_pass_ok() const
 }
 
 
-void	Client::set_username(const std::string &username)
+void	Client::set_username(const Wire &username)
 {
 	this->username = username;
 }
 
-std ::string	Client::get_username() const
+Wire	Client::get_username() const
 {
 	return (username);
 }
 
 
-void	Client::set_nickname(const std::string &nickname)
+void	Client::set_nickname(const Wire &nickname)
 {
 	this->nickname = nickname;
 }
 
-std::string	Client::get_nickname() const
+Wire	Client::get_nickname() const
 {
 	return (nickname);
 }
@@ -140,17 +141,17 @@ bool	Client::get_register_status() const
 	return (is_registered);
 }
 
-void	Client::set_buffer(const std::string &buffer)
+void	Client::set_buffer(const Wire &buffer)
 {
 	this->buffer = buffer;
 }
 
-std::string	&Client::get_buffer()
+Wire	&Client::get_buffer()
 {
 	return (buffer);
 }
 
-std::string	Client::get_buffer() const
+Wire	Client::get_buffer() const
 {
 	return (buffer);
 }

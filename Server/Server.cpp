@@ -1,6 +1,7 @@
 #include "Server.hpp"
 #include "../Client/Client.hpp"
 #include "../Channel/Channel.hpp"
+#include "../helpers/Wire.hpp"
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -11,7 +12,7 @@ Server::Server()
 	return ;
 }
 
-Server::Server(int port, std::string password):
+Server::Server(int port, Wire password):
 	port(port), password(password), server_socket(0), clients(), channels(), fds()
 {
 	return ;
@@ -55,12 +56,12 @@ unsigned int	Server::get_port() const
 	return (port);
 }
 
-void	Server::set_password(const std::string &password)
+void	Server::set_password(const Wire &password)
 {
 	this->password = password;
 }
 
-std::string	Server::get_password() const
+Wire	Server::get_password() const
 {
 	return (password);
 }

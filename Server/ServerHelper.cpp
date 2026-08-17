@@ -2,17 +2,18 @@
 #include <sstream>
 #include <iostream>
 #include "../helpers/print.hpp"
+#include "../helpers/Wire.hpp"
 
 //Returns a string converted from size_t
-std::string	Server::to_string_size_t(size_t value)
+Wire	Server::to_string_size_t(size_t value)
 {
 	std::ostringstream oss;
 	oss << value;
-	return (oss.str());
+	return (Wire(oss.str()));
 }
 
 //Checks if the string is a positive number above 0
-bool	Server::is_positive_number(const std::string &value)
+bool	Server::is_positive_number(const Wire &value)
 {
 	if (value.empty())
 		return (false);
@@ -27,7 +28,7 @@ bool	Server::is_positive_number(const std::string &value)
 }
 
 //Checks if the nickname is valid: non-empty, contains only letters (a-z, A-Z), digits (0-9), and underscore (_)
-bool	Server::is_valid_nickname(const std::string &nickname)
+bool	Server::is_valid_nickname(const Wire &nickname)
 {
 	if (nickname.empty())
 		return (false);
@@ -56,7 +57,7 @@ void	Server::add_fds(int fd, short events, short revents)
 }
 
 //Checks if it's a legit command from the client.
-bool	Server::is_command(const std::string &line)
+bool	Server::is_command(const Wire &line)
 {
 	return (line == "PASS" || line == "USER" || line == "NICK" || line == "JOIN" 
 		|| line == "PART" || line == "PRIVMSG" || line == "KICK"
@@ -65,10 +66,10 @@ bool	Server::is_command(const std::string &line)
 }
 
 //A splitting function for the arguments.
-std::vector<std::string>	Server::split_arguments(const std::string &line)
+std::vector<Wire>	Server::split_arguments(const Wire &line)
 {
-	std::vector<std::string>	arguments;
-	size_t						start = line.find(" ");
+	std::vector<Wire>	arguments;
+	size_t				start = line.find(" ");
 	
 	if (start == std::string::npos)
 		return (arguments);
@@ -95,7 +96,7 @@ std::vector<std::string>	Server::split_arguments(const std::string &line)
 }
 
 //It goes through the clients and if he gets found per name, he gets returned.
-Client	*Server::find_client_by_nickname(const std::string &nickname)
+Client	*Server::find_client_by_nickname(const Wire &nickname)
 {
 	for (ClientMap::iterator it = get_clients().begin(); it != get_clients().end(); ++it)
 	{
@@ -119,5 +120,9 @@ void	Server::try_register_client(Client &client)
 
 	client.set_register_status(true);
 	print("Client ", client.get_nickname(), " registered successfully!");
-	send_welcome_message(client);
+	// welcome message
+	send_status(client, "001", ":Welcome to ft_irc");
+	send_status(client, "002", ":Your host is localhost");
+	send_status(client, "003", ":This server was created today");
+	send_status(client, "004", "localhost ft_irc 1.0 o o");
 }

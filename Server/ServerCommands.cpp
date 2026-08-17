@@ -6,10 +6,12 @@
 #include <unistd.h>
 #include <iostream>
 #include "../helpers/print.hpp"
+#include "../helpers/Wire.hpp"
+
 
 
 //Joins the client to a channel after checking access restrictions.
-void	Server::let_client_join_channel(const std::string &channel_name, Client &client, const std::string &key)
+void	Server::let_client_join_channel(const Wire &channel_name, Client &client, const Wire &key)
 {
 	int client_fd = client.get_socket();
 
@@ -39,20 +41,20 @@ void	Server::let_client_join_channel(const std::string &channel_name, Client &cl
 		if (channel.is_invite_only() && !channel.is_invited(client_fd)
 			&& !channel.is_operator(client_fd))
 		{
-			send_error_reply(client, "473", channel_name + " :Cannot join channel (+i)");
+			send_status(client, "473", channel_name + " :Cannot join channel (+i)");
 			return ;
 		}
 
 		if (channel.has_key() && channel.get_key() != key)
 		{
-			send_error_reply(client, "475", channel_name + " :Cannot join channel (+k)");
+			send_status(client, "475", channel_name + " :Cannot join channel (+k)");
 			return ;
 		}
 
 		if (channel.has_user_limit()
 			&& channel.get_member_fds().size() >= channel.get_user_limit())
 		{
-			send_error_reply(client, "471", channel_name + " :Cannot join channel (+l)");
+			send_status(client, "471", channel_name + " :Cannot join channel (+l)");
 			return ;
 		}
 
@@ -71,19 +73,19 @@ void	Server::let_client_join_channel(const std::string &channel_name, Client &cl
 
 
 //Parts the given client from the channel.
-void	Server::part_client_from_channel(Client &client, const std::string &channel_name,
-		const std::string &reason)
+void	Server::part_client_from_channel(Client &client, const Wire &channel_name,
+		const Wire &reason)
 {
 	ChannelMap::iterator it = get_channels().find(channel_name);
 	if (it == get_channels().end())
 	{
-		send_error_reply(client, "403", channel_name + " :No such channel");
+		send_status(client, "403", channel_name + " :No such channel");
 		return ;
 	}
 
 	if (!it->second.has_member(client.get_socket()))
 	{
-		send_error_reply(client, "442", channel_name + " :You're not on that channel");
+		send_status(client, "442", channel_name + " :You're not on that channel");
 		return ;
 	}
 
@@ -98,22 +100,22 @@ void	Server::part_client_from_channel(Client &client, const std::string &channel
 //If a password is there, the client is not registered yet and the password
 //is correct, the password gets set.
 //If nick, user and pass are set, he gets registered.
-void	Server::handle_pass_command(Client &client, const std::vector<std::string> &arguments)
+void	Server::handle_pass_command(Client &client, const std::vector<Wire> &arguments)
 {
 	if (arguments.empty())
 	{
-		send_error_reply(client, "461", "PASS :Not enough parameters");
+		send_status(client, "461", "PASS :Not enough parameters");
 		return ;
 	}
 	if (client.get_register_status())
 	{
-		send_error_reply(client, "462", ":You may not reregister");
+		send_status(client, "462", ":You may not reregister");
 		return ;
 	}
 	if (arguments[0] != get_password())
 	{
 		client.set_pass_ok(false);
-		send_error_reply(client, "464", ":Password incorrect");
+		send_status(client, "464", ":Password incorrect");
 		return ;
 	}
 	client.set_password(arguments[0]);
@@ -123,16 +125,16 @@ void	Server::handle_pass_command(Client &client, const std::vector<std::string> 
 
 //Handles the new username.
 //If nick, user and pass are set, he gets registered.
-void	Server::handle_user_command(Client &client, const std::vector<std::string> &arguments)
+void	Server::handle_user_command(Client &client, const std::vector<Wire> &arguments)
 {
 	if (arguments.empty())
 	{
-		send_error_reply(client, "461", "USER :Not enough parameters");
+		send_status(client, "461", "USER :Not enough parameters");
 		return ;
 	}
 	if (client.get_register_status())
 	{
-		send_error_reply(client, "462", ":You may not reregister");
+		send_status(client, "462", ":You may not reregister");
 		return ;
 	}
 	client.set_username(arguments[0]);
@@ -142,16 +144,16 @@ void	Server::handle_user_command(Client &client, const std::vector<std::string> 
 //Handles the new nickname.
 //First it checks if the nickname is already in use.
 //If not and nick, user and pass are set, he gets registered.
-void	Server::handle_nick_command(Client &client, const std::vector<std::string> &arguments)
+void	Server::handle_nick_command(Client &client, const std::vector<Wire> &arguments)
 {
 	if (arguments.empty())
 	{
-		send_error_reply(client, "431", ":No nickname given");
+		send_status(client, "431", ":No nickname given");
 		return ;
 	}
 	if (!is_valid_nickname(arguments[0]))
 	{
-		send_error_reply(client, "432", arguments[0] + " :Erroneous nickname");
+		send_status(client, "432", arguments[0] + " :Erroneous nickname");
 		return ;
 	}
 	Client *existing_client = find_client_by_nickname(arguments[0]);
@@ -159,18 +161,17 @@ void	Server::handle_nick_command(Client &client, const std::vector<std::string> 
 		&& existing_client->get_socket() != client.get_socket()
 		&& (existing_client->get_register_status() || existing_client->get_pass_ok()))
 	{
-		send_error_reply(client, "433", arguments[0] + " :Nickname is already in use");
+		send_status(client, "433", arguments[0] + " :Nickname is already in use");
 		return ;
 	}
 
 	//Updates the nickname and informs the client
-	std::string old_nick = client.get_nickname();
-	std::string new_nick = arguments[0];
+	Wire old_nick = client.get_nickname();
+	Wire new_nick = arguments[0];
 
 	if (client.get_register_status())
 	{
-		std::string nick_message = ":" + old_nick + "!"
-	    	+ client.get_username() + "@localhost NICK :" + new_nick + "\r\n";
+		Wire nick_message(":", old_nick, "!", client.get_username(), "@localhost NICK :", new_nick);
 
 		std::set<int> recipient_fds;
 		recipient_fds.insert(client.get_socket());
@@ -185,7 +186,7 @@ void	Server::handle_nick_command(Client &client, const std::vector<std::string> 
 		}
 
 		for (std::set<int>::const_iterator rit = recipient_fds.begin(); rit != recipient_fds.end(); ++rit)
-			send(*rit, nick_message.c_str(), nick_message.size(), 0);
+			send_string(*rit, nick_message);
 	}
 	client.set_nickname(new_nick);
 	try_register_client(client);
@@ -194,78 +195,76 @@ void	Server::handle_nick_command(Client &client, const std::vector<std::string> 
 
 //Handles the join command.
 //If there is a key, it will gets set. And used for joining.
-void	Server::handle_join_command(Client &client, const std::vector<std::string> &arguments)
+void	Server::handle_join_command(Client &client, const std::vector<Wire> &arguments)
 {
 	if (arguments.empty())
 	{
-		send_error_reply(client, "461", "JOIN :Not enough parameters");
+		send_status(client, "461", "JOIN :Not enough parameters");
 		return ;
 	}
 
-	const std::string &chan = arguments[0];
+	const Wire &chan = arguments[0];
 	if (chan.empty() || (chan[0] != '#' && chan[0] != '&'))
 	{
-		send_error_reply(client, "403", chan + " :No such channel");
+		send_status(client, "403", chan + " :No such channel");
 		return ;
 	}
 
-	std::string key;
+	Wire key;
 	if (arguments.size() > 1)
 		key = arguments[1];
 	let_client_join_channel(chan, client, key);
 }
 
 //Parts the given client from the channel.
-void	Server::handle_part_command(Client &client, const std::string &line,
-		const std::vector<std::string> &arguments)
+void	Server::handle_part_command(Client &client, const Wire &line,
+		const std::vector<Wire> &arguments)
 {
 	if (arguments.empty())
 	{
-		send_error_reply(client, "461", "PART :Not enough parameters");
+		send_status(client, "461", "PART :Not enough parameters");
 		return ;
 	}
-	std::string reason;
-	size_t reason_start = line.find(" :");
-	if (reason_start != std::string::npos)
-		reason = line.substr(reason_start + 2);
+	Wire reason;
+	if (line.contains(" :"))
+		reason = line.strAfter(" :");
 	part_client_from_channel(client, arguments[0], reason);
 }
 
 //When the client asks about extra capabilities of the server on connect, it gives a response that it doesn't have them.
-void	Server::handle_cap_command(Client &client, const std::vector<std::string> &arguments)
+void	Server::handle_cap_command(Client &client, const std::vector<Wire> &arguments)
 {
 	if (arguments.size() > 0)
 	{
 		if (arguments[0] == "LS")
 		{
-			std::string cap_response = ":localhost CAP * LS :\r\n";
-			send(client.get_socket(), cap_response.c_str(), cap_response.size(), 0);
+			Wire cap_response = ":localhost CAP * LS :";
+			send_string(client.get_socket(), cap_response);
 		}
 		else if (arguments[0] == "END") {}
 	}
 }
 
-void	Server::handle_privmsg_command(Client &client, const std::string &line,
-		const std::vector<std::string> &arguments)
+void	Server::handle_privmsg_command(Client &client, const Wire &line,
+		const std::vector<Wire> &arguments)
 {
 	if (arguments.empty())
 	{
-		send_error_reply(client, "411", ":No recipient given (PRIVMSG)");
+		send_status(client, "411", ":No recipient given (PRIVMSG)");
 		return ;
 	}
 
-	std::string	message;
-	std::string	target = arguments[0];
-	size_t		position = line.find(" :");
+	Wire	message;
+	Wire	target = arguments[0];
 
-	if (position != std::string::npos)
-		message = line.substr(position + 2);
+	if (line.contains(" :"))
+		message = line.strAfter(" :");
 	else if (arguments.size() > 1)
 		message = arguments[1];
 
 	if (message.empty())
 	{
-		send_error_reply(client, "412", ":No text to send");
+		send_status(client, "412", ":No text to send");
 		return ;
 	}
 
@@ -275,20 +274,18 @@ void	Server::handle_privmsg_command(Client &client, const std::string &line,
 		send_message_to_user(client, target, message);
 }
 
-void	Server::handle_quit_command(Client &client, const std::string &line,
-		const std::vector<std::string> &arguments)
+void	Server::handle_quit_command(Client &client, const Wire &line,
+		const std::vector<Wire> &arguments)
 {
-	std::string reason = "Leaving server";
-	size_t reason_start = line.find(" :");
-	if (reason_start != std::string::npos)
-		reason = line.substr(reason_start + 2);
+	Wire reason = "Leaving server";
+	if (line.contains(" :"))
+		reason = line.strAfter(" :");
 	else if (!arguments.empty())
 		reason = arguments[0];
 
-	std::string nick = client.get_nickname();
-	std::string user = client.get_username();
-	std::string prefix = ":" + nick + "!" + user + "@localhost";
-	std::string quit_message = prefix + " QUIT :" + reason + "\r\n";
+	Wire nick = client.get_nickname();
+	Wire user = client.get_username();
+	Wire quit_message(":", nick, "!", user, "@localhost QUIT :", reason);
 
 	std::set<int> recipient_fds;
 	for (ChannelMap::const_iterator cit = get_channels().begin(); cit != get_channels().end(); ++cit)
@@ -306,28 +303,28 @@ void	Server::handle_quit_command(Client &client, const std::string &line,
 
 	for (std::set<int>::const_iterator rit = recipient_fds.begin(); rit != recipient_fds.end(); ++rit)
 	{
-		send(*rit, quit_message.c_str(), quit_message.size(), 0);
+		send_string(*rit, quit_message);
 	}
 
 	int client_fd = client.get_socket();
-	std::string bye = "ERROR :Closing connection\r\n";
-	send(client_fd, bye.c_str(), bye.size(), 0);
+	Wire bye = "ERROR :Closing connection";
+	send_string(client_fd, bye);
 
 	disconnect_client(client_fd);
 }
 
-void	Server::handle_ping_command(Client &client, const std::vector<std::string> &arguments)
+void	Server::handle_ping_command(Client &client, const std::vector<Wire> &arguments)
 {
-	std::string token = arguments.empty() ? "localhost" : arguments[0];
+	Wire token = arguments.empty() ? "localhost" : arguments[0];
 	if (!token.empty() && token[0] == ':')
 		token = token.substr(1);
-	std::string pong = ":localhost PONG localhost :" + token + "\r\n";
-	send(client.get_socket(), pong.c_str(), pong.size(), 0);
+	Wire pong(":localhost PONG localhost :", token);
+	send_string(client.get_socket(), pong);
 }
 
 //Checks which command it is and uses the right function for it.
-void	Server::dispatch_command(Client &client, const std::string &command,
-		const std::string &line, const std::vector<std::string> &arguments)
+void	Server::dispatch_command(Client &client, const Wire &command,
+		const Wire &line, const std::vector<Wire> &arguments)
 {
 	if (command == "PASS")
 		handle_pass_command(client, arguments);
@@ -342,7 +339,7 @@ void	Server::dispatch_command(Client &client, const std::string &command,
 	else if (command == "QUIT")
 		handle_quit_command(client, line, arguments);
 	else if (!client.get_register_status())
-		send_error_reply(client, "451", ":You have not registered");
+		send_status(client, "451", ":You have not registered");
 	else if (command == "JOIN")
 		handle_join_command(client, arguments);
 	else if (command == "PART")
@@ -368,7 +365,7 @@ void	Server::dispatch_command(Client &client, const std::string &command,
 void Server::handle_line(Client &client, const size_t &position)
 {
 	// Saves the message in line and removes the message from the client buffer.
-	std::string	line;
+	Wire	line;
 
 	line = client.get_buffer().substr(0, position);
 	// erase delimiter before checking if empty
@@ -376,26 +373,17 @@ void Server::handle_line(Client &client, const size_t &position)
 	if (line.empty())
 		return ;
 
-	// It gets the first word of the message, because it's a potential command.
-	// It also makes it uppercase for checks. Because the commands are case insensitive.
-	std::string command;
-	size_t 		space = line.find(' ');
-
-	if (space == std::string::npos)
-		command = line;
-	else
-		command = line.substr(0, space);
-
-	std::transform(command.begin(), command.end(), command.begin(), ::toupper);
+	// It gets the first word of the message and makes it uppercase for checks.
+	Wire	command = line.splitBy(' ')[0].toUpper();
 	
 	// Checks if it's a command.
 	// If it is, it extracts the arguments and handles the command.
 	// Else it sends a error reply.
 	if (is_command(command))
 	{
-		std::vector<std::string>	arguments = split_arguments(line);
+		std::vector<Wire>	arguments = split_arguments(line);
 		dispatch_command(client, command, line, arguments);
 	}
 	else
-		send_error_reply(client, "421", "Unknown command.");
+		send_status(client, "421", "Unknown command.");
 }

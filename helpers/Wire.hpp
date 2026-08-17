@@ -3,6 +3,8 @@
 
 #include <string>
 #include <sstream>
+#include <cctype>
+#include <algorithm>
 #include "abo.hpp"
 #include "templategod.hpp"
 #include "Int.hpp"
@@ -68,6 +70,22 @@ public:
         return Wire(rev);
     }
 
+    Wire toUpper() const {
+        Wire result(*this);
+        for (size_t i = 0; i < result.length(); ++i) {
+            result[i] = static_cast<char>(std::toupper(static_cast<unsigned char>(result[i])));
+        }
+        return result;
+    }
+
+    Wire toLower() const {
+        Wire result(*this);
+        for (size_t i = 0; i < result.length(); ++i) {
+            result[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(result[i])));
+        }
+        return result;
+    }
+
     Wire& print() {
         ::print(*this);
         return *this;
@@ -118,6 +136,11 @@ public:
     Wire substr(size_t pos, size_t len = string::npos) const {
         if (pos >= this->length()) return Wire();
         return Wire(string::substr(pos, len));
+    }
+
+    Wire placeholder(const Wire& fallback) const {
+        if (this->empty()) return fallback;
+        return *this;
     }
 
     bool contains(string delimiter) const {

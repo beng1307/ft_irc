@@ -3,42 +3,28 @@
 #include <sys/socket.h>
 #include <cstdlib>
 #include <string>
+#include "../helpers/Wire.hpp"
 
 
 ///////////////////////////////////////////////////////////////////////////////
 // OPERATION HELPER
 
 //Function to add modes cleaner. 
-static void	append_mode_change(std::string &applied_modes, char sign, char mode)
+static void	append_mode_change(Wire &applied_modes, char sign, char mode)
 {
 	if (applied_modes.empty() || applied_modes[applied_modes.size() - 1] != sign)
 		applied_modes.push_back(sign);
 	applied_modes.push_back(mode);
 }
 
-//Builds client prefixes needed for some messages to be irc conform.
-static std::string	build_client_prefix(const Client &client)
-{
-	return ":" + client.get_nickname() + "!" + client.get_username() + "@localhost";
-}
-
-//It tries to return the clients nick, if its missing, it return a placeholder instead. 
-static std::string	get_client_nick_or_wildcard(const Client &client)
-{
-	std::string nick = client.get_nickname();
-	if (nick.empty())
-		nick = "*";
-	return nick;
-}
-
 //Checks if the channel exists. If not, a error reply is send to the client.
 static bool	ensure_channel_exists(Server &server, Client &client,
-	const std::string &channel_name, ChannelMap::iterator &channel_it)
+	const Wire &channel_name, ChannelMap::iterator &channel_it)
 {
 	channel_it = server.get_channels().find(channel_name);
 	if (channel_it == server.get_channels().end())
 	{
-		server.send_error_reply(client, "403", channel_name + " :No such channel");
+		server.send_status(client, "403", channel_name + " :No such channel");
 		return false;
 	}
 	return true;
@@ -46,11 +32,11 @@ static bool	ensure_channel_exists(Server &server, Client &client,
 
 //Checks if the client is a channel member. If not, a error reply is send to the client.
 static bool	ensure_channel_member(Server &server, Client &client,
-	const std::string &channel_name, ChannelMap::iterator &channel_it)
+	const Wire &channel_name, ChannelMap::iterator &channel_it)
 {
 	if (!channel_it->second.has_member(client.get_socket()))
 	{
-		server.send_error_reply(client, "442", channel_name + " :You're not on that channel");
+		server.send_status(client, "442", channel_name + " :You're not on that channel");
 		return false;
 	}
 	return true;
@@ -58,45 +44,33 @@ static bool	ensure_channel_member(Server &server, Client &client,
 
 //Checks if the client is a channel operator. If not, a error reply is send to the client.
 static bool	ensure_channel_operator(Server &server, Client &client,
-	const std::string &channel_name, ChannelMap::iterator &channel_it)
+	const Wire &channel_name, ChannelMap::iterator &channel_it)
 {
 	if (!channel_it->second.is_operator(client.get_socket()))
 	{
-		server.send_error_reply(client, "482", channel_name + " :You're not channel operator");
+		server.send_status(client, "482", channel_name + " :You're not channel operator");
 		return false;
 	}
 	return true;
-}
-
-//Builds the reply about which modes the channel has active.
-static std::string	build_mode_reply(const Client &client, const std::string &channel_name,
-	const std::string &current_modes, const std::vector<std::string> &current_params)
-{
-	std::string mode_reply = ":localhost 324 " + get_client_nick_or_wildcard(client)
-		+ " " + channel_name + " " + current_modes;
-	for (size_t i = 0; i < current_params.size(); ++i)
-		mode_reply += " " + current_params[i];
-	mode_reply += "\r\n";
-	return mode_reply;
 }
 
 
 ///////////////////////////////////////////////////////////////////////////////
 // KICK
 
-void	Server::handle_kick(Client &client, const std::string &line,
-	const std::vector<std::string> &arguments)
+void	Server::handle_kick(Client &client, const Wire &line,
+	const std::vector<Wire> &arguments)
 {
 	//First it checks if there are enough arguments.
 	if (arguments.size() < 2)
 	{
-		send_error_reply(client, "461", "KICK :Not enough parameters");
+		send_status(client, "461", "KICK :Not enough parameters");
 		return ;
 	}
 
 	//Sets them to variables for readability.
-	const std::string &channel_name = arguments[0];
-	const std::string &target_nick = arguments[1];
+	const Wire &channel_name = arguments[0];
+	const Wire &target_nick = arguments[1];
 
 	//Checks if the channel exists and if the kicking client is a channel member with operator rights.
 	ChannelMap::iterator channel_it;
@@ -111,25 +85,22 @@ void	Server::handle_kick(Client &client, const std::string &line,
 	Client *target = find_client_by_nickname(target_nick);
 	if (target == NULL)
 	{
-		send_error_reply(client, "401", target_nick + " :No such nick/channel");
+		send_status(client, "401", target_nick + " :No such nick/channel");
 		return ;
 	}
 
 	if (!channel_it->second.has_member(target->get_socket()))
 	{
-		send_error_reply(client, "441", target_nick + " " + channel_name
-			+ " :They aren't on that channel");
+		send_status(client, "441", Wire(target_nick, " ", channel_name, " :They aren't on that channel"));
 		return ;
 	}
 
 	//It provides the reason and the kick message, announces it to the channel and kicks the client.
-	std::string reason = client.get_nickname();
-	size_t reason_pos = line.find(" :");
-	if (reason_pos != std::string::npos && reason_pos + 2 < line.size())
-		reason = line.substr(reason_pos + 2);
+	Wire reason = client.get_nickname();
+	if (line.contains(" :"))
+		reason = line.strAfter(" :");
 
-	std::string kick_message = build_client_prefix(client) + " KICK " + channel_name
-		+ " " + target_nick + " :" + reason + "\r\n";
+	Wire kick_message = make_msg(client, "KICK", channel_name + " " + target_nick, reason);
 	broadcast_to_channel(channel_it->second, kick_message);
 	channel_it->second.remove_member_from_channel(target->get_socket());
 	if (channel_it->second.get_member_fds().empty())
@@ -141,18 +112,18 @@ void	Server::handle_kick(Client &client, const std::string &line,
 // INVITE
 
 void	Server::handle_invite(Client &client,
-	const std::vector<std::string> &arguments)
+	const std::vector<Wire> &arguments)
 {
 	//First it checks if there are enough arguments.
 	if (arguments.size() < 2)
 	{
-		send_error_reply(client, "461", "INVITE :Not enough parameters");
+		send_status(client, "461", "INVITE :Not enough parameters");
 		return ;
 	}
 
 	//Sets them to variables for readability.
-	const std::string &target_nick = arguments[0];
-	const std::string &channel_name = arguments[1];
+	const Wire &target_nick = arguments[0];
+	const Wire &channel_name = arguments[1];
 
 	//Checks if the channel exists and if the inviting client is a channel member with operator rights.
 	ChannelMap::iterator channel_it;
@@ -167,25 +138,19 @@ void	Server::handle_invite(Client &client,
 	Client *target = find_client_by_nickname(target_nick);
 	if (target == NULL)
 	{
-		send_error_reply(client, "401", target_nick + " :No such nick/channel");
+		send_status(client, "401", target_nick + " :No such nick/channel");
 		return ;
 	}
 
 	if (channel_it->second.has_member(target->get_socket()))
 	{
-		send_error_reply(client, "443", target_nick + " " + channel_name
-			+ " :is already on channel");
+		send_status(client, "443", Wire(target_nick, " ", channel_name, " :is already on channel"));
 		return ;
 	}
 
 	//Builds the invite message and reply, then sends it to the clients.
-	std::string invite_message = build_client_prefix(client) + " INVITE " + target_nick
-		+ " :" + channel_name + "\r\n";
-	send(target->get_socket(), invite_message.c_str(), invite_message.size(), 0);
-
-	std::string invite_reply = ":localhost 341 " + get_client_nick_or_wildcard(client)
-		+ " " + target_nick + " " + channel_name + "\r\n";
-	send(client.get_socket(), invite_reply.c_str(), invite_reply.size(), 0);
+	send_msg(target->get_socket(), client, "INVITE", target_nick, channel_name);
+	send_status(client, "341", target_nick + " " + channel_name);
 
 	channel_it->second.add_invited(target->get_socket());
 }
@@ -194,18 +159,18 @@ void	Server::handle_invite(Client &client,
 ///////////////////////////////////////////////////////////////////////////////
 // TOPIC
 
-void	Server::handle_topic(Client &client, const std::string &line,
-	const std::vector<std::string> &arguments)
+void	Server::handle_topic(Client &client, const Wire &line,
+	const std::vector<Wire> &arguments)
 {
 	//First it checks if there are enough arguments.
 	if (arguments.size() < 1)
 	{
-		send_error_reply(client, "461", "TOPIC :Not enough parameters");
+		send_status(client, "461", "TOPIC :Not enough parameters");
 		return ;
 	}
 
 	//Store the channel name from the command parameters.
-	const std::string &channel_name = arguments[0];
+	const Wire &channel_name = arguments[0];
 
 	//Checks if the channel exists and if the inviting client is a channel member.
 	ChannelMap::iterator channel_it;
@@ -216,25 +181,14 @@ void	Server::handle_topic(Client &client, const std::string &line,
 
 	//Look for the topic text after " :".
 	//If it is missing, the client is only asking for the current topic.
-	size_t topic_pos = line.find(" :");
-	if (topic_pos == std::string::npos)
+	if (!line.contains(" :"))
 	{
-		//Gets the client nick, if it doesn't find it, the nick is '*' to not be empty.
-		std::string nick = get_client_nick_or_wildcard(client);
 		//Gets the topic of the channel, if it's missing, the client gets messaged else it sends him the topic.
-		std::string topic = channel_it->second.get_topic();
+		Wire topic = channel_it->second.get_topic();
 		if (topic.empty())
-		{
-			std::string no_topic_reply = ":localhost 331 " + nick + " "
-				+ channel_name + " :No topic is set\r\n";
-			send(client.get_socket(), no_topic_reply.c_str(), no_topic_reply.size(), 0);
-		}
+			send_status(client, "331", channel_name + " :No topic is set");
 		else
-		{
-			std::string topic_reply = ":localhost 332 " + nick + " "
-				+ channel_name + " :" + topic + "\r\n";
-			send(client.get_socket(), topic_reply.c_str(), topic_reply.size(), 0);
-		}
+			send_status(client, "332", channel_name + " :" + topic);
 		return ;
 	}
 
@@ -242,17 +196,16 @@ void	Server::handle_topic(Client &client, const std::string &line,
 	if (channel_it->second.is_topic_restricted()
 		&& !channel_it->second.is_operator(client.get_socket()))
 	{
-		send_error_reply(client, "482", channel_name + " :You're not channel operator");
+		send_status(client, "482", channel_name + " :You're not channel operator");
 		return ;
 	}
 
 	//Sets the new topic.
-	std::string new_topic = line.substr(topic_pos + 2);
+	Wire new_topic = line.strAfter(" :");
 	channel_it->second.set_topic(new_topic);
 
 	//Broadcast the topic change to every member of the channel.
-	std::string topic_message = build_client_prefix(client) + " TOPIC " + channel_name
-		+ " :" + new_topic + "\r\n";
+	Wire topic_message = make_msg(client, "TOPIC", channel_name, new_topic);
 	broadcast_to_channel(channel_it->second, topic_message);
 }
 
@@ -260,19 +213,19 @@ void	Server::handle_topic(Client &client, const std::string &line,
 ///////////////////////////////////////////////////////////////////////////////
 // MODE
 
-void	Server::handle_mode(Client &client, const std::string &line,
-	const std::vector<std::string> &arguments)
+void	Server::handle_mode(Client &client, const Wire &line,
+	const std::vector<Wire> &arguments)
 {
 	(void)line;
 	//Check that the args are not empty.
 	if (arguments.empty())
 	{
-		send_error_reply(client, "461", "MODE :Not enough parameters");
+		send_status(client, "461", "MODE :Not enough parameters");
 		return ;
 	}
 
 	//Get the channel name.
-	const std::string &channel_name = arguments[0];
+	const Wire &channel_name = arguments[0];
 
 	//Only channel names beginning with '#' are valid.
 	if (channel_name.empty() || channel_name[0] != '#')
@@ -289,8 +242,8 @@ void	Server::handle_mode(Client &client, const std::string &line,
 	if (arguments.size() == 1)
 	{
 		//Collect the active modes and any additional parameters they need.
-		std::string current_modes = "+";
-		std::vector<std::string> current_params;
+		Wire current_modes = "+";
+		Wire current_params;
 
 		if (channel_it->second.is_invite_only())
 			current_modes.push_back('i');
@@ -299,17 +252,16 @@ void	Server::handle_mode(Client &client, const std::string &line,
 		if (channel_it->second.has_key())
 		{
 			current_modes.push_back('k');
-			current_params.push_back(channel_it->second.get_key());
+			current_params += " " + channel_it->second.get_key();
 		}
 		if (channel_it->second.has_user_limit())
 		{
 			current_modes.push_back('l');
-			current_params.push_back(to_string_size_t(channel_it->second.get_user_limit()));
+			current_params += " " + to_string_size_t(channel_it->second.get_user_limit());
 		}
 
 		//Send the exact MODES the channel has active.
-		std::string mode_reply = build_mode_reply(client, channel_name, current_modes, current_params);
-		send(client.get_socket(), mode_reply.c_str(), mode_reply.size(), 0);
+		send_status(client, "324", Wire(channel_name, " ", current_modes, current_params));
 		return ;
 	}
 
@@ -318,11 +270,11 @@ void	Server::handle_mode(Client &client, const std::string &line,
 		return ;
 
 	//Get the actual mode string something like: "+itk secret" or "-l".
-	const std::string &mode_string = arguments[1];
+	const Wire &mode_string = arguments[1];
 	char sign = 0;
 	size_t param_index = 2;
-	std::string applied_modes;
-	std::vector<std::string> applied_params;
+	Wire applied_modes;
+	Wire applied_params;
 
 	//Parse the mode string one character at a time.
 	for (size_t i = 0; i < mode_string.size(); ++i)
@@ -356,12 +308,12 @@ void	Server::handle_mode(Client &client, const std::string &line,
 			{
 				if (param_index >= arguments.size())
 				{
-					send_error_reply(client, "461", "MODE :Not enough parameters");
+					send_status(client, "461", "MODE :Not enough parameters");
 					continue ;
 				}
 				channel_it->second.set_key(arguments[param_index]);
 				append_mode_change(applied_modes, sign, 'k');
-				applied_params.push_back(arguments[param_index]);
+				applied_params += " " + arguments[param_index];
 				param_index++;
 			}
 			else
@@ -378,21 +330,21 @@ void	Server::handle_mode(Client &client, const std::string &line,
 		{
 			if (param_index >= arguments.size())
 			{
-				send_error_reply(client, "461", "MODE :Not enough parameters");
+				send_status(client, "461", "MODE :Not enough parameters");
 				continue ;
 			}
 
-			const std::string &target_nick = arguments[param_index];
+			const Wire &target_nick = arguments[param_index];
 			Client *target = find_client_by_nickname(target_nick);
 			if (target == NULL)
 			{
-				send_error_reply(client, "401", target_nick + " :No such nick/channel");
+				send_status(client, "401", target_nick + " :No such nick/channel");
 				param_index++;
 				continue ;
 			}
 			if (!channel_it->second.has_member(target->get_socket()))
 			{
-				send_error_reply(client, "441", target_nick + " " + channel_name
+				send_status(client, "441", target_nick + " " + channel_name
 					+ " :They aren't on that channel");
 				param_index++;
 				continue ;
@@ -404,7 +356,7 @@ void	Server::handle_mode(Client &client, const std::string &line,
 				channel_it->second.remove_operator(target->get_socket());
 
 			append_mode_change(applied_modes, sign, 'o');
-			applied_params.push_back(target_nick);
+			applied_params += " " + target_nick;
 			param_index++;
 		}
 		//Mode 'l': user limit; requires a numeric value when setting, and clears the limit when removing.
@@ -414,7 +366,7 @@ void	Server::handle_mode(Client &client, const std::string &line,
 			{
 				if (param_index >= arguments.size() || !is_positive_number(arguments[param_index]))
 				{
-					send_error_reply(client, "461", "MODE :Not enough parameters");
+					send_status(client, "461", "MODE :Not enough parameters");
 					if (param_index < arguments.size())
 						param_index++;
 					continue ;
@@ -422,7 +374,7 @@ void	Server::handle_mode(Client &client, const std::string &line,
 				size_t limit_value = static_cast<size_t>(std::atoi(arguments[param_index].c_str()));
 				channel_it->second.set_user_limit(limit_value);
 				append_mode_change(applied_modes, sign, 'l');
-				applied_params.push_back(arguments[param_index]);
+				applied_params += " " + arguments[param_index];
 				param_index++;
 			}
 			else
@@ -437,7 +389,7 @@ void	Server::handle_mode(Client &client, const std::string &line,
 		//Any other character is unsupported and gets an IRC error reply.
 		else
 		{
-			send_error_reply(client, "472", std::string(1, mode) + " :is unknown mode char to me");
+			send_status(client, "472", Wire(mode) + " :is unknown mode char to me");
 		}
 	}
 
@@ -446,10 +398,6 @@ void	Server::handle_mode(Client &client, const std::string &line,
 		return ;
 
 	//Build a single MODE message containing all accepted mode changes and their parameters.
-	std::string mode_message = build_client_prefix(client) + " MODE " + channel_name
-		+ " " + applied_modes;
-	for (size_t i = 0; i < applied_params.size(); ++i)
-		mode_message += " " + applied_params[i];
-	mode_message += "\r\n";
+	Wire mode_message = make_msg(client, "MODE", Wire(channel_name, " ", applied_modes, applied_params));
 	broadcast_to_channel(channel_it->second, mode_message);
 }

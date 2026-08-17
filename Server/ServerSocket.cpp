@@ -2,7 +2,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <iostream>
 #include "../helpers/print.hpp"
 
 int	Server::socket_setup()

@@ -1,5 +1,6 @@
 #include "Channel.hpp"
 #include "../Client/Client.hpp"
+#include "../helpers/Wire.hpp"
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -16,7 +17,7 @@ Channel::Channel(): name(""), topic(""), member_fds(), operator_fds(), invited_f
 	return ;
 }
 
-Channel::Channel(const std::string &name): name(name), topic(""), member_fds(), operator_fds(), invited_fds(),
+Channel::Channel(const Wire &name): name(name), topic(""), member_fds(), operator_fds(), invited_fds(),
 	invite_only(false), topic_restricted(false), key_enabled(false), channel_key(""),
 	limit_enabled(false), user_limit(0)
 {
@@ -61,22 +62,22 @@ Channel::~Channel()
 ///////////////////////////////////////////////////////////////////////////////
 // Setter, Getter & Helper
 
-void	Channel::set_name(const std::string &name)
+void	Channel::set_name(const Wire &name)
 {
 	this->name = name;
 }
 
-std::string	Channel::get_name() const
+Wire	Channel::get_name() const
 {
 	return (name);
 }
 
-void	Channel::set_topic(const std::string &topic)
+void	Channel::set_topic(const Wire &topic)
 {
 	this->topic = topic;
 }
 
-std::string	Channel::get_topic() const
+Wire	Channel::get_topic() const
 {
 	return (topic);
 }
@@ -159,7 +160,7 @@ bool	Channel::is_topic_restricted() const
 	return (topic_restricted);
 }
 
-void	Channel::set_key(const std::string &key)
+void	Channel::set_key(const Wire &key)
 {
 	channel_key = key;
 	key_enabled = true;
@@ -176,7 +177,7 @@ bool	Channel::has_key() const
 	return (key_enabled);
 }
 
-std::string	Channel::get_key() const
+Wire	Channel::get_key() const
 {
 	return (channel_key);
 }

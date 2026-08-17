@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include "../helpers/print.hpp"
+#include "../helpers/Wire.hpp"
 
 // Sets the socket to non-blocking mode and returns false if it fails.
 bool Server::configure_socket_nonblocking(int socket) {
