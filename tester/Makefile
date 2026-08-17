@@ -23,8 +23,12 @@ re: fclean all
 run: $(NAME)
 	@./run_scenarios $(filter-out $@,$(MAKECMDGOALS))
 
+# Run testrunner in verbose mode (e.g. make runv 35)
+runv: $(NAME)
+	@VERBOSE=1 ./run_scenarios $(filter-out $@,$(MAKECMDGOALS))
+
 # Allow passing scenario arguments to 'make run' without make complaining about missing targets
 %:
 	@:
 
-.PHONY: all clean fclean re run
+.PHONY: all clean fclean re run runv

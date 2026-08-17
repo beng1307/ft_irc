@@ -50,7 +50,18 @@ add_spec_by_num() {
     return 1
 }
 
-if [ $# -eq 0 ]; then
+VERBOSE="${VERBOSE:-0}"
+RAW_ARGS=()
+
+for arg in "$@"; do
+    if [ "$arg" = "--v" ] || [ "$arg" = "-v" ] || [ "$arg" = "--verbose" ]; then
+        VERBOSE=1
+    else
+        RAW_ARGS+=("$arg")
+    fi
+done
+
+if [ ${#RAW_ARGS[@]} -eq 0 ]; then
     # Without args: run all specs
     while IFS= read -r f; do
         if [ -f "$f" ]; then
@@ -59,7 +70,7 @@ if [ $# -eq 0 ]; then
     done < <(find "$SCENARIOS_DIR" -type f -name '*.spec' | sort)
 else
     # Process specified numbers / arguments
-    for arg in "$@"; do
+    for arg in "${RAW_ARGS[@]}"; do
         if ! add_spec_by_num "$arg"; then
             # If argument like '13' didn't match a scenario 13, split digits (e.g. '1' and '3')
             if [[ "$arg" =~ ^[0-9]+$ ]] && [ ${#arg} -gt 1 ]; then
@@ -156,8 +167,18 @@ for spec in "${SPECS[@]}"; do
     fi
 
     test_name=$(format_test_name "$spec_base")
-    output=$("$TESTRUNNER_BIN" --host "$HOST" --port "$PORT" "$spec" 2>&1)
+    RUNNER_ARGS=(--host "$HOST" --port "$PORT")
+    if [ "$VERBOSE" -eq 1 ]; then
+        RUNNER_ARGS+=(--v)
+    fi
+    output=$("$TESTRUNNER_BIN" "${RUNNER_ARGS[@]}" "$spec" 2>&1)
     status=$?
+
+    if [ "$VERBOSE" -eq 1 ]; then
+        echo -e "${BOLD}--- [${spec_base}] ---${NC}"
+        echo "$output"
+        echo ""
+    fi
 
     if [ $status -eq 0 ]; then
         echo -e "${GREEN}${test_name}   ✅${NC}"

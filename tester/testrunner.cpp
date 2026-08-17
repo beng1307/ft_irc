@@ -105,8 +105,12 @@ class TestLogger {
 public:
     std::ofstream log_file;
     std::string spec_name;
+    bool verbose;
 
-    bool init(const std::string& spec_path) {
+    TestLogger() : verbose(false) {}
+
+    bool init(const std::string& spec_path, bool v = false) {
+        verbose = v;
         size_t last_slash = spec_path.find_last_of("/\\");
         std::string filename = (last_slash == std::string::npos) ? spec_path : spec_path.substr(last_slash + 1);
         size_t last_dot = filename.find_last_of('.');
@@ -124,6 +128,9 @@ public:
         if (log_file.is_open()) {
             log_file << line << "\n";
             log_file.flush();
+        }
+        if (verbose) {
+            std::cout << line << std::endl;
         }
     }
 };
@@ -435,8 +442,8 @@ public:
         return count;
     }
 
-    bool run_spec(const std::string& spec_path) {
-        if (!logger.init(spec_path)) {
+    bool run_spec(const std::string& spec_path, bool verbose = false) {
+        if (!logger.init(spec_path, verbose)) {
             std::cerr << "Error: Could not create log file for " << spec_path << std::endl;
             return false;
         }
@@ -656,6 +663,7 @@ int main(int argc, char* argv[]) {
     std::string host = "127.0.0.1";
     int port = 6667;
     std::string spec_path = "";
+    bool verbose = false;
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -663,18 +671,20 @@ int main(int argc, char* argv[]) {
             host = argv[++i];
         } else if (arg == "--port" && i + 1 < argc) {
             port = atoi(argv[++i]);
+        } else if (arg == "--v" || arg == "-v" || arg == "--verbose") {
+            verbose = true;
         } else if (arg[0] != '-') {
             spec_path = arg;
         }
     }
 
     if (spec_path.empty()) {
-        std::cout << "Usage: testrunner [--host <host>] [--port <port>] <spec_file>" << std::endl;
+        std::cout << "Usage: testrunner [--host <host>] [--port <port>] [--v] <spec_file>" << std::endl;
         return 1;
     }
 
     TestRunner runner(host, port);
-    if (!runner.run_spec(spec_path)) {
+    if (!runner.run_spec(spec_path, verbose)) {
         return 1;
     }
     return 0;
