@@ -38,4 +38,4 @@ client: all
 	irssi -c localhost -p 6667 -w 1234
 
 
-.PHONY: all clean fclean re
+.PHONY: all clean fclean re run client

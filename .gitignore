@@ -6,3 +6,9 @@ tester/logs
 ft_irc
 testrunner
 filters.toml
+.cache
+compile_commands.json
+gen_compdb.py
+TMP
+.clang-format
+.clangd

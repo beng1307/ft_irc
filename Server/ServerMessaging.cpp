@@ -6,21 +6,28 @@
 //Sends a message into the channel
 void	Server::send_message_to_channel(Client &sender, const std::string &channel_name, const std::string &message)
 {
-	if (get_channels().find(channel_name) == get_channels().end())
+	ChannelMap::iterator it = get_channels().find(channel_name);
+	if (it == get_channels().end())
 	{
 		send_error_reply(sender, "403", channel_name + " :No such channel");
 		return ;
 	}
 
-	std::set<int>	member_fds = get_channels()[channel_name].get_member_fds();
+	if (!it->second.has_member(sender.get_socket()))
+	{
+		send_error_reply(sender, "442", channel_name + " :You're not on that channel");
+		return ;
+	}
+
+	std::set<int>	member_fds = it->second.get_member_fds();
 
 	std::string	message_to_send = ":" + sender.get_nickname() + "!" + sender.get_username()
 						+ "@localhost PRIVMSG " + channel_name + " :" + message + "\r\n";
 
-	for (std::set<int>::const_iterator it = member_fds.begin(); it != member_fds.end(); ++it)
+	for (std::set<int>::const_iterator mit = member_fds.begin(); mit != member_fds.end(); ++mit)
 	{
-		if (*it != sender.get_socket())
-			send(*it, message_to_send.c_str(), message_to_send.size(), 0);
+		if (*mit != sender.get_socket())
+			send(*mit, message_to_send.c_str(), message_to_send.size(), 0);
 	}
 }
 
