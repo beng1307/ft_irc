@@ -202,10 +202,17 @@ void	Server::handle_join_command(Client &client, const std::vector<std::string> 
 		return ;
 	}
 
+	const std::string &chan = arguments[0];
+	if (chan.empty() || (chan[0] != '#' && chan[0] != '&'))
+	{
+		send_error_reply(client, "403", chan + " :No such channel");
+		return ;
+	}
+
 	std::string key;
 	if (arguments.size() > 1)
 		key = arguments[1];
-	let_client_join_channel(arguments[0], client, key);
+	let_client_join_channel(chan, client, key);
 }
 
 //Parts the given client from the channel.
