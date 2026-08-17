@@ -290,6 +290,8 @@ void	Server::handle_quit_command(Client &client, const std::string &line,
 void	Server::handle_ping_command(Client &client, const std::vector<std::string> &arguments)
 {
 	std::string token = arguments.empty() ? "localhost" : arguments[0];
+	if (!token.empty() && token[0] == ':')
+		token = token.substr(1);
 	std::string pong = ":localhost PONG localhost :" + token + "\r\n";
 	send(client.get_socket(), pong.c_str(), pong.size(), 0);
 }
