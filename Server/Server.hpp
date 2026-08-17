@@ -120,6 +120,7 @@ class Server
 		void							send_message_to_user(Client &sender, const std::string &nickname, const std::string &message);
 		void							send_welcome_message(Client &client);
 		void							send_error_reply(Client &client, const std::string &code, const std::string &message);
+		void							send_channel_names_reply(Client &client, const std::string &channel_name);
 		Client							*find_client_by_nickname(const std::string &nickname);
 		std::vector<std::string>		split_arguments(const std::string &line);
 

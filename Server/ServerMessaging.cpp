@@ -119,3 +119,39 @@ void	Server::send_welcome_message(Client &client)
 	std::string myinfo = ":localhost 004 " + nick + " localhost ft_irc 1.0 o o\r\n";
 	send(client.get_socket(), myinfo.c_str(), myinfo.size(), 0);
 }
+
+// Sends the RPL_NAMREPLY (353) and RPL_ENDOFNAMES (366) numeric responses to a client.
+// Situation: Triggered when a client successfully joins a channel or queries channel names.
+// What it does:
+// 1. Constructs a space-separated list of nicknames currently in the channel.
+// 2. Prefixes nicknames of channel operators with '@'.
+// 3. Sends 353 RPL_NAMREPLY followed by 366 RPL_ENDOFNAMES back to the requesting client.
+void	Server::send_channel_names_reply(Client &client, const std::string &channel_name)
+{
+	ChannelMap::iterator channel_it = get_channels().find(channel_name);
+	if (channel_it == get_channels().end())
+		return ;
+
+	const Channel &channel = channel_it->second;
+	std::string names;
+	std::set<int> member_fds = channel.get_member_fds();
+	for (std::set<int>::const_iterator it = member_fds.begin(); it != member_fds.end(); ++it)
+	{
+		ClientMap::const_iterator client_it = get_clients().find(*it);
+		if (client_it != get_clients().end())
+		{
+			if (!names.empty())
+				names += " ";
+			if (channel.is_operator(*it))
+				names += "@";
+			names += client_it->second.get_nickname();
+		}
+	}
+
+	std::string nick = client.get_nickname().empty() ? "*" : client.get_nickname();
+	std::string namreply = ":localhost 353 " + nick + " = " + channel_name + " :" + names + "\r\n";
+	send(client.get_socket(), namreply.c_str(), namreply.size(), 0);
+
+	std::string endofnames = ":localhost 366 " + nick + " " + channel_name + " :End of /NAMES list\r\n";
+	send(client.get_socket(), endofnames.c_str(), endofnames.size(), 0);
+}

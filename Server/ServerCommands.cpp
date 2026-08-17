@@ -22,46 +22,50 @@ void	Server::let_client_join_channel(const std::string &channel_name, Client &cl
 		get_channels()[channel_name].add_operator(client_fd);
 		broadcast_join_to_channel(client, channel_name);
 		std::cout << "Client joined channel " << channel_name << "!" << std::endl;
-		return ;
 	}
-
-	Channel &channel = get_channels()[channel_name];
-
-	//It gets checked if the client has the right to join.
-
-	if (channel.has_member(client_fd))
+	else
 	{
-		std::cout << "Client is already in channel " << channel_name << "!" << std::endl;
-		return ;
+		Channel &channel = get_channels()[channel_name];
+
+		//It gets checked if the client has the right to join.
+
+		if (channel.has_member(client_fd))
+		{
+			std::cout << "Client is already in channel " << channel_name << "!" << std::endl;
+			return ;
+		}
+
+		if (channel.is_invite_only() && !channel.is_invited(client_fd)
+			&& !channel.is_operator(client_fd))
+		{
+			send_error_reply(client, "473", channel_name + " :Cannot join channel (+i)");
+			return ;
+		}
+
+		if (channel.has_key() && channel.get_key() != key)
+		{
+			send_error_reply(client, "475", channel_name + " :Cannot join channel (+k)");
+			return ;
+		}
+
+		if (channel.has_user_limit()
+			&& channel.get_member_fds().size() >= channel.get_user_limit())
+		{
+			send_error_reply(client, "471", channel_name + " :Cannot join channel (+l)");
+			return ;
+		}
+
+		//Client gets added to the Channel, his invite gets reset
+		//and all members in the channel get informed.
+		channel.add_member(client_fd);
+		channel.remove_invited(client_fd);
+		broadcast_join_to_channel(client, channel.get_name());
+		std::cout << "Client joined channel " << channel_name << "!" << std::endl;
 	}
 
-	if (channel.is_invite_only() && !channel.is_invited(client_fd)
-		&& !channel.is_operator(client_fd))
-	{
-		send_error_reply(client, "473", channel_name + " :Cannot join channel (+i)");
-		return ;
-	}
-
-	if (channel.has_key() && channel.get_key() != key)
-	{
-		send_error_reply(client, "475", channel_name + " :Cannot join channel (+k)");
-		return ;
-	}
-
-	if (channel.has_user_limit()
-		&& channel.get_member_fds().size() >= channel.get_user_limit())
-	{
-		send_error_reply(client, "471", channel_name + " :Cannot join channel (+l)");
-		return ;
-	}
-
-	//Client gets added to the Channel, his invite gets reset
-	//and all members in the channel get informed.
-	channel.add_member(client_fd);
-	channel.remove_invited(client_fd);
-	broadcast_join_to_channel(client, channel.get_name());
-	std::cout << "Client joined channel " << channel_name << "!" << std::endl;
-
+	// Sends mandatory IRC numeric replies 353 RPL_NAMREPLY (member list with '@' for ops)
+	// and 366 RPL_ENDOFNAMES back to the client upon joining the channel.
+	send_channel_names_reply(client, channel_name);
 }
 
 
