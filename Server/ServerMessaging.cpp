@@ -62,6 +62,13 @@ void	Server::send_message_to_user(Client &sender, const std::string &nickname, c
 }
 
 
+void	Server::broadcast_to_channel(const Channel &channel, const std::string &message)
+{
+	std::set<int> member_fds = channel.get_member_fds();
+	for (std::set<int>::const_iterator it = member_fds.begin(); it != member_fds.end(); ++it)
+		send(*it, message.c_str(), message.size(), 0);
+}
+
 //Informs the members of a channel, that a new client joined.
 void	Server::broadcast_join_to_channel(Client &joining_client, const std::string &channel_name)
 {

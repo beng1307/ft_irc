@@ -8,6 +8,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 // OPERATION HELPER
 
+//Function to add modes cleaner. 
 static void	append_mode_change(std::string &applied_modes, char sign, char mode)
 {
 	if (applied_modes.empty() || applied_modes[applied_modes.size() - 1] != sign)
@@ -15,11 +16,13 @@ static void	append_mode_change(std::string &applied_modes, char sign, char mode)
 	applied_modes.push_back(mode);
 }
 
+//Builds client prefixes needed for some messages to be irc conform.
 static std::string	build_client_prefix(const Client &client)
 {
 	return ":" + client.get_nickname() + "!" + client.get_username() + "@localhost";
 }
 
+//It tries to return the clients nick, if its missing, it return a placeholder instead. 
 static std::string	get_client_nick_or_wildcard(const Client &client)
 {
 	std::string nick = client.get_nickname();
@@ -28,13 +31,7 @@ static std::string	get_client_nick_or_wildcard(const Client &client)
 	return nick;
 }
 
-static void	broadcast_to_channel(const Channel &channel, const std::string &message)
-{
-	std::set<int> member_fds = channel.get_member_fds();
-	for (std::set<int>::const_iterator it = member_fds.begin(); it != member_fds.end(); ++it)
-		send(*it, message.c_str(), message.size(), 0);
-}
-
+//Checks if the channel exists. If not, a error reply is send to the client.
 static bool	ensure_channel_exists(Server &server, Client &client,
 	const std::string &channel_name, ChannelMap::iterator &channel_it)
 {
@@ -47,6 +44,7 @@ static bool	ensure_channel_exists(Server &server, Client &client,
 	return true;
 }
 
+//Checks if the client is a channel member. If not, a error reply is send to the client.
 static bool	ensure_channel_member(Server &server, Client &client,
 	const std::string &channel_name, ChannelMap::iterator &channel_it)
 {
@@ -58,6 +56,7 @@ static bool	ensure_channel_member(Server &server, Client &client,
 	return true;
 }
 
+//Checks if the client is a channel operator. If not, a error reply is send to the client.
 static bool	ensure_channel_operator(Server &server, Client &client,
 	const std::string &channel_name, ChannelMap::iterator &channel_it)
 {
@@ -69,6 +68,7 @@ static bool	ensure_channel_operator(Server &server, Client &client,
 	return true;
 }
 
+//Builds the reply about which modes the channel has active.
 static std::string	build_mode_reply(const Client &client, const std::string &channel_name,
 	const std::string &current_modes, const std::vector<std::string> &current_params)
 {
@@ -87,15 +87,18 @@ static std::string	build_mode_reply(const Client &client, const std::string &cha
 void	Server::handle_kick(Client &client, const std::string &line,
 	const std::vector<std::string> &arguments)
 {
+	//First it checks if there are enough arguments.
 	if (arguments.size() < 2)
 	{
 		send_error_reply(client, "461", "KICK :Not enough parameters");
 		return ;
 	}
 
+	//Sets them to variables for readability.
 	const std::string &channel_name = arguments[0];
 	const std::string &target_nick = arguments[1];
 
+	//Checks if the channel exists and if the kicking client is a channel member with operator rights.
 	ChannelMap::iterator channel_it;
 	if (!ensure_channel_exists(*this, client, channel_name, channel_it))
 		return ;
@@ -104,6 +107,7 @@ void	Server::handle_kick(Client &client, const std::string &line,
 	if (!ensure_channel_operator(*this, client, channel_name, channel_it))
 		return ;
 
+	//Checks if the client to kick even exists and is on channel.
 	Client *target = find_client_by_nickname(target_nick);
 	if (target == NULL)
 	{
@@ -118,6 +122,7 @@ void	Server::handle_kick(Client &client, const std::string &line,
 		return ;
 	}
 
+	//It provides the reason and the kick message, announces it to the channel and kicks the client.
 	std::string reason = client.get_nickname();
 	size_t reason_pos = line.find(" :");
 	if (reason_pos != std::string::npos && reason_pos + 2 < line.size())
@@ -136,15 +141,18 @@ void	Server::handle_kick(Client &client, const std::string &line,
 void	Server::handle_invite(Client &client,
 	const std::vector<std::string> &arguments)
 {
+	//First it checks if there are enough arguments.
 	if (arguments.size() < 2)
 	{
 		send_error_reply(client, "461", "INVITE :Not enough parameters");
 		return ;
 	}
 
+	//Sets them to variables for readability.
 	const std::string &target_nick = arguments[0];
 	const std::string &channel_name = arguments[1];
 
+	//Checks if the channel exists and if the inviting client is a channel member with operator rights.
 	ChannelMap::iterator channel_it;
 	if (!ensure_channel_exists(*this, client, channel_name, channel_it))
 		return ;
@@ -153,6 +161,7 @@ void	Server::handle_invite(Client &client,
 	if (!ensure_channel_operator(*this, client, channel_name, channel_it))
 		return ;
 
+	//Checks if the client to invite even exists and is on channel.
 	Client *target = find_client_by_nickname(target_nick);
 	if (target == NULL)
 	{
@@ -167,6 +176,7 @@ void	Server::handle_invite(Client &client,
 		return ;
 	}
 
+	//Builds the invite message and reply, then sends it to the clients.
 	std::string invite_message = build_client_prefix(client) + " INVITE " + target_nick
 		+ " :" + channel_name + "\r\n";
 	send(target->get_socket(), invite_message.c_str(), invite_message.size(), 0);
@@ -185,23 +195,31 @@ void	Server::handle_invite(Client &client,
 void	Server::handle_topic(Client &client, const std::string &line,
 	const std::vector<std::string> &arguments)
 {
+	//First it checks if there are enough arguments.
 	if (arguments.size() < 1)
 	{
 		send_error_reply(client, "461", "TOPIC :Not enough parameters");
 		return ;
 	}
 
+	//Store the channel name from the command parameters.
 	const std::string &channel_name = arguments[0];
+
+	//Checks if the channel exists and if the inviting client is a channel member.
 	ChannelMap::iterator channel_it;
 	if (!ensure_channel_exists(*this, client, channel_name, channel_it))
 		return ;
 	if (!ensure_channel_member(*this, client, channel_name, channel_it))
 		return ;
 
+	//Look for the topic text after " :".
+	//If it is missing, the client is only asking for the current topic.
 	size_t topic_pos = line.find(" :");
 	if (topic_pos == std::string::npos)
 	{
+		//Gets the client nick, if it doesn't find it, the nick is '*' to not be empty.
 		std::string nick = get_client_nick_or_wildcard(client);
+		//Gets the topic of the channel, if it's missing, the client gets messaged else it sends him the topic.
 		std::string topic = channel_it->second.get_topic();
 		if (topic.empty())
 		{
@@ -218,6 +236,7 @@ void	Server::handle_topic(Client &client, const std::string &line,
 		return ;
 	}
 
+	//If the topic is restricted, only channel operators can change it.
 	if (channel_it->second.is_topic_restricted()
 		&& !channel_it->second.is_operator(client.get_socket()))
 	{
@@ -225,9 +244,11 @@ void	Server::handle_topic(Client &client, const std::string &line,
 		return ;
 	}
 
+	//Sets the new topic.
 	std::string new_topic = line.substr(topic_pos + 2);
 	channel_it->second.set_topic(new_topic);
 
+	//Broadcast the topic change to every member of the channel.
 	std::string topic_message = build_client_prefix(client) + " TOPIC " + channel_name
 		+ " :" + new_topic + "\r\n";
 	broadcast_to_channel(channel_it->second, topic_message);
@@ -241,25 +262,31 @@ void	Server::handle_mode(Client &client, const std::string &line,
 	const std::vector<std::string> &arguments)
 {
 	(void)line;
+	//Check that the args are not empty.
 	if (arguments.empty())
 	{
 		send_error_reply(client, "461", "MODE :Not enough parameters");
 		return ;
 	}
 
+	//Get the channel name.
 	const std::string &channel_name = arguments[0];
 
+	//Only channel names beginning with '#' are valid.
 	if (channel_name.empty() || channel_name[0] != '#')
 		return ;
 
+	//Ensure the channel exists and the client is part of it.
 	ChannelMap::iterator channel_it;
 	if (!ensure_channel_exists(*this, client, channel_name, channel_it))
 		return ;
 	if (!ensure_channel_member(*this, client, channel_name, channel_it))
 		return ;
 
+	//If only the channel name was provided, return the current channel modes.
 	if (arguments.size() == 1)
 	{
+		//Collect the active modes and any additional parameters they need.
 		std::string current_modes = "+";
 		std::vector<std::string> current_params;
 
@@ -278,41 +305,49 @@ void	Server::handle_mode(Client &client, const std::string &line,
 			current_params.push_back(to_string_size_t(channel_it->second.get_user_limit()));
 		}
 
+		//Send the exact MODES the channel has active.
 		std::string mode_reply = build_mode_reply(client, channel_name, current_modes, current_params);
 		send(client.get_socket(), mode_reply.c_str(), mode_reply.size(), 0);
 		return ;
 	}
 
+	//Changing modes requires operator privileges.
 	if (!ensure_channel_operator(*this, client, channel_name, channel_it))
 		return ;
 
+	//Get the actual mode string something like: "+itk secret" or "-l".
 	const std::string &mode_string = arguments[1];
 	char sign = 0;
 	size_t param_index = 2;
 	std::string applied_modes;
 	std::vector<std::string> applied_params;
 
+	//Parse the mode string one character at a time.
 	for (size_t i = 0; i < mode_string.size(); ++i)
 	{
 		char mode = mode_string[i];
 		if (mode == '+' || mode == '-')
 		{
+			//Remember whether the following mode changes are adding or removing.
 			sign = mode;
 			continue ;
 		}
 		if (sign == 0)
 			continue ;
 
+		//Mode 'i': invite-only flag.
 		if (mode == 'i')
 		{
 			channel_it->second.set_invite_only(sign == '+');
 			append_mode_change(applied_modes, sign, 'i');
 		}
+		//Mode 't': topic restriction flag.
 		else if (mode == 't')
 		{
 			channel_it->second.set_topic_restricted(sign == '+');
 			append_mode_change(applied_modes, sign, 't');
 		}
+		//Mode 'k': channel key; requires a parameter when setting and clears it when removing.
 		else if (mode == 'k')
 		{
 			if (sign == '+')
@@ -336,6 +371,7 @@ void	Server::handle_mode(Client &client, const std::string &line,
 				}
 			}
 		}
+		//Mode 'o': operator assignment; target is a user nick and must be in the channel.
 		else if (mode == 'o')
 		{
 			if (param_index >= arguments.size())
@@ -369,6 +405,7 @@ void	Server::handle_mode(Client &client, const std::string &line,
 			applied_params.push_back(target_nick);
 			param_index++;
 		}
+		//Mode 'l': user limit; requires a numeric value when setting, and clears the limit when removing.
 		else if (mode == 'l')
 		{
 			if (sign == '+')
@@ -395,15 +432,18 @@ void	Server::handle_mode(Client &client, const std::string &line,
 				}
 			}
 		}
+		//Any other character is unsupported and gets an IRC error reply.
 		else
 		{
 			send_error_reply(client, "472", std::string(1, mode) + " :is unknown mode char to me");
 		}
 	}
 
+	//If no valid mode actually changed, do not broadcast anything.
 	if (applied_modes.empty())
 		return ;
 
+	//Build a single MODE message containing all accepted mode changes and their parameters.
 	std::string mode_message = build_client_prefix(client) + " MODE " + channel_name
 		+ " " + applied_modes;
 	for (size_t i = 0; i < applied_params.size(); ++i)
