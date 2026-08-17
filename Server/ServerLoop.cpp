@@ -39,9 +39,14 @@ void Server::accept_new_client(int client_socket) {
 void Server::disconnect_client(int client_fd, size_t &index) {
   cleanup_client_disconnect(client_fd);
   close(client_fd);
-  get_clients().erase(client_fd);
-  get_fds().erase(get_fds().begin() + index);
-  --index;
+  // If the currently polled index matches this FD, adjust the index so the next
+  // descriptor in the pollfd loop is not skipped after removal.
+  // in an updated I would like to introduce OKCHECK here, so that 
+  // we can just set notok() on an fd and cleanup between loops.
+  if (index < get_fds().size() && get_fds()[index].fd == client_fd) {
+    get_fds().erase(get_fds().begin() + index);
+    --index;
+  }
 }
 
 // Handles input from client.
