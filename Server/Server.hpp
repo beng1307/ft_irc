@@ -34,8 +34,8 @@ class Server
 
 		bool							configure_socket_nonblocking(int socket);
 		void							accept_new_client(int client_socket);
-		void							handle_client_input(int client_fd, size_t &index);
-		void							disconnect_client(int client_fd, size_t &index);
+		void							handle_client_input(int client_fd);
+		void							disconnect_client(int client_fd);
 
 	public:
 
@@ -120,7 +120,6 @@ class Server
 		void							send_message_to_user(Client &sender, const std::string &nickname, const std::string &message);
 		void							send_welcome_message(Client &client);
 		void							send_error_reply(Client &client, const std::string &code, const std::string &message);
-		void							cleanup_client_disconnect(int disconnected_fd);
 		Client							*find_client_by_nickname(const std::string &nickname);
 		std::vector<std::string>		split_arguments(const std::string &line);
 

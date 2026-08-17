@@ -166,7 +166,21 @@ void	Server::handle_nick_command(Client &client, const std::vector<std::string> 
 	{
 		std::string nick_message = ":" + old_nick + "!"
 	    	+ client.get_username() + "@localhost NICK :" + new_nick + "\r\n";
-		send(client.get_socket(), nick_message.c_str(), nick_message.size(), 0);
+
+		std::set<int> recipient_fds;
+		recipient_fds.insert(client.get_socket());
+		for (ChannelMap::const_iterator cit = get_channels().begin(); cit != get_channels().end(); ++cit)
+		{
+			if (cit->second.has_member(client.get_socket()))
+			{
+				const std::set<int> &members = cit->second.get_member_fds();
+				for (std::set<int>::const_iterator mit = members.begin(); mit != members.end(); ++mit)
+					recipient_fds.insert(*mit);
+			}
+		}
+
+		for (std::set<int>::const_iterator rit = recipient_fds.begin(); rit != recipient_fds.end(); ++rit)
+			send(*rit, nick_message.c_str(), nick_message.size(), 0);
 	}
 	client.set_nickname(new_nick);
 	try_register_client(client);
@@ -283,12 +297,11 @@ void	Server::handle_quit_command(Client &client, const std::string &line,
 		send(*rit, quit_message.c_str(), quit_message.size(), 0);
 	}
 
+	int client_fd = client.get_socket();
 	std::string bye = "ERROR :Closing connection\r\n";
-	send(client.get_socket(), bye.c_str(), bye.size(), 0);
+	send(client_fd, bye.c_str(), bye.size(), 0);
 
-	cleanup_client_disconnect(client.get_socket());
-	close(client.get_socket());
-	client.get_buffer().clear();
+	disconnect_client(client_fd);
 }
 
 void	Server::handle_ping_command(Client &client, const std::vector<std::string> &arguments)
@@ -335,10 +348,14 @@ void	Server::dispatch_command(Client &client, const std::string &command,
 }
 
 
-//Handles the message from client.
+// Handles the message from client.
+// Design Decision:
+// 1. Bare \n without \r: Delimiting strictly on \r\n (standard IRC RFC 1459/2812). Bare \n is not supported as delimiter.
+// 2. Leading whitespace: IRC grammar BNF specifies command begins immediately without leading spaces. Leading spaces cause the command token to be invalid/empty and yield ERR_UNKNOWNCOMMAND (421).
+// 3. Empty lines (\r\n\r\n): Empty lines are completely ignored per RFC 2812 §2.3 and return without sending any response.
 void Server::handle_line(Client &client, const size_t &position)
 {
-	//Saves the message in line and removes the message form the client buffer.
+	// Saves the message in line and removes the message from the client buffer.
 	std::string	line;
 
 	line = client.get_buffer().substr(0, position);
@@ -347,8 +364,8 @@ void Server::handle_line(Client &client, const size_t &position)
 	if (line.empty())
 		return ;
 
-	//It gets the first word of the message, because it's a potential command.
-	//It also makes it uppercase for checks. Because the commands are case insensetive.
+	// It gets the first word of the message, because it's a potential command.
+	// It also makes it uppercase for checks. Because the commands are case insensitive.
 	std::string command;
 	size_t 		space = line.find(' ');
 
@@ -359,9 +376,9 @@ void Server::handle_line(Client &client, const size_t &position)
 
 	std::transform(command.begin(), command.end(), command.begin(), ::toupper);
 	
-	//Checks if it's a command.
-	//If it is, it extracts the arguments and handles the command.
-	//Else it sends a error reply.
+	// Checks if it's a command.
+	// If it is, it extracts the arguments and handles the command.
+	// Else it sends a error reply.
 	if (is_command(command))
 	{
 		std::vector<std::string>	arguments = split_arguments(line);

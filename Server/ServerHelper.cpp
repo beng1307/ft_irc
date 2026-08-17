@@ -104,33 +104,6 @@ Client	*Server::find_client_by_nickname(const std::string &nickname)
 	return (NULL);
 }
 
-//Removes the disconnected client from all channels and deletes any channels
-//that have no members left.
-void	Server::cleanup_client_disconnect(int disconnected_fd)
-{
-	for (ChannelMap::iterator it = get_channels().begin(); it != get_channels().end();)
-	{
-		it->second.remove_member(disconnected_fd);
-		if (it->second.get_member_fds().empty())
-			get_channels().erase(it++);
-		else
-			++it;
-	}
-	// When a client disconnects (e.g. via QUIT or EOF), immediately erase the client
-	// from get_clients() to free its nickname and registration state, avoiding false 433
-	// "Nickname is already in use" errors if reconnected promptly.
-	get_clients().erase(disconnected_fd);
-	// Remove the file descriptor from the poll array so closed FDs are not polled.
-	for (std::vector<pollfd>::iterator it = get_fds().begin(); it != get_fds().end(); ++it)
-	{
-		if (it->fd == disconnected_fd)
-		{
-			get_fds().erase(it);
-			break;
-		}
-	}
-}
-
 //Registers the client once the password, nickname, and username are valid
 //and sends welcome message.
 void	Server::try_register_client(Client &client)

@@ -34,23 +34,35 @@ void Server::accept_new_client(int client_socket) {
   get_clients()[client_socket] = Client(client_socket);
 }
 
-// Disconnects the client from channels, closes its socket and removes it from
-// the server. Decrements the index so the next client is not skipped.
-void Server::disconnect_client(int client_fd, size_t &index) {
-  cleanup_client_disconnect(client_fd);
-  close(client_fd);
-  // If the currently polled index matches this FD, adjust the index so the next
-  // descriptor in the pollfd loop is not skipped after removal.
-  // in an updated I would like to introduce OKCHECK here, so that 
-  // we can just set notok() on an fd and cleanup between loops.
-  if (index < get_fds().size() && get_fds()[index].fd == client_fd) {
-    get_fds().erase(get_fds().begin() + index);
-    --index;
+// Disconnects the client from channels, closes its socket, removes it from
+// clients map and fds array.
+void Server::disconnect_client(int client_fd) {
+  // 1. Remove client from all channels and erase empty channels
+  for (ChannelMap::iterator it = get_channels().begin(); it != get_channels().end();) {
+    it->second.remove_member(client_fd);
+    if (it->second.get_member_fds().empty())
+      get_channels().erase(it++);
+    else
+      ++it;
   }
+
+  // 2. Erase from clients map
+  get_clients().erase(client_fd);
+
+  // 3. Erase from poll fds vector
+  for (std::vector<pollfd>::iterator it = get_fds().begin(); it != get_fds().end(); ++it) {
+    if (it->fd == client_fd) {
+      get_fds().erase(it);
+      break;
+    }
+  }
+
+  // 4. Close the socket descriptor
+  close(client_fd);
 }
 
 // Handles input from client.
-void Server::handle_client_input(int client_fd, size_t &index) {
+void Server::handle_client_input(int client_fd) {
   char buffer[512];
 
   // Recieves the message from client and saves it into the buffer.
@@ -66,6 +78,9 @@ void Server::handle_client_input(int client_fd, size_t &index) {
     size_t position = client.get_buffer().find("\r\n");
     while (position != std::string::npos) {
       handle_line(client, position);
+      // If client was disconnected by QUIT or error during handle_line, stop processing immediately
+      if (get_clients().find(client_fd) == get_clients().end())
+        return;
       position = client.get_buffer().find("\r\n");
     }
 
@@ -73,14 +88,14 @@ void Server::handle_client_input(int client_fd, size_t &index) {
               << std::endl;
   } else if (bytes_received == 0) {
     // Client closed the connection. So he has to be removed.
-    disconnect_client(client_fd, index);
+    disconnect_client(client_fd);
   } else {
     // With a non-blocking socket, recv() can return -1 with
     // EAGAIN/EWOULDBLOCK if no data is currently available.
     // The client stays connected and we return to poll().
     if (errno == EAGAIN || errno == EWOULDBLOCK)
       return;
-    disconnect_client(client_fd, index);
+    disconnect_client(client_fd);
   }
 }
 
@@ -126,9 +141,16 @@ void Server::server_loop() {
         }
         // Handles the freshly accepted, new client.
         accept_new_client(client_socket);
-      } else
+      } else {
         // Handles the incoming input of the current client.
-        handle_client_input(get_fds()[index].fd, index);
+        int current_fd = get_fds()[index].fd;
+        handle_client_input(current_fd);
+        // If current_fd was disconnected and removed from get_fds(),
+        // adjust index so the shifted element at this index is processed on next iteration.
+        if (index < get_fds().size() && get_fds()[index].fd != current_fd) {
+          --index;
+        }
+      }
     }
   }
 }
