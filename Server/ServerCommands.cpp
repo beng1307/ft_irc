@@ -145,7 +145,8 @@ void	Server::handle_nick_command(Client &client, const std::vector<std::string> 
 	// TODO: maybe check if the nickname is valid.
 	Client *existing_client = find_client_by_nickname(arguments[0]);
 	if (existing_client != NULL
-		&& existing_client->get_socket() != client.get_socket())
+		&& existing_client->get_socket() != client.get_socket()
+		&& (existing_client->get_register_status() || existing_client->get_pass_ok()))
 	{
 		send_error_reply(client, "433", arguments[0] + " :Nickname is already in use");
 		return ;
@@ -155,10 +156,12 @@ void	Server::handle_nick_command(Client &client, const std::vector<std::string> 
 	std::string old_nick = client.get_nickname();
 	std::string new_nick = arguments[0];
 
-	std::string nick_message = ":" + old_nick + "!"
-    	+ client.get_username() + "@localhost NICK :" + new_nick + "\r\n";
-
-	send(client.get_socket(), nick_message.c_str(), nick_message.size(), 0);	
+	if (client.get_register_status())
+	{
+		std::string nick_message = ":" + old_nick + "!"
+	    	+ client.get_username() + "@localhost NICK :" + new_nick + "\r\n";
+		send(client.get_socket(), nick_message.c_str(), nick_message.size(), 0);
+	}
 	client.set_nickname(new_nick);
 	try_register_client(client);
 }
@@ -282,41 +285,45 @@ void	Server::handle_quit_command(Client &client, const std::string &line,
 	client.get_buffer().clear();
 }
 
+void	Server::handle_ping_command(Client &client, const std::vector<std::string> &arguments)
+{
+	std::string token = arguments.empty() ? "localhost" : arguments[0];
+	std::string pong = ":localhost PONG localhost :" + token + "\r\n";
+	send(client.get_socket(), pong.c_str(), pong.size(), 0);
+}
+
 //Checks which command it is and uses the right function for it.
 void	Server::dispatch_command(Client &client, const std::string &command,
 		const std::string &line, const std::vector<std::string> &arguments)
 {
-	// TODO: Maybe put the register check in the functions and send a errormessage.
 	if (command == "PASS")
 		handle_pass_command(client, arguments);
 	else if (command == "USER")
 		handle_user_command(client, arguments);
 	else if (command == "NICK")
 		handle_nick_command(client, arguments);
-	else if (command == "JOIN" && client.get_register_status() == true)
-		handle_join_command(client, arguments);
-	else if (command == "PART" && client.get_register_status() == true)
-		handle_part_command(client, line, arguments);
-	else if (command == "KICK" && client.get_register_status() == true)
-		handle_kick(client, line, arguments);
-	else if (command == "INVITE" && client.get_register_status() == true)
-		handle_invite(client, arguments);
-	else if (command == "TOPIC" && client.get_register_status() == true)
-		handle_topic(client, line, arguments);
-	else if (command == "MODE" && client.get_register_status() == true)
-		handle_mode(client, line, arguments);
 	else if (command == "CAP")
 		handle_cap_command(client, arguments);
-	else if (command == "PRIVMSG" && client.get_register_status() == true)
-		handle_privmsg_command(client, line, arguments);
 	else if (command == "PING")
-	{
-		std::string token = arguments.empty() ? "localhost" : arguments[0];
-		std::string pong = ":localhost PONG localhost :" + token + "\r\n";
-		send(client.get_socket(), pong.c_str(), pong.size(), 0);
-	}
+		handle_ping_command(client, arguments);
 	else if (command == "QUIT")
 		handle_quit_command(client, line, arguments);
+	else if (!client.get_register_status())
+		send_error_reply(client, "451", ":You have not registered");
+	else if (command == "JOIN")
+		handle_join_command(client, arguments);
+	else if (command == "PART")
+		handle_part_command(client, line, arguments);
+	else if (command == "KICK")
+		handle_kick(client, line, arguments);
+	else if (command == "INVITE")
+		handle_invite(client, arguments);
+	else if (command == "TOPIC")
+		handle_topic(client, line, arguments);
+	else if (command == "MODE")
+		handle_mode(client, line, arguments);
+	else if (command == "PRIVMSG")
+		handle_privmsg_command(client, line, arguments);
 }
 
 
