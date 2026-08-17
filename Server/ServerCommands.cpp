@@ -327,9 +327,10 @@ void Server::handle_line(Client &client, const size_t &position)
 	std::string	line;
 
 	line = client.get_buffer().substr(0, position);
+	// erase delimiter before checking if empty
+	client.get_buffer().erase(0, position + 2);
 	if (line.empty())
 		return ;
-	client.get_buffer().erase(0, position + 2);
 
 	//It gets the first word of the message, because it's a potential command.
 	//It also makes it uppercase for checks. Because the commands are case insensetive.
