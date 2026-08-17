@@ -4,13 +4,14 @@
 #include <iostream>
 #include <string>
 #include <cstdlib>
+#include "helpers/print.hpp"
 
 
 int main(int ac, char **av)
 {
 	if (ac != 3)
 	{
-		std::cout << "Expected input: \"./ircserv <port> <password>\"";
+		print("Expected input: \"./ircserv <port> <password>\"");
 		return (1);
 	}
 

@@ -19,6 +19,7 @@
 #include <sys/time.h>
 #include <signal.h>
 #include <netinet/tcp.h>
+#include "../helpers/print.hpp"
 
 // -----------------------------------------------------------------------------
 // Glob Pattern Matching Helper
@@ -130,7 +131,7 @@ public:
             log_file.flush();
         }
         if (verbose) {
-            std::cout << line << std::endl;
+            print(line);
         }
     }
 };
@@ -444,13 +445,13 @@ public:
 
     bool run_spec(const std::string& spec_path, bool verbose = false) {
         if (!logger.init(spec_path, verbose)) {
-            std::cerr << "Error: Could not create log file for " << spec_path << std::endl;
+            printErr("Error: Could not create log file for ", spec_path);
             return false;
         }
 
         std::ifstream spec_file(spec_path.c_str());
         if (!spec_file.is_open()) {
-            std::cerr << "Error: Could not open spec file " << spec_path << std::endl;
+            printErr("Error: Could not open spec file ", spec_path);
             return false;
         }
 
@@ -545,7 +546,7 @@ public:
                         client_order.push_back(cid);
                         clients[cid] = VirtualClient();
                         if (!connect_client(cid)) {
-                            std::cerr << "FAIL [" << logger.spec_name << "] Line " << inst.line_number << ": Failed to connect client " << cid << std::endl;
+                            printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": Failed to connect client ", cid);
                             return false;
                         }
                     }
@@ -561,7 +562,7 @@ public:
                 poll_all_clients(200);
                 if (vc.connected) {
                     logger.log(inst.client_id, "ERROR", "Expected socket disconnect, but socket is still connected");
-                    std::cerr << "FAIL [" << logger.spec_name << "] Line " << inst.line_number << ": " << inst.client_id << " expected disconnect but is connected" << std::endl;
+                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": ", inst.client_id, " expected disconnect but is connected");
                     return false;
                 }
                 logger.log(inst.client_id, "SYS", "Asserted DISCONNECTED successfully");
@@ -570,7 +571,7 @@ public:
                 poll_all_clients(200);
                 if (!vc.connected) {
                     logger.log(inst.client_id, "ERROR", "Expected socket connected, but socket is closed");
-                    std::cerr << "FAIL [" << logger.spec_name << "] Line " << inst.line_number << ": " << inst.client_id << " expected connected but is disconnected" << std::endl;
+                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": ", inst.client_id, " expected connected but is disconnected");
                     return false;
                 }
                 logger.log(inst.client_id, "SYS", "Asserted CONNECTED successfully");
@@ -578,7 +579,7 @@ public:
                 VirtualClient& vc = clients[inst.client_id];
                 logger.log(inst.client_id, "SEND_RAW", inst.payload);
                 if (!send_raw(vc, decode_raw_escapes(inst.payload))) {
-                    std::cerr << "FAIL [" << logger.spec_name << "] Line " << inst.line_number << ": SEND_RAW failed for " << inst.client_id << std::endl;
+                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": SEND_RAW failed for ", inst.client_id);
                     return false;
                 }
             } else if (inst.type == DIR_CLOSE_SOCKET || inst.type == DIR_RESET) {
@@ -590,7 +591,7 @@ public:
                 VirtualClient& vc = clients[inst.client_id];
                 close_client(vc, false);
                 if (!connect_client(inst.client_id)) {
-                    std::cerr << "FAIL [" << logger.spec_name << "] Line " << inst.line_number << ": Failed to reconnect client " << inst.client_id << std::endl;
+                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": Failed to reconnect client ", inst.client_id);
                     return false;
                 }
             } else if (inst.type == DIR_PAUSE || inst.type == DIR_RESUME) {
@@ -601,12 +602,12 @@ public:
                 std::istringstream fs(inst.payload); int count = 0; fs >> count;
                 std::string payload; std::getline(fs, payload); trim(payload);
                 if (count < 1 || count > 10000 || payload.empty()) {
-                    std::cerr << "FAIL [" << logger.spec_name << "] Line " << inst.line_number << ": Invalid FLOOD parameters: " << inst.payload << std::endl;
+                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": Invalid FLOOD parameters: ", inst.payload);
                     return false;
                 }
                 for (int n = 0; n < count; ++n) {
                     if (!send_raw(vc, payload + "\r\n")) {
-                        std::cerr << "FAIL [" << logger.spec_name << "] Line " << inst.line_number << ": FLOOD send failed for " << inst.client_id << std::endl;
+                        printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": FLOOD send failed for ", inst.client_id);
                         return false;
                     }
                 }
@@ -615,21 +616,21 @@ public:
                 VirtualClient& vc = clients[inst.client_id];
                 logger.log(inst.client_id, "SEND", inst.payload);
                 if (!send_raw(vc, inst.payload + "\r\n")) {
-                    std::cerr << "FAIL [" << logger.spec_name << "] Line " << inst.line_number << ": Send failed for " << inst.client_id << std::endl;
+                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": Send failed for ", inst.client_id);
                     return false;
                 }
             } else if (inst.type == DIR_EXPECT) {
                 VirtualClient& vc = clients[inst.client_id];
                 if (!wait_for_pattern(vc, inst.payload, timeout_ms)) {
                     logger.log(inst.client_id, "ERROR", "EXPECT assertion failed for pattern: " + inst.payload);
-                    std::cerr << "FAIL [" << logger.spec_name << "] Line " << inst.line_number << ": EXPECT assertion failed for " << inst.client_id << " pattern: " << inst.payload << std::endl;
+                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": EXPECT assertion failed for ", inst.client_id, " pattern: ", inst.payload);
                     return false;
                 }
             } else if (inst.type == DIR_EXPECT_NONE) {
                 VirtualClient& vc = clients[inst.client_id];
                 if (!assert_none(vc, parse_duration_ms(inst.payload))) {
                     logger.log(inst.client_id, "ERROR", "EXPECT_NONE observed queued data or disconnect");
-                    std::cerr << "FAIL [" << logger.spec_name << "] Line " << inst.line_number << ": EXPECT_NONE observed queued data or disconnect" << std::endl;
+                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": EXPECT_NONE observed queued data or disconnect");
                     return false;
                 }
             } else if (inst.type == DIR_EXPECT_COUNT) {
@@ -638,20 +639,20 @@ public:
                 poll_all_clients(timeout_ms);
                 if (count_matching(vc, pattern) != expected) {
                     logger.log(inst.client_id, "ERROR", "EXPECT_COUNT mismatch: " + inst.payload);
-                    std::cerr << "FAIL [" << logger.spec_name << "] Line " << inst.line_number << ": EXPECT_COUNT mismatch: " << inst.payload << std::endl;
+                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": EXPECT_COUNT mismatch: ", inst.payload);
                     return false;
                 }
             } else if (inst.type == DIR_WAIT_RECV) {
                 VirtualClient& vc = clients[inst.client_id];
                 if (!wait_for_pattern(vc, inst.payload, timeout_ms)) {
                     logger.log(inst.client_id, "ERROR", "WAIT_RECV timeout matching pattern: " + inst.payload);
-                    std::cerr << "FAIL [" << logger.spec_name << "] Line " << inst.line_number << ": WAIT_RECV timeout for " << inst.client_id << " pattern: " << inst.payload << std::endl;
+                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": WAIT_RECV timeout for ", inst.client_id, " pattern: ", inst.payload);
                     return false;
                 }
             }
         }
 
-        std::cout << "PASS [" << logger.spec_name << "]" << std::endl;
+        print("PASS [", logger.spec_name, "]");
         return true;
     }
 };
@@ -679,7 +680,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (spec_path.empty()) {
-        std::cout << "Usage: testrunner [--host <host>] [--port <port>] [--v] <spec_file>" << std::endl;
+        print("Usage: testrunner [--host <host>] [--port <port>] [--v] <spec_file>");
         return 1;
     }
 

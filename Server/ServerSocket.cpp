@@ -3,6 +3,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <iostream>
+#include "../helpers/print.hpp"
 
 int	Server::socket_setup()
 {
@@ -11,7 +12,7 @@ int	Server::socket_setup()
 	set_server_socket(socket(AF_INET, SOCK_STREAM, 0));
 	if (get_server_socket() == -1)
 	{
-		std::cerr << "Error: socket creation failed!"<< std::endl;
+		printErr("Error: socket creation failed!");
 		return (1);
 	}
 
@@ -19,7 +20,7 @@ int	Server::socket_setup()
 	int on = 1;
 	if (setsockopt(get_server_socket(), SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) == -1)
 	{
-		std::cerr << "Error: setsockopt failed!"<< std::endl;
+		printErr("Error: setsockopt failed!");
 		return (1);
 	}
 
@@ -35,14 +36,14 @@ int	Server::socket_setup()
 	//Binds the socket to the specified port and address
 	if (bind(get_server_socket(), reinterpret_cast<sockaddr*>(&server_addr), sizeof(server_addr)) == -1)
 	{
-		std::cerr << "Error: bind failed!"<< std::endl;
+		printErr("Error: bind failed!");
 		return (1);
 	}
 
 	//Puts the server socket into listening mode, allowing it to accept incoming connection requests
 	if (listen(get_server_socket(), 5) == -1)
 	{
-		std::cerr << "Error: listen failed!"<< std::endl;
+		printErr("Error: listen failed!");
 		return (1);
 	}
 

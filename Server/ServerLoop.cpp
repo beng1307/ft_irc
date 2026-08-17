@@ -6,12 +6,13 @@
 #include <poll.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include "../helpers/print.hpp"
 
 // Sets the socket to non-blocking mode and returns false if it fails.
 bool Server::configure_socket_nonblocking(int socket) {
   // fcntl sets the socket flags to nonblocking with F_SETFL
   if (fcntl(socket, F_SETFL, O_NONBLOCK) == -1) {
-    std::cerr << "Error: fcntl failed!" << std::endl;
+    printErr("Error: fcntl failed!");
     return false;
   }
   return true;
@@ -84,8 +85,7 @@ void Server::handle_client_input(int client_fd) {
       position = client.get_buffer().find("\r\n");
     }
 
-    std::cout << "Received from client " << client_fd << ": " << buffer
-              << std::endl;
+    print("Received from client ", client_fd, ": ", buffer);
   } else if (bytes_received == 0) {
     // Client closed the connection. So he has to be removed.
     disconnect_client(client_fd);
@@ -118,7 +118,7 @@ void Server::server_loop() {
     if (ready == -1) {
       if (errno == EINTR)
         continue;
-      std::cerr << "Error: poll failed!" << std::endl;
+      printErr("Error: poll failed!");
       break; // TODO: Check if it has to send a message to the clients.
     }
 
@@ -136,7 +136,7 @@ void Server::server_loop() {
         // socket.
         int client_socket = accept(get_server_socket(), NULL, NULL);
         if (client_socket == -1) {
-          std::cerr << "Error: accept failed!" << std::endl;
+          printErr("Error: accept failed!");
           continue;
         }
         // Handles the freshly accepted, new client.

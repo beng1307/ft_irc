@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <iostream>
+#include "../helpers/print.hpp"
 
 
 //Joins the client to a channel after checking access restrictions.
@@ -16,12 +17,12 @@ void	Server::let_client_join_channel(const std::string &channel_name, Client &cl
 	if (get_channels().find(channel_name) == get_channels().end())
 	{
 		get_channels()[channel_name] = Channel(channel_name);
-		std::cout << "Channel " << channel_name << " created!" << std::endl;
+		print("Channel ", channel_name, " created!");
  
 		get_channels()[channel_name].add_member(client_fd);
 		get_channels()[channel_name].add_operator(client_fd);
 		broadcast_join_to_channel(client, channel_name);
-		std::cout << "Client joined channel " << channel_name << "!" << std::endl;
+		print("Client joined channel ", channel_name, "!");
 	}
 	else
 	{
@@ -31,7 +32,7 @@ void	Server::let_client_join_channel(const std::string &channel_name, Client &cl
 
 		if (channel.has_member(client_fd))
 		{
-			std::cout << "Client is already in channel " << channel_name << "!" << std::endl;
+			print("Client is already in channel ", channel_name, "!");
 			return ;
 		}
 
@@ -60,7 +61,7 @@ void	Server::let_client_join_channel(const std::string &channel_name, Client &cl
 		channel.add_member(client_fd);
 		channel.remove_invited(client_fd);
 		broadcast_join_to_channel(client, channel.get_name());
-		std::cout << "Client joined channel " << channel_name << "!" << std::endl;
+		print("Client joined channel ", channel_name, "!");
 	}
 
 	// Sends mandatory IRC numeric replies 353 RPL_NAMREPLY (member list with '@' for ops)
@@ -90,7 +91,7 @@ void	Server::part_client_from_channel(Client &client, const std::string &channel
 	it->second.remove_member_from_channel(client.get_socket());
 	if (it->second.get_member_fds().empty())
 		get_channels().erase(it);
-	std::cout << "Client left channel " << channel_name << "!" << std::endl;
+	print("Client left channel ", channel_name, "!");
 }
 
 //Handles a password input.

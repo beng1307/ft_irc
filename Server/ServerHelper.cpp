@@ -1,6 +1,7 @@
 #include "Server.hpp"
 #include <sstream>
 #include <iostream>
+#include "../helpers/print.hpp"
 
 //Returns a string converted from size_t
 std::string	Server::to_string_size_t(size_t value)
@@ -117,6 +118,6 @@ void	Server::try_register_client(Client &client)
 		return ;
 
 	client.set_register_status(true);
-	std::cout << "Client " << client.get_nickname() << " registered successfully!" << std::endl;
+	print("Client ", client.get_nickname(), " registered successfully!");
 	send_welcome_message(client);
 }

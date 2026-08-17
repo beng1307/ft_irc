@@ -1,6 +1,7 @@
 #include "Client.hpp"
 #include <iostream>
 #include <string>
+#include "../helpers/print.hpp"
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -55,7 +56,7 @@ void	Client::register_client(const std::string &password)
 {
 	if (this->password == password && !nickname.empty() && !username.empty())
 	{
-		std::cout << "Client " << nickname << " registered successfully!" << std::endl;
+		print("Client ", nickname, " registered successfully!");
 		this->is_registered = true;
 	}
 }
