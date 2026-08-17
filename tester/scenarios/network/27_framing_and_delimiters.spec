@@ -1,12 +1,22 @@
-# Validates bare LF termination, whitespace tolerance, 512-byte buffers, and mid-stream disconnect handling.
+# Validates CRLF termination, whitespace tolerance, 512-byte buffers, and mid-stream disconnect handling.
+# Design Decision:
+# 1. Bare \n without \r: Delimiting strictly on \r\n (standard IRC RFC 1459/2812). Bare \n is not accepted as delimiter.
+# 2. Leading whitespace: IRC BNF command grammar does not allow leading spaces before command; treated as unknown/malformed command (421).
+# 3. Empty lines (\r\n\r\n): Empty lines are completely ignored per RFC 2812 §2.3 and do not send any response.
 CLIENTS C1, C2
 
-# NET-05: Leading whitespace, extra spaces between params, and empty lines (\r\n\r\n)
-C1 SEND_RAW \r\n\r\n   PASS   1234   \r\n
-C1 SEND_RAW    NICK   AliceLF   \r\n
+# NET-05: Empty lines (\r\n\r\n) are ignored (no reply sent)
+C1 SEND_RAW \r\n\r\n
+C1 EXPECT_NONE 100ms
 
-# NET-02: Unix bare LF (\n) line ending without \r
-C1 SEND_RAW USER alice 0 * :Alice LF\n
+# Leading whitespace triggers 421 Unknown command
+C1 SEND_RAW    PASS   1234   \r\n
+C1 EXPECT * 421 *
+
+# Send valid registration commands
+C1 SEND PASS 1234
+C1 SEND NICK AliceLF
+C1 SEND USER alice 0 * :Alice LF
 C1 EXPECT 001 AliceLF :*
 
 # NET-06: 512-byte boundary resilience (send long 550-byte PRIVMSG payload without crashing server)

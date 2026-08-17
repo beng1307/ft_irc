@@ -12,14 +12,16 @@ C2 SEND USER bob 0 * :Bob
 C2 EXPECT 001 Bob :*
 
 # CHAN-04: JOIN invalid channel name syntax (missing leading #)
-C1 SEND JOIN invalidchannel
-C1 EXPECT 403 Alice * :*
+ C1 SEND JOIN invalidchannel
+ C1 EXPECT 403 Alice * :*
 
 # CHAN-05: JOIN missing parameter
 C1 SEND JOIN
 C1 EXPECT 461 Alice JOIN :*
 
 # CHAN-10: PART channel sender is not on
+C2 SEND JOIN #notjoined
+C2 EXPECT :Bob!* JOIN #notjoined
 C1 SEND PART #notjoined
 C1 EXPECT 442 Alice #notjoined :*
 

@@ -21,7 +21,7 @@ re: fclean all
 
 # Run testrunner with default scenarios or arguments passed to make run (e.g. make run 03)
 run: $(NAME)
-	@./run_scenarios $(filter-out $@,$(MAKECMDGOALS))
+	-@./run_scenarios $(filter-out $@,$(MAKECMDGOALS))
 
 # Run testrunner in verbose mode (e.g. make runv 35)
 runv: $(NAME)

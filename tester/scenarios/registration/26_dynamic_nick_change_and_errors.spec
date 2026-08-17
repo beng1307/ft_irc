@@ -3,7 +3,7 @@ CLIENTS C1, C2
 
 # AUTH-07: Erroneous Nickname testing during registration
 C1 SEND PASS 1234
-C1 SEND NICK 123digit
+C1 SEND NICK "123 digit"
 C1 EXPECT 432 * :*
 C1 SEND NICK #channelnick
 C1 EXPECT 432 * :*

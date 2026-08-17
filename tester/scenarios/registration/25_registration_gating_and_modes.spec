@@ -13,6 +13,7 @@ C1 EXPECT 451 * :*
 
 # AUTH-13 & AUTH-02: IRCv3 CAP handshake + Permuted PASS -> USER -> NICK sequence
 C1 SEND CAP LS
+C1 EXPECT :* CAP * LS :*
 C1 SEND PASS 1234
 C1 SEND USER alice 0 * :Alice Permuted
 C1 EXPECT_NONE 150ms

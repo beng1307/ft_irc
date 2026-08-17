@@ -25,6 +25,8 @@ C1 SEND KICK #fakechan Bob
 C1 EXPECT 403 Alice #fakechan :*
 
 # OPCMD-05: KICK sender not in channel
+C2 SEND JOIN #notjoined
+C2 EXPECT :Bob!* JOIN #notjoined
 C1 SEND KICK #notjoined Bob
 C1 EXPECT 442 Alice #notjoined :*
 
