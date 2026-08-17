@@ -582,7 +582,10 @@ public:
             } else if (inst.type == DIR_RECONNECT) {
                 VirtualClient& vc = clients[inst.client_id];
                 close_client(vc, false);
-                if (!connect_client(inst.client_id)) return false;
+                if (!connect_client(inst.client_id)) {
+                    std::cerr << "FAIL [" << logger.spec_name << "] Line " << inst.line_number << ": Failed to reconnect client " << inst.client_id << std::endl;
+                    return false;
+                }
             } else if (inst.type == DIR_PAUSE || inst.type == DIR_RESUME) {
                 clients[inst.client_id].reading = (inst.type == DIR_RESUME);
                 logger.log(inst.client_id, "SYS", inst.type == DIR_RESUME ? "Reading resumed" : "Reading paused");
@@ -590,8 +593,16 @@ public:
                 VirtualClient& vc = clients[inst.client_id];
                 std::istringstream fs(inst.payload); int count = 0; fs >> count;
                 std::string payload; std::getline(fs, payload); trim(payload);
-                if (count < 1 || count > 10000 || payload.empty()) return false;
-                for (int n = 0; n < count; ++n) if (!send_raw(vc, payload + "\r\n")) return false;
+                if (count < 1 || count > 10000 || payload.empty()) {
+                    std::cerr << "FAIL [" << logger.spec_name << "] Line " << inst.line_number << ": Invalid FLOOD parameters: " << inst.payload << std::endl;
+                    return false;
+                }
+                for (int n = 0; n < count; ++n) {
+                    if (!send_raw(vc, payload + "\r\n")) {
+                        std::cerr << "FAIL [" << logger.spec_name << "] Line " << inst.line_number << ": FLOOD send failed for " << inst.client_id << std::endl;
+                        return false;
+                    }
+                }
                 logger.log(inst.client_id, "FLOOD", payload);
             } else if (inst.type == DIR_SEND) {
                 VirtualClient& vc = clients[inst.client_id];
@@ -610,14 +621,18 @@ public:
             } else if (inst.type == DIR_EXPECT_NONE) {
                 VirtualClient& vc = clients[inst.client_id];
                 if (!assert_none(vc, parse_duration_ms(inst.payload))) {
-                    logger.log(inst.client_id, "ERROR", "EXPECT_NONE observed queued data or disconnect"); return false;
+                    logger.log(inst.client_id, "ERROR", "EXPECT_NONE observed queued data or disconnect");
+                    std::cerr << "FAIL [" << logger.spec_name << "] Line " << inst.line_number << ": EXPECT_NONE observed queued data or disconnect" << std::endl;
+                    return false;
                 }
             } else if (inst.type == DIR_EXPECT_COUNT) {
                 VirtualClient& vc = clients[inst.client_id]; std::istringstream es(inst.payload);
                 int expected = 0; es >> expected; std::string pattern; std::getline(es, pattern); trim(pattern);
                 poll_all_clients(timeout_ms);
                 if (count_matching(vc, pattern) != expected) {
-                    logger.log(inst.client_id, "ERROR", "EXPECT_COUNT mismatch: " + inst.payload); return false;
+                    logger.log(inst.client_id, "ERROR", "EXPECT_COUNT mismatch: " + inst.payload);
+                    std::cerr << "FAIL [" << logger.spec_name << "] Line " << inst.line_number << ": EXPECT_COUNT mismatch: " << inst.payload << std::endl;
+                    return false;
                 }
             } else if (inst.type == DIR_WAIT_RECV) {
                 VirtualClient& vc = clients[inst.client_id];

@@ -3,6 +3,12 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TESTRUNNER_BIN="${SCRIPT_DIR}/testrunner"
 
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BOLD='\033[1m'
+NC='\033[0m'
+
 # Build testrunner executable if missing
 if [ ! -f "$TESTRUNNER_BIN" ]; then
     make -C "$SCRIPT_DIR" || exit 1
@@ -80,20 +86,104 @@ if [ ${#SPECS[@]} -eq 0 ]; then
     exit 1
 fi
 
+format_folder_title() {
+    local dir="$1"
+    if [ "$dir" = "." ] || [ -z "$dir" ]; then
+        echo "Scenarios"
+        return
+    fi
+    local result=""
+    IFS='/' read -ra PARTS <<< "$dir"
+    for part in "${PARTS[@]}"; do
+        local with_spaces="${part//_/ }"
+        with_spaces="${with_spaces//-/ }"
+        local part_title=""
+        for word in $with_spaces; do
+            local cap
+            cap="$(printf '%s' "${word:0:1}" | tr '[:lower:]' '[:upper:]')${word:1}"
+            if [ -z "$part_title" ]; then
+                part_title="$cap"
+            else
+                part_title="$part_title $cap"
+            fi
+        done
+        if [ -z "$result" ]; then
+            result="$part_title"
+        else
+            result="$result / $part_title"
+        fi
+    done
+    echo "$result"
+}
+
+format_test_name() {
+    local base="$1"
+    local with_spaces="${base//_/ }"
+    with_spaces="${with_spaces//-/ }"
+    local title=""
+    for word in $with_spaces; do
+        local cap
+        cap="$(printf '%s' "${word:0:1}" | tr '[:lower:]' '[:upper:]')${word:1}"
+        if [ -z "$title" ]; then
+            title="$cap"
+        else
+            title="$title $cap"
+        fi
+    done
+    echo "$title"
+}
+
 failed=0
 total=0
+current_dir=""
+
+cd "$SCRIPT_DIR"
 
 for spec in "${SPECS[@]}"; do
     total=$((total + 1))
-    spec_rel="${spec#${SCRIPT_DIR}/}"
-    echo "----------------------------------------"
-    echo "Running tester/${spec_rel}..."
-    "$TESTRUNNER_BIN" --host "$HOST" --port "$PORT" "$spec" || failed=$((failed + 1))
+    rel_spec="${spec#${SCENARIOS_DIR}/}"
+    dir_name="$(dirname "$rel_spec")"
+    spec_file="$(basename "$spec")"
+    spec_base="${spec_file%.spec}"
+
+    if [ "$dir_name" != "$current_dir" ]; then
+        current_dir="$dir_name"
+        folder_title=$(format_folder_title "$dir_name")
+        if [ $total -gt 1 ]; then
+            echo ""
+        fi
+        echo -e "${BOLD}== ${folder_title} ==${NC}"
+    fi
+
+    test_name=$(format_test_name "$spec_base")
+    output=$("$TESTRUNNER_BIN" --host "$HOST" --port "$PORT" "$spec" 2>&1)
+    status=$?
+
+    if [ $status -eq 0 ]; then
+        echo -e "${GREEN}${test_name}   ✅${NC}"
+    else
+        failed=$((failed + 1))
+        err_msg=$(echo "$output" | grep -E '^FAIL \[' | head -n 1 | sed -E 's/^FAIL \[[^]]*\] //')
+        if [ -z "$err_msg" ]; then
+            err_msg=$(echo "$output" | grep -v '^[[:space:]]*$' | head -n 1)
+        fi
+        if [ -n "$err_msg" ]; then
+            echo -e "${RED}${test_name}   ❌   ${err_msg}${NC}"
+        else
+            echo -e "${RED}${test_name}   ❌${NC}"
+        fi
+        echo -e "   ${RED}\033[4mtester/logs/${spec_base}.log${NC}\n"
+    fi
     sleep 0.05
 done
 
+echo ""
 echo "----------------------------------------"
-echo "Summary: $((total - failed))/$total scenarios passed."
+if [ $failed -eq 0 ]; then
+    echo -e "${GREEN}Summary: $((total - failed))/$total scenarios passed.${NC}"
+else
+    echo -e "${RED}Summary: $((total - failed))/$total scenarios passed.${NC}"
+fi
 
 if [ $failed -gt 0 ]; then
     exit 1
