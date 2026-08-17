@@ -84,7 +84,9 @@ void	Server::part_client_from_channel(Client &client, const std::string &channel
 
 	broadcast_part_to_channel(client, channel_name, reason);
 	it->second.remove_member_from_channel(client.get_socket());
-	std::cout << "Client left channel " << it->second.get_name() << "!" << std::endl;
+	if (it->second.get_member_fds().empty())
+		get_channels().erase(it);
+	std::cout << "Client left channel " << channel_name << "!" << std::endl;
 }
 
 //Handles a password input.

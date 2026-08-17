@@ -132,6 +132,8 @@ void	Server::handle_kick(Client &client, const std::string &line,
 		+ " " + target_nick + " :" + reason + "\r\n";
 	broadcast_to_channel(channel_it->second, kick_message);
 	channel_it->second.remove_member_from_channel(target->get_socket());
+	if (channel_it->second.get_member_fds().empty())
+		get_channels().erase(channel_it);
 }
 
 
