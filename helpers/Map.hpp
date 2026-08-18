@@ -107,6 +107,72 @@ public:
         return this->end();
     }
 
+    // --- FETCH: returns a reference directly to the mapped item (T&).
+    // If the key is found, returns a reference to the element in the map.
+    // If not found, returns a reference to a static default-constructed placeholder with .notok(). ---
+    T& fetch(const Key& key) {
+        _RawIter it = _map::find(key);
+        if (it != _map::end())
+            return it->second;
+        static T invalid;
+        invalid.notok();
+        return invalid;
+    }
+
+    const T& fetch(const Key& key) const {
+        _RawCIter it = _map::find(key);
+        if (it != _map::end())
+            return it->second;
+        static T invalid;
+        invalid.notok();
+        return invalid;
+    }
+
+    // --- FETCH (predicate): finds an item where fn(current_el) or fn(current_el, provided_el) is true ---
+    template <typename FN>
+    T& fetch(FN fn) {
+        for (_RawIter it = this->_map::begin(); it != this->_map::end(); ++it) {
+            if (fn(it->second))
+                return it->second;
+        }
+        static T invalid;
+        invalid.notok();
+        return invalid;
+    }
+
+    template <typename FN>
+    const T& fetch(FN fn) const {
+        for (_RawCIter it = this->_map::begin(); it != this->_map::end(); ++it) {
+            if (fn(it->second))
+                return it->second;
+        }
+        static T invalid;
+        invalid.notok();
+        return invalid;
+    }
+
+    template <typename FN, typename A1>
+    T& fetch(FN fn, A1 a1) {
+        for (_RawIter it = this->_map::begin(); it != this->_map::end(); ++it) {
+            if (fn(it->second, a1))
+                return it->second;
+        }
+        static T invalid;
+        invalid.notok();
+        return invalid;
+    }
+
+    template <typename FN, typename A1>
+    const T& fetch(FN fn, A1 a1) const {
+        for (_RawCIter it = this->_map::begin(); it != this->_map::end(); ++it) {
+            if (fn(it->second, a1))
+                return it->second;
+        }
+        static T invalid;
+        invalid.notok();
+        return invalid;
+    }
+
     void erase(iterator pos) {
         this->_map::erase(pos.base());
     }

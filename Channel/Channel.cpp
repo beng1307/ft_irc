@@ -12,6 +12,10 @@ Channel::Channel(): name(""), topic(""), member_fds(), operator_fds(), invited_f
 	invite_only(false), topic_restricted(false), key_enabled(false), channel_key(""),
 	limit_enabled(false), user_limit(0)
 {
+	member_fds.ok();
+	operator_fds.ok();
+	invited_fds.ok();
+	_ok = false;
 	return ;
 }
 
@@ -19,6 +23,10 @@ Channel::Channel(const Wire &name): name(name), topic(""), member_fds(), operato
 	invite_only(false), topic_restricted(false), key_enabled(false), channel_key(""),
 	limit_enabled(false), user_limit(0)
 {
+	member_fds.ok();
+	operator_fds.ok();
+	invited_fds.ok();
+	_ok = true;
 	return ;
 }
 
@@ -28,6 +36,7 @@ Channel::Channel(const Channel &other): name(other.name), topic(other.topic),
 	key_enabled(other.key_enabled), channel_key(other.channel_key),
 	limit_enabled(other.limit_enabled), user_limit(other.user_limit)
 {
+	_ok = other._ok;
 	return ;
 }
 
@@ -46,6 +55,7 @@ Channel	&Channel::operator=(const Channel &other)
 		channel_key = other.channel_key;
 		limit_enabled = other.limit_enabled;
 		user_limit = other.user_limit;
+		_ok = other._ok;
 	}
 
 	return (*this);
@@ -90,7 +100,7 @@ void	Channel::add_member(int client_fd)
 
 bool	Channel::has_member(int client_fd) const
 {
-	return (member_fds.find(client_fd) != member_fds.end());
+	return (member_fds.find(client_fd));
 }
 
 //Erases member from the member/operater/invited fds.
@@ -125,7 +135,7 @@ void	Channel::add_operator(int client_fd)
 
 bool	Channel::is_operator(int client_fd) const
 {
-	return (operator_fds.find(client_fd) != operator_fds.end());
+	return (operator_fds.find(client_fd));
 }
 
 void	Channel::add_invited(int client_fd)
@@ -135,7 +145,7 @@ void	Channel::add_invited(int client_fd)
 
 bool	Channel::is_invited(int client_fd) const
 {
-	return (invited_fds.find(client_fd) != invited_fds.end());
+	return (invited_fds.find(client_fd));
 }
 
 void	Channel::set_invite_only(bool enabled)
@@ -205,6 +215,11 @@ size_t	Channel::get_user_limit() const
 Set<int>	Channel::get_member_fds() const
 {
 	return (member_fds);
+}
+
+bool	Channel::empty() const
+{
+	return (member_fds.empty());
 }
 
 void	Channel::broadcast(const Wire &message, int except_fd) const

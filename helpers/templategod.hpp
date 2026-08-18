@@ -29,6 +29,39 @@ struct fn_return_type<R (*)(A1, A2, A3, A4, A5)> {
     typedef R type;
 };
 
+template <typename FN>
+struct fn_traits;
+
+template <typename R, typename Arg>
+struct fn_traits<R (*)(Arg)> {
+    typedef R return_type;
+    enum { arity = 1 };
+};
+
+template <typename R, typename A1, typename A2>
+struct fn_traits<R (*)(A1, A2)> {
+    typedef R return_type;
+    enum { arity = 2 };
+};
+
+template <typename R, typename A1, typename A2, typename A3>
+struct fn_traits<R (*)(A1, A2, A3)> {
+    typedef R return_type;
+    enum { arity = 3 };
+};
+
+template <typename R, typename A1, typename A2, typename A3, typename A4>
+struct fn_traits<R (*)(A1, A2, A3, A4)> {
+    typedef R return_type;
+    enum { arity = 4 };
+};
+
+template <typename R, typename A1, typename A2, typename A3, typename A4, typename A5>
+struct fn_traits<R (*)(A1, A2, A3, A4, A5)> {
+    typedef R return_type;
+    enum { arity = 5 };
+};
+
 namespace detail {
     template <typename T>
     struct has_ok_member {

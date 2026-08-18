@@ -43,17 +43,6 @@ Vector<Wire>	Server::split_arguments(const Wire &line)
 	return line.strAfter(" ").splitBy(' ').filter(is_empty);
 }
 
-//It goes through the clients and if he gets found per name, he gets returned.
-Client	*Server::find_client_by_nickname(const Wire &nickname)
-{
-	for (ClientMap::iterator it = get_clients().begin(); it != get_clients().end(); ++it)
-	{
-		if (it->second.get_nickname() == nickname)
-			return (&it->second);
-	}
-	return (NULL);
-}
-
 //Registers the client once the password, nickname, and username are valid
 //and sends welcome message.
 void	Server::try_register_client(Client &client)

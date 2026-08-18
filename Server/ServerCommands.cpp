@@ -15,20 +15,20 @@ void	Server::let_client_join_channel(const Wire &channel_name, Client &client, c
 {
 	int client_fd = client.get_socket();
 
-	if (get_channels().find(channel_name) == get_channels().end())
+	if (!get_channel(channel_name))
 	{
 		Channel new_channel(channel_name);
 		new_channel.add_member(client_fd);
 		new_channel.add_operator(client_fd);
-		get_channels()[channel_name] = new_channel;
-		print("Channel ", channel_name, " created!");
-
 		new_channel.broadcast(client, "JOIN");
+		
+		add_channel(new_channel);
 		print("Client joined channel ", channel_name, "!");
+		print("Channel ", channel_name, " created!");
 	}
 	else
 	{
-		Channel &channel = get_channels()[channel_name];
+		Channel &channel = get_channel(channel_name);
 
 		//It gets checked if the client has the right to join.
 
@@ -76,24 +76,24 @@ void	Server::let_client_join_channel(const Wire &channel_name, Client &client, c
 void	Server::part_client_from_channel(Client &client, const Wire &channel_name,
 		const Wire &reason)
 {
-	ChannelMap::iterator it = get_channels().find(channel_name);
-	if (it == get_channels().end())
+	Channel &channel = get_channel(channel_name);
+	if (!channel)
 	{
 		send_status(client, "403", channel_name + " :No such channel");
 		return ;
 	}
 
-	if (!it->second.has_member(client.get_socket()))
+	if (!channel.has_member(client.get_socket()))
 	{
 		send_status(client, "442", channel_name + " :You're not on that channel");
 		return ;
 	}
 
-	it->second.broadcast(client, "PART", reason);
-	it->second.remove_member_from_channel(client.get_socket());
+	channel.broadcast(client, "PART", reason);
+	channel.remove_member_from_channel(client.get_socket());
 	// delete channel if last member left
-	if (it->second.get_member_fds().empty())
-		get_channels().erase(it);
+	if (channel.empty())
+		remove_channel(channel_name);
 	print("Client left channel ", channel_name, "!");
 }
 
@@ -157,10 +157,10 @@ void	Server::handle_nick_command(Client &client, const Vector<Wire> &arguments)
 		send_status(client, "432", arguments[0] + " :Erroneous nickname");
 		return ;
 	}
-	Client *existing_client = find_client_by_nickname(arguments[0]);
-	if (existing_client != NULL
-		&& existing_client->get_socket() != client.get_socket()
-		&& (existing_client->get_register_status() || existing_client->get_pass_ok()))
+	Client &existing_client = get_client(arguments[0]);
+	if (existing_client
+		&& existing_client.get_socket() != client.get_socket()
+		&& (existing_client.get_register_status() || existing_client.get_pass_ok()))
 	{
 		send_status(client, "433", arguments[0] + " :Nickname is already in use");
 		return ;

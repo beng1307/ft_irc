@@ -31,6 +31,8 @@ class	Channel
 
 	public:
 
+		OK_CHECK(Channel);
+
 ///////////////////////////////////////////////////////////////////////////////
 // Consturctors and destructor
 
@@ -57,6 +59,7 @@ class	Channel
 		size_t				get_user_limit() const;
 		
 		Set<int>		get_member_fds() const;
+		bool				empty() const;
 
 		void				set_invite_only(bool enabled);
 

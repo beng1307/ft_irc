@@ -63,10 +63,20 @@ class Server
 		void set_clients(const ClientMap &clients);
 		ClientMap &get_clients();
 		const ClientMap &get_clients() const;
+		Client &get_client(int fd);
+		const Client &get_client(int fd) const;
+		Client &get_client(const Wire &nickname);
+		const Client &get_client(const Wire &nickname) const;
+		void add_client(int socket);
+		void remove_client(int socket);
 
 		void set_channels(const ChannelMap &channels);
 		ChannelMap &get_channels();
 		const ChannelMap &get_channels() const;
+		Channel &get_channel(const Wire &name);
+		const Channel &get_channel(const Wire &name) const;
+		void add_channel(const Channel &channel);
+		void remove_channel(const Wire &channel_name);
 
 		void set_fds(const Vector<pollfd> &fds);
 		Vector<pollfd> &get_fds();
@@ -97,6 +107,9 @@ class Server
 		void handle_invite(Client &client, const Vector<Wire> &arguments);
 		void handle_topic(Client &client, const Wire &line, const Vector<Wire> &arguments);
 		void handle_mode(Client &client, const Wire &line, const Vector<Wire> &arguments);
+		Channel &ensure_channel_exists(Client &client, const Wire &channel_name);
+		bool ensure_channel_member(Client &client, Channel &channel);
+		bool ensure_channel_operator(Client &client, Channel &channel);
 		void let_client_join_channel(const Wire &channel_name, Client &client, const Wire &key);
 		void part_client_from_channel(Client &client, const Wire &channel_name, const Wire &reason);
 		void send_message_to_channel(Client &sender, const Wire &channel_name, const Wire &message);
@@ -104,7 +117,6 @@ class Server
 		void send_message_to_user(Client &sender, const Wire &nickname, const Wire &message);
 		void send_status(Client &client, const Wire &code, const Wire &message);
 		void send_channel_names_reply(Client &client, const Wire &channel_name);
-		Client *find_client_by_nickname(const Wire &nickname);
 		Vector<Wire> split_arguments(const Wire &line);
 		Set<int> get_client_audience(int client_fd) const;
 

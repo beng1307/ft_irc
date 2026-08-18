@@ -13,6 +13,7 @@ Client::Client():
 	nickname(""), pass_ok(false), is_registered(false), is_admin(false),
 	buffer("")
 {
+	_ok = false;
 	return ;
 }
 
@@ -21,6 +22,7 @@ Client::Client(int socket):
 	nickname(""), pass_ok(false), is_registered(false), is_admin(false),
 	buffer("")
 {
+	_ok = true;
 	return ;
 }
 
@@ -29,7 +31,8 @@ Client::Client(const Client &other):
 	username(other.username), nickname(other.nickname),
 	pass_ok(other.pass_ok), is_registered(other.is_registered), is_admin(other.is_admin),
 	buffer(other.buffer)
-	{
+{
+	_ok = other._ok;
 	return ;
 }
 
@@ -45,6 +48,7 @@ Client	&Client::operator=(const Client &other)
 		is_registered = other.is_registered;
 		is_admin = other.is_admin;
 		buffer = other.buffer;
+		_ok = other._ok;
 	}
 	return (*this);
 }

@@ -33,7 +33,7 @@ void Server::accept_new_client(int client_socket) {
   add_fds(client_socket, POLLIN, 0);
   // Creates a new client for the client map, paired with the new socket.
   // we access existing socket in case FD is being reused.
-  get_clients()[client_socket] = Client(client_socket);
+  add_client(client_socket);
 }
 
 // Disconnects the client from channels, closes its socket, removes it from
@@ -42,14 +42,14 @@ void Server::disconnect_client(int client_fd) {
   // 1. Remove client from all channels and erase empty channels
   for (ChannelMap::iterator it = get_channels().begin(); it != get_channels().end();) {
     it->second.remove_member(client_fd);
-    if (it->second.get_member_fds().empty())
+    if (it->second.empty())
       get_channels().erase(it++);
     else
       ++it;
   }
 
   // 2. Erase from clients map
-  get_clients().erase(client_fd);
+  remove_client(client_fd);
 
   // 3. Erase from poll fds vector
   for (Vector<pollfd>::iterator it = get_fds().begin(); it != get_fds().end(); ++it) {
@@ -81,7 +81,7 @@ void Server::handle_client_input(int client_fd) {
     while (position != std::string::npos) {
       handle_line(client, position);
       // If client was disconnected by QUIT or error during handle_line, stop processing immediately
-      if (get_clients().find(client_fd) == get_clients().end())
+      if (!get_client(client_fd))
         return;
       position = client.get_buffer().find("\r\n");
     }

@@ -8,6 +8,101 @@
 #include <algorithm>
 #include <iterator>
 
+namespace detail {
+    template <int Arity>
+    struct set_reduce_2;
+
+    template <>
+    struct set_reduce_2<2> {
+        template <typename SetType, typename FN, typename Arg1>
+        static typename fn_traits<FN>::return_type exec(const SetType& s, FN fn, Arg1 arg1) {
+            typedef typename fn_traits<FN>::return_type Acc;
+            Acc acc = arg1;
+            for (typename SetType::const_iterator it = s.begin(); it != s.end(); ++it) {
+                acc = fn(acc, *it);
+                if (detail::break_if_falsy<detail::is_boolable<Acc>::value, Acc>::check(acc)) break;
+            }
+            return acc;
+        }
+    };
+
+    template <>
+    struct set_reduce_2<3> {
+        template <typename SetType, typename FN, typename Arg1>
+        static typename fn_traits<FN>::return_type exec(const SetType& s, FN fn, Arg1 arg1) {
+            typedef typename fn_traits<FN>::return_type Acc;
+            Acc acc = Acc();
+            for (typename SetType::const_iterator it = s.begin(); it != s.end(); ++it) {
+                acc = fn(acc, *it, arg1);
+                if (detail::break_if_falsy<detail::is_boolable<Acc>::value, Acc>::check(acc)) break;
+            }
+            return acc;
+        }
+    };
+
+    template <int Arity>
+    struct set_reduce_3;
+
+    template <>
+    struct set_reduce_3<3> {
+        template <typename SetType, typename FN, typename Arg1, typename Arg2>
+        static typename fn_traits<FN>::return_type exec(const SetType& s, FN fn, Arg1 arg1, Arg2 arg2) {
+            typedef typename fn_traits<FN>::return_type Acc;
+            Acc acc = arg1;
+            for (typename SetType::const_iterator it = s.begin(); it != s.end(); ++it) {
+                acc = fn(acc, *it, arg2);
+                if (detail::break_if_falsy<detail::is_boolable<Acc>::value, Acc>::check(acc)) break;
+            }
+            return acc;
+        }
+    };
+
+    template <>
+    struct set_reduce_3<4> {
+        template <typename SetType, typename FN, typename Arg1, typename Arg2>
+        static typename fn_traits<FN>::return_type exec(const SetType& s, FN fn, Arg1 arg1, Arg2 arg2) {
+            typedef typename fn_traits<FN>::return_type Acc;
+            Acc acc = Acc();
+            for (typename SetType::const_iterator it = s.begin(); it != s.end(); ++it) {
+                acc = fn(acc, *it, arg1, arg2);
+                if (detail::break_if_falsy<detail::is_boolable<Acc>::value, Acc>::check(acc)) break;
+            }
+            return acc;
+        }
+    };
+
+    template <int Arity>
+    struct set_reduce_4;
+
+    template <>
+    struct set_reduce_4<4> {
+        template <typename SetType, typename FN, typename Arg1, typename Arg2, typename Arg3>
+        static typename fn_traits<FN>::return_type exec(const SetType& s, FN fn, Arg1 arg1, Arg2 arg2, Arg3 arg3) {
+            typedef typename fn_traits<FN>::return_type Acc;
+            Acc acc = arg1;
+            for (typename SetType::const_iterator it = s.begin(); it != s.end(); ++it) {
+                acc = fn(acc, *it, arg2, arg3);
+                if (detail::break_if_falsy<detail::is_boolable<Acc>::value, Acc>::check(acc)) break;
+            }
+            return acc;
+        }
+    };
+
+    template <>
+    struct set_reduce_4<5> {
+        template <typename SetType, typename FN, typename Arg1, typename Arg2, typename Arg3>
+        static typename fn_traits<FN>::return_type exec(const SetType& s, FN fn, Arg1 arg1, Arg2 arg2, Arg3 arg3) {
+            typedef typename fn_traits<FN>::return_type Acc;
+            Acc acc = Acc();
+            for (typename SetType::const_iterator it = s.begin(); it != s.end(); ++it) {
+                acc = fn(acc, *it, arg1, arg2, arg3);
+                if (detail::break_if_falsy<detail::is_boolable<Acc>::value, Acc>::check(acc)) break;
+            }
+            return acc;
+        }
+    };
+}
+
 template <typename Key>
 class Set : public std::set<Key> {
 private:
@@ -277,8 +372,8 @@ public:
 
     // --- reduce ---
     template <typename FN>
-    typename fn_return_type<FN>::type reduce(FN fn) const {
-        typedef typename fn_return_type<FN>::type Acc;
+    typename fn_traits<FN>::return_type reduce(FN fn) const {
+        typedef typename fn_traits<FN>::return_type Acc;
         Acc acc = Acc();
         for (_RawCIter it = this->_set::begin(); it != this->_set::end(); ++it) {
             acc = fn(acc, *it);
@@ -287,31 +382,19 @@ public:
         return acc;
     }
 
-    template <typename Acc, typename FN>
-    Acc reduce(FN fn, Acc acc) const {
-        for (_RawCIter it = this->_set::begin(); it != this->_set::end(); ++it) {
-            acc = fn(acc, *it);
-            if (detail::break_if_falsy<detail::is_boolable<Acc>::value, Acc>::check(acc)) break;
-        }
-        return acc;
+    template <typename FN, typename Arg1>
+    typename fn_traits<FN>::return_type reduce(FN fn, Arg1 arg1) const {
+        return detail::set_reduce_2<fn_traits<FN>::arity>::exec(*this, fn, arg1);
     }
 
-    template <typename Acc, typename FN, typename A1>
-    Acc reduce(FN fn, Acc acc, A1 a1) const {
-        for (_RawCIter it = this->_set::begin(); it != this->_set::end(); ++it) {
-            acc = fn(acc, *it, a1);
-            if (detail::break_if_falsy<detail::is_boolable<Acc>::value, Acc>::check(acc)) break;
-        }
-        return acc;
+    template <typename FN, typename Arg1, typename Arg2>
+    typename fn_traits<FN>::return_type reduce(FN fn, Arg1 arg1, Arg2 arg2) const {
+        return detail::set_reduce_3<fn_traits<FN>::arity>::exec(*this, fn, arg1, arg2);
     }
 
-    template <typename Acc, typename FN, typename A1, typename A2>
-    Acc reduce(FN fn, Acc acc, A1 a1, A2 a2) const {
-        for (_RawCIter it = this->_set::begin(); it != this->_set::end(); ++it) {
-            acc = fn(acc, *it, a1, a2);
-            if (detail::break_if_falsy<detail::is_boolable<Acc>::value, Acc>::check(acc)) break;
-        }
-        return acc;
+    template <typename FN, typename Arg1, typename Arg2, typename Arg3>
+    typename fn_traits<FN>::return_type reduce(FN fn, Arg1 arg1, Arg2 arg2, Arg3 arg3) const {
+        return detail::set_reduce_4<fn_traits<FN>::arity>::exec(*this, fn, arg1, arg2, arg3);
     }
 };
 
