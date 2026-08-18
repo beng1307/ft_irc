@@ -195,6 +195,145 @@ public:
     Map operator-(const Key& key) const {
         return subtract(key);
     }
+
+    // --- forEach ---
+    template <typename FN>
+    Map &forEach(FN fn) {
+        for (_RawIter it = this->_map::begin(); it != this->_map::end(); ++it) {
+            fn(*it);
+        }
+        return *this;
+    }
+    template <typename FN>
+    const Map &forEach(FN fn) const {
+        for (_RawCIter it = this->_map::begin(); it != this->_map::end(); ++it) {
+            fn(*it);
+        }
+        return *this;
+    }
+
+    template <typename FN, typename A1>
+    Map &forEach(FN fn, A1 a1) {
+        for (_RawIter it = this->_map::begin(); it != this->_map::end(); ++it) {
+            fn(*it, a1);
+        }
+        return *this;
+    }
+    template <typename FN, typename A1>
+    const Map &forEach(FN fn, A1 a1) const {
+        for (_RawCIter it = this->_map::begin(); it != this->_map::end(); ++it) {
+            fn(*it, a1);
+        }
+        return *this;
+    }
+
+    template <typename FN, typename A1, typename A2>
+    Map &forEach(FN fn, A1 a1, A2 a2) {
+        for (_RawIter it = this->_map::begin(); it != this->_map::end(); ++it) {
+            fn(*it, a1, a2);
+        }
+        return *this;
+    }
+    template <typename FN, typename A1, typename A2>
+    const Map &forEach(FN fn, A1 a1, A2 a2) const {
+        for (_RawCIter it = this->_map::begin(); it != this->_map::end(); ++it) {
+            fn(*it, a1, a2);
+        }
+        return *this;
+    }
+
+    template <typename FN, typename A1, typename A2, typename A3>
+    Map &forEach(FN fn, A1 a1, A2 a2, A3 a3) {
+        for (_RawIter it = this->_map::begin(); it != this->_map::end(); ++it) {
+            fn(*it, a1, a2, a3);
+        }
+        return *this;
+    }
+    template <typename FN, typename A1, typename A2, typename A3>
+    const Map &forEach(FN fn, A1 a1, A2 a2, A3 a3) const {
+        for (_RawCIter it = this->_map::begin(); it != this->_map::end(); ++it) {
+            fn(*it, a1, a2, a3);
+        }
+        return *this;
+    }
+
+    // --- reduce ---
+    template <typename FN>
+    typename fn_return_type<FN>::type reduce(FN fn) const {
+        typedef typename fn_return_type<FN>::type Acc;
+        Acc acc = Acc();
+        for (_RawCIter it = this->_map::begin(); it != this->_map::end(); ++it) {
+            acc = fn(acc, *it);
+            if (detail::break_if_falsy<detail::is_boolable<Acc>::value, Acc>::check(acc)) break;
+        }
+        return acc;
+    }
+
+    template <typename Acc, typename FN>
+    Acc reduce(FN fn, Acc acc) const {
+        for (_RawCIter it = this->_map::begin(); it != this->_map::end(); ++it) {
+            acc = fn(acc, *it);
+            if (detail::break_if_falsy<detail::is_boolable<Acc>::value, Acc>::check(acc)) break;
+        }
+        return acc;
+    }
+
+    template <typename Acc, typename FN, typename A1>
+    Acc reduce(FN fn, Acc acc, A1 a1) const {
+        for (_RawCIter it = this->_map::begin(); it != this->_map::end(); ++it) {
+            acc = fn(acc, *it, a1);
+            if (detail::break_if_falsy<detail::is_boolable<Acc>::value, Acc>::check(acc)) break;
+        }
+        return acc;
+    }
+
+    template <typename Acc, typename FN, typename A1, typename A2>
+    Acc reduce(FN fn, Acc acc, A1 a1, A2 a2) const {
+        for (_RawCIter it = this->_map::begin(); it != this->_map::end(); ++it) {
+            acc = fn(acc, *it, a1, a2);
+            if (detail::break_if_falsy<detail::is_boolable<Acc>::value, Acc>::check(acc)) break;
+        }
+        return acc;
+    }
+
+    // --- reduceX (passes key and val separately) ---
+    template <typename FN>
+    typename fn_return_type<FN>::type reduceX(FN fn) const {
+        typedef typename fn_return_type<FN>::type Acc;
+        Acc acc = Acc();
+        for (_RawCIter it = this->_map::begin(); it != this->_map::end(); ++it) {
+            acc = fn(acc, it->first, it->second);
+            if (detail::break_if_falsy<detail::is_boolable<Acc>::value, Acc>::check(acc)) break;
+        }
+        return acc;
+    }
+
+    template <typename Acc, typename FN>
+    Acc reduceX(FN fn, Acc acc) const {
+        for (_RawCIter it = this->_map::begin(); it != this->_map::end(); ++it) {
+            acc = fn(acc, it->first, it->second);
+            if (detail::break_if_falsy<detail::is_boolable<Acc>::value, Acc>::check(acc)) break;
+        }
+        return acc;
+    }
+
+    template <typename Acc, typename FN, typename A1>
+    Acc reduceX(FN fn, Acc acc, A1 a1) const {
+        for (_RawCIter it = this->_map::begin(); it != this->_map::end(); ++it) {
+            acc = fn(acc, it->first, it->second, a1);
+            if (detail::break_if_falsy<detail::is_boolable<Acc>::value, Acc>::check(acc)) break;
+        }
+        return acc;
+    }
+
+    template <typename Acc, typename FN, typename A1, typename A2>
+    Acc reduceX(FN fn, Acc acc, A1 a1, A2 a2) const {
+        for (_RawCIter it = this->_map::begin(); it != this->_map::end(); ++it) {
+            acc = fn(acc, it->first, it->second, a1, a2);
+            if (detail::break_if_falsy<detail::is_boolable<Acc>::value, Acc>::check(acc)) break;
+        }
+        return acc;
+    }
 };
 
 #endif // MAP_HPP

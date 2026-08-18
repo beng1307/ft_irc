@@ -59,7 +59,7 @@ static bool	ensure_channel_operator(Server &server, Client &client,
 // KICK
 
 void	Server::handle_kick(Client &client, const Wire &line,
-	const std::vector<Wire> &arguments)
+	const Vector<Wire> &arguments)
 {
 	//First it checks if there are enough arguments.
 	if (arguments.size() < 2)
@@ -113,7 +113,7 @@ void	Server::handle_kick(Client &client, const Wire &line,
 // INVITE
 
 void	Server::handle_invite(Client &client,
-	const std::vector<Wire> &arguments)
+	const Vector<Wire> &arguments)
 {
 	//First it checks if there are enough arguments.
 	if (arguments.size() < 2)
@@ -161,7 +161,7 @@ void	Server::handle_invite(Client &client,
 // TOPIC
 
 void	Server::handle_topic(Client &client, const Wire &line,
-	const std::vector<Wire> &arguments)
+	const Vector<Wire> &arguments)
 {
 	//First it checks if there are enough arguments.
 	if (arguments.size() < 1)
@@ -185,11 +185,9 @@ void	Server::handle_topic(Client &client, const Wire &line,
 	if (!line.contains(" :"))
 	{
 		//Gets the topic of the channel, if it's missing, the client gets messaged else it sends him the topic.
-		Wire topic = channel_it->second.get_topic();
-		if (topic.empty())
-			send_status(client, "331", channel_name + " :No topic is set");
-		else
-			send_status(client, "332", channel_name + " :" + topic);
+		Wire error_code = channel_it->second.get_topic().empty() ? "331" : "332";
+		Wire topic = channel_it->second.get_topic().placeholder("No topic is set");
+		send_status(client, error_code, channel_name + " :" + topic);
 		return ;
 	}
 
@@ -214,7 +212,7 @@ void	Server::handle_topic(Client &client, const Wire &line,
 // MODE
 
 void	Server::handle_mode(Client &client, const Wire &line,
-	const std::vector<Wire> &arguments)
+	const Vector<Wire> &arguments)
 {
 	(void)line;
 	//Check that the args are not empty.
@@ -257,7 +255,7 @@ void	Server::handle_mode(Client &client, const Wire &line,
 		if (channel_it->second.has_user_limit())
 		{
 			current_modes.push_back('l');
-			current_params += " " + to_string_size_t(channel_it->second.get_user_limit());
+			current_params += " " + Wire(channel_it->second.get_user_limit());
 		}
 
 		//Send the exact MODES the channel has active.

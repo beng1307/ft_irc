@@ -106,17 +106,17 @@ const ChannelMap	&Server::get_channels() const
 	return (channels);
 }
 
-void	Server::set_fds(const std::vector<pollfd> &fds)
+void	Server::set_fds(const Vector<pollfd> &fds)
 {
 	this->fds = fds;
 }
 
-std::vector<pollfd>	&Server::get_fds()
+Vector<pollfd>	&Server::get_fds()
 {
 	return (fds);
 }
 
-const std::vector<pollfd>	&Server::get_fds() const
+const Vector<pollfd>	&Server::get_fds() const
 {
 	return (fds);
 }

@@ -1,7 +1,6 @@
 #include "Server.hpp"
 #include <sys/socket.h>
 #include <string>
-#include <set>
 #include "../helpers/Wire.hpp"
 
 Wire	make_msg(const Client &client, const Wire &cmd, const Wire &target, const Wire &param)
@@ -88,8 +87,8 @@ void	Server::send_channel_names_reply(Client &client, const Wire &channel_name)
 
 	const Channel &channel = channel_it->second;
 	Wire names;
-	std::set<int> member_fds = channel.get_member_fds();
-	for (std::set<int>::const_iterator it = member_fds.begin(); it != member_fds.end(); ++it)
+	Set<int> member_fds = channel.get_member_fds();
+	for (Set<int>::const_iterator it = member_fds.begin(); it != member_fds.end(); ++it)
 	{
 		ClientMap::const_iterator client_it = get_clients().find(*it);
 		if (client_it != get_clients().end())
@@ -105,3 +104,16 @@ void	Server::send_channel_names_reply(Client &client, const Wire &channel_name)
 	send_status(client, "353", "= " + channel_name + " :" + names);
 	send_status(client, "366", channel_name + " :End of /NAMES list");
 }
+
+static Set<int>	collect_members_of_mutual_channels(Set<int> recipients, const Wire , const Channel &current, int client_fd)
+{
+	if (current.has_member(client_fd))
+		return recipients.add(current.get_member_fds());
+	return recipients;
+}
+
+Set<int>	Server::get_client_audience(int client_fd) const
+{
+	return get_channels().reduceX(collect_members_of_mutual_channels, Set<int>(), client_fd).subtract(client_fd);
+}
+

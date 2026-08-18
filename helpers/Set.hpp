@@ -37,6 +37,9 @@ public:
     Set(const _set& other) : _set(other), _ok(true) {}
     Set& operator=(const _set& other) { _set::operator=(other); _ok = true; return *this; }
 
+    // Single key constructor
+    explicit Set(const Key& key) : _ok(true) { add(key); }
+
     // --- Set from container + function ---
     template <typename CONTAINER, typename FN>
     Set(const CONTAINER& container, FN fn) : _ok(true) {
@@ -114,8 +117,9 @@ public:
         return this->_set::erase(key);
     }
 
-    void add(const Key& key) {
+    Set& add(const Key& key) {
         _set::insert(key);
+        return *this;
     }
 
     Set add(const Set& b) const {
@@ -125,8 +129,14 @@ public:
                        std::inserter(static_cast<_set&>(result), static_cast<_set&>(result).end()));
         return result.ok();
     }
+    Set add(const Set& b) {
+        return static_cast<const Set*>(this)->add(b);
+    }
 
     Set merge(const Set& b) const {
+        return add(b);
+    }
+    Set merge(const Set& b) {
         return add(b);
     }
 
@@ -142,11 +152,17 @@ public:
                             std::inserter(static_cast<_set&>(result), static_cast<_set&>(result).end()));
         return result.ok();
     }
+    Set subtract(const Set& b) {
+        return static_cast<const Set*>(this)->subtract(b);
+    }
 
     Set subtract(const Key& key) const {
         Set result(*this);
         result.erase(key);
         return result.ok();
+    }
+    Set subtract(const Key& key) {
+        return static_cast<const Set*>(this)->subtract(key);
     }
 
     Set difference(const Set& b) const {
@@ -155,6 +171,9 @@ public:
                                       b._set::begin(), b._set::end(),
                                       std::inserter(static_cast<_set&>(result), static_cast<_set&>(result).end()));
         return result.ok();
+    }
+    Set difference(const Set& b) {
+        return static_cast<const Set*>(this)->difference(b);
     }
 
     Set operator+(const Set& b) const {
@@ -173,6 +192,126 @@ public:
 
     Set operator-(const Key& key) const {
         return subtract(key);
+    }
+
+    Set& operator+=(const Set& b) {
+        *this = add(b);
+        return *this;
+    }
+
+    Set& operator+=(const Key& key) {
+        add(key);
+        return *this;
+    }
+
+    Set& operator-=(const Set& b) {
+        *this = subtract(b);
+        return *this;
+    }
+
+    Set& operator-=(const Key& key) {
+        erase(key);
+        return *this;
+    }
+
+    // --- forEach ---
+    template <typename FN>
+    Set &forEach(FN fn) {
+        for (_RawIter it = this->_set::begin(); it != this->_set::end(); ++it) {
+            fn(*it);
+        }
+        return *this;
+    }
+    template <typename FN>
+    const Set &forEach(FN fn) const {
+        for (_RawCIter it = this->_set::begin(); it != this->_set::end(); ++it) {
+            fn(*it);
+        }
+        return *this;
+    }
+
+    template <typename FN, typename A1>
+    Set &forEach(FN fn, A1 a1) {
+        for (_RawIter it = this->_set::begin(); it != this->_set::end(); ++it) {
+            fn(*it, a1);
+        }
+        return *this;
+    }
+    template <typename FN, typename A1>
+    const Set &forEach(FN fn, A1 a1) const {
+        for (_RawCIter it = this->_set::begin(); it != this->_set::end(); ++it) {
+            fn(*it, a1);
+        }
+        return *this;
+    }
+
+    template <typename FN, typename A1, typename A2>
+    Set &forEach(FN fn, A1 a1, A2 a2) {
+        for (_RawIter it = this->_set::begin(); it != this->_set::end(); ++it) {
+            fn(*it, a1, a2);
+        }
+        return *this;
+    }
+    template <typename FN, typename A1, typename A2>
+    const Set &forEach(FN fn, A1 a1, A2 a2) const {
+        for (_RawCIter it = this->_set::begin(); it != this->_set::end(); ++it) {
+            fn(*it, a1, a2);
+        }
+        return *this;
+    }
+
+    template <typename FN, typename A1, typename A2, typename A3>
+    Set &forEach(FN fn, A1 a1, A2 a2, A3 a3) {
+        for (_RawIter it = this->_set::begin(); it != this->_set::end(); ++it) {
+            fn(*it, a1, a2, a3);
+        }
+        return *this;
+    }
+    template <typename FN, typename A1, typename A2, typename A3>
+    const Set &forEach(FN fn, A1 a1, A2 a3, A3 a4) const {
+        for (_RawCIter it = this->_set::begin(); it != this->_set::end(); ++it) {
+            fn(*it, a1, a3, a4);
+        }
+        return *this;
+    }
+
+    // --- reduce ---
+    template <typename FN>
+    typename fn_return_type<FN>::type reduce(FN fn) const {
+        typedef typename fn_return_type<FN>::type Acc;
+        Acc acc = Acc();
+        for (_RawCIter it = this->_set::begin(); it != this->_set::end(); ++it) {
+            acc = fn(acc, *it);
+            if (detail::break_if_falsy<detail::is_boolable<Acc>::value, Acc>::check(acc)) break;
+        }
+        return acc;
+    }
+
+    template <typename Acc, typename FN>
+    Acc reduce(FN fn, Acc acc) const {
+        for (_RawCIter it = this->_set::begin(); it != this->_set::end(); ++it) {
+            acc = fn(acc, *it);
+            if (detail::break_if_falsy<detail::is_boolable<Acc>::value, Acc>::check(acc)) break;
+        }
+        return acc;
+    }
+
+    template <typename Acc, typename FN, typename A1>
+    Acc reduce(FN fn, Acc acc, A1 a1) const {
+        for (_RawCIter it = this->_set::begin(); it != this->_set::end(); ++it) {
+            acc = fn(acc, *it, a1);
+            if (detail::break_if_falsy<detail::is_boolable<Acc>::value, Acc>::check(acc)) break;
+        }
+        return acc;
+    }
+
+    template <typename Acc, typename FN, typename A1, typename A2>
+    Acc reduce(FN fn, Acc acc, A1 a1, A2 a2) const {
+        for (_RawCIter it = this->_set::begin(); it != this->_set::end(); ++it) {
+            acc = fn(acc, *it, a1, a2);
+            if (detail::break_if_falsy<detail::is_boolable<Acc>::value, Acc>::check(acc)) break;
+        }
+        return acc;
     }
 };
 

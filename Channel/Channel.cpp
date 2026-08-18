@@ -2,10 +2,7 @@
 #include "../Client/Client.hpp"
 #include "../Server/Server.hpp"
 #include "../helpers/Wire.hpp"
-#include <string>
-#include <vector>
-#include <algorithm>
-#include <set>
+
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -212,11 +209,7 @@ Set<int>	Channel::get_member_fds() const
 
 void	Channel::broadcast(const Wire &message, int except_fd) const
 {
-	for (Set<int>::const_iterator it = member_fds.begin(); it != member_fds.end(); ++it)
-	{
-		if (*it != except_fd)
-			send_string(*it, message);
-	}
+	member_fds.subtract(except_fd).forEach(send_string, message);
 }
 
 void	Channel::broadcast(const Client &client, const Wire &cmd, const Wire &param) const

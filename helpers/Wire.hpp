@@ -161,14 +161,38 @@ public:
         return false;
     }
 
-    Vector<Wire> splitBy(char delimiter, VectorTag = VectorTag()) { return splitByImpl<Vector<Wire> >(delimiter); }
-    Vector<Wire> splitChars(VectorTag = VectorTag()) { return splitCharsImpl<Vector<Wire> >(); }
+    bool hasOnly(const string& allowed) const {
+        return !this->empty() && this->find_first_not_of(allowed) == string::npos;
+    }
 
+    template <typename FN>
+    bool hasOnly(FN fn, const string& allowed = "") const {
+        if (this->empty()) return false;
+        for (size_t i = 0; i < this->length(); ++i) {
+            unsigned char c = static_cast<unsigned char>((*this)[i]);
+            if (!fn(static_cast<char>(c)) && (allowed.empty() || allowed.find(static_cast<char>(c)) == string::npos))
+                return false;
+        }
+        return true;
+    }
+
+    static bool isAlpha(char c) { return std::isalpha(static_cast<unsigned char>(c)) != 0; }
+    static bool isDigit(char c) { return std::isdigit(static_cast<unsigned char>(c)) != 0; }
+    static bool isAlphaNum(char c) { return std::isalnum(static_cast<unsigned char>(c)) != 0; }
+
+    bool hasOnlyAlpha(const string& extra = "") const { return hasOnly(isAlpha, extra); }
+    bool hasOnlyDigits(const string& extra = "") const { return hasOnly(isDigit, extra); }
+    bool hasOnlyAlphaNum(const string& extra = "") const { return hasOnly(isAlphaNum, extra); }
+
+    Vector<Wire> splitBy(char delimiter, VectorTag = VectorTag()) const { return splitByImpl<Vector<Wire> >(delimiter); }
+    Vector<Wire> splitChars(VectorTag = VectorTag()) const { return splitCharsImpl<Vector<Wire> >(); }
+
+    bool is_empty() const { return this->empty(); }
     OK_CHECK(Wire);
 
 private:
     template <typename Container>
-    Container splitByImpl(char delimiter) {
+    Container splitByImpl(char delimiter) const {
         Container result;
         std::istringstream iss(*this);
         string token;
@@ -179,7 +203,7 @@ private:
     }
 
     template <typename Container>
-    Container splitCharsImpl() {
+    Container splitCharsImpl() const {
         Container result;
         for (size_t i = 0; i < this->length(); ++i) {
             result.add(Wire((*this)[i]));
@@ -187,6 +211,14 @@ private:
         return result.ok();
     }
 };
+
+inline bool isAlpha(char c) { return Wire::isAlpha(c); }
+inline bool isDigit(char c) { return Wire::isDigit(c); }
+inline bool isAlphaNum(char c) { return Wire::isAlphaNum(c); }
+
+inline bool is_empty(const Wire& wire) {
+    return wire.empty();
+}
 
 inline Wire Int::toStr() const {
     if (!_ok) return Wire().notok();

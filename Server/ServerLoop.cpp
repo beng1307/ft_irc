@@ -52,7 +52,7 @@ void Server::disconnect_client(int client_fd) {
   get_clients().erase(client_fd);
 
   // 3. Erase from poll fds vector
-  for (std::vector<pollfd>::iterator it = get_fds().begin(); it != get_fds().end(); ++it) {
+  for (Vector<pollfd>::iterator it = get_fds().begin(); it != get_fds().end(); ++it) {
     if (it->fd == client_fd) {
       get_fds().erase(it);
       break;

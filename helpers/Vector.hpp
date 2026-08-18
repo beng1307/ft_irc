@@ -171,6 +171,13 @@ public:
         return val;
     }
 
+    iterator erase(iterator pos) {
+        return iterator(this->_vec::erase(pos.base()));
+    }
+    iterator erase(iterator first, iterator last) {
+        return iterator(this->_vec::erase(first.base(), last.base()));
+    }
+
     // --- map: transform each element via fn (strict 1:1 mapping) ---
     // Usage: Vector<NewType> result = vec.map(myFunction);
     template <typename R, typename Arg>
@@ -680,13 +687,6 @@ public:
         return Map<typename fn_return_type<FN>::type::first_type, typename fn_return_type<FN>::type::second_type>(*this, fn);
     }
 
-    template <typename FN>
-    Vector &forEachforEach(FN fn) {
-        for (size_t i = 0; i < this->size(); ++i) {
-            (*this)[i].forEach(fn, (*this)[i]);
-        }
-        return *this;
-    }
     template <typename FN>
     Vector &forEach(FN fn) {
         for (size_t i = 0; i < this->size(); ++i) {

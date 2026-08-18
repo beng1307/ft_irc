@@ -4,42 +4,14 @@
 #include "../helpers/print.hpp"
 #include "../helpers/Wire.hpp"
 
-//Returns a string converted from size_t
-Wire	Server::to_string_size_t(size_t value)
-{
-	std::ostringstream oss;
-	oss << value;
-	return (Wire(oss.str()));
-}
-
 //Checks if the string is a positive number above 0
 bool	Server::is_positive_number(const Wire &value)
 {
-	if (value.empty())
-		return (false);
-	for (size_t i = 0; i < value.size(); ++i)
-	{
-		if (!std::isdigit(static_cast<unsigned char>(value[i])))
-			return (false);
-	}
-	if (value == "0")
-		return (false);
-	return (true);
+	return (value.toInt() > 0 && value.toInt().toStr() == value);
 }
 
 //Checks if the nickname is valid: non-empty, contains only letters (a-z, A-Z), digits (0-9), and underscore (_)
-bool	Server::is_valid_nickname(const Wire &nickname)
-{
-	if (nickname.empty())
-		return (false);
-	for (size_t i = 0; i < nickname.size(); ++i)
-	{
-		char c = nickname[i];
-		if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_')
-			return (false);
-	}
-	return (true);
-}
+bool	Server::is_valid_nickname(const Wire &nickname) { return  nickname.hasOnlyAlphaNum("_") ;}
 
 
 //Creates a new filedescriptor and adds it to the fds.
@@ -66,33 +38,9 @@ bool	Server::is_command(const Wire &line)
 }
 
 //A splitting function for the arguments.
-std::vector<Wire>	Server::split_arguments(const Wire &line)
+Vector<Wire>	Server::split_arguments(const Wire &line)
 {
-	std::vector<Wire>	arguments;
-	size_t				start = line.find(" ");
-	
-	if (start == std::string::npos)
-		return (arguments);
-
-	while (start < line.length() && line[start] == ' ')
-		start++;	
-
-	while (start < line.length())
-	{
-		size_t	end = line.find(" ", start);
-		if (end == std::string::npos)
-		{
-			arguments.push_back(line.substr(start));
-			break ;			
-		}
-		
-		arguments.push_back(line.substr(start, end - start));
-		start = end + 1;
-		while (start < line.length() && line[start] == ' ')
-			start++;
-	}
-	
-	return (arguments);
+	return line.strAfter(" ").splitBy(' ').filter(is_empty);
 }
 
 //It goes through the clients and if he gets found per name, he gets returned.
