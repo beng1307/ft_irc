@@ -63,6 +63,8 @@ C7 SEND JOIN #concurrency
 C8 SEND JOIN #concurrency
 C9 SEND JOIN #concurrency
 C10 SEND JOIN #concurrency
+C10 WAIT_RECV :User10!* JOIN #concurrency
+C1 WAIT_RECV :User10!* JOIN #concurrency
 
 # Cross-client message validation
 C1 SEND PRIVMSG #concurrency :Broadcast to all 10
