@@ -1,5 +1,6 @@
 #include "Channel.hpp"
 #include "../Client/Client.hpp"
+#include "../Server/Server.hpp"
 #include "../helpers/Wire.hpp"
 #include <string>
 #include <vector>
@@ -204,8 +205,27 @@ size_t	Channel::get_user_limit() const
 	return (user_limit);
 }
 
-std::set<int>	Channel::get_member_fds() const
+Set<int>	Channel::get_member_fds() const
 {
 	return (member_fds);
+}
+
+void	Channel::broadcast(const Wire &message, int except_fd) const
+{
+	for (Set<int>::const_iterator it = member_fds.begin(); it != member_fds.end(); ++it)
+	{
+		if (*it != except_fd)
+			send_string(*it, message);
+	}
+}
+
+void	Channel::broadcast(const Client &client, const Wire &cmd, const Wire &param) const
+{
+	broadcast(make_msg(client, cmd, name, param));
+}
+
+void	Channel::broadcast_from(const Client &client, const Wire &cmd, const Wire &param) const
+{
+	broadcast(make_msg(client, cmd, name, param), client.get_socket());
 }
 

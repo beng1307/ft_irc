@@ -101,8 +101,9 @@ void	Server::handle_kick(Client &client, const Wire &line,
 		reason = line.strAfter(" :");
 
 	Wire kick_message = make_msg(client, "KICK", channel_name + " " + target_nick, reason);
-	broadcast_to_channel(channel_it->second, kick_message);
+	channel_it->second.broadcast(kick_message);
 	channel_it->second.remove_member_from_channel(target->get_socket());
+	// delete channel if self kick
 	if (channel_it->second.get_member_fds().empty())
 		get_channels().erase(channel_it);
 }
@@ -205,8 +206,7 @@ void	Server::handle_topic(Client &client, const Wire &line,
 	channel_it->second.set_topic(new_topic);
 
 	//Broadcast the topic change to every member of the channel.
-	Wire topic_message = make_msg(client, "TOPIC", channel_name, new_topic);
-	broadcast_to_channel(channel_it->second, topic_message);
+	channel_it->second.broadcast(client, "TOPIC", new_topic);
 }
 
 
@@ -399,5 +399,5 @@ void	Server::handle_mode(Client &client, const Wire &line,
 
 	//Build a single MODE message containing all accepted mode changes and their parameters.
 	Wire mode_message = make_msg(client, "MODE", Wire(channel_name, " ", applied_modes, applied_params));
-	broadcast_to_channel(channel_it->second, mode_message);
+	channel_it->second.broadcast(mode_message);
 }

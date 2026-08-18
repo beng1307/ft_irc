@@ -100,6 +100,23 @@ public:
         --it;
         return const_iterator(it);
     }
+    const_iterator find(const Key& key) const {
+        _RawCIter it = _map::find(key);
+        if (it != _map::end())
+            return const_iterator(it);
+        return this->end();
+    }
+
+    void erase(iterator pos) {
+        this->_map::erase(pos.base());
+    }
+    void erase(iterator first, iterator last) {
+        this->_map::erase(first.base(), last.base());
+    }
+    size_t erase(const Key& key) {
+        return this->_map::erase(key);
+    }
+
     void add(const Key& key, const T& value) {
         _map::insert(std::make_pair(key, value));
     }
@@ -114,7 +131,70 @@ public:
         return *this;
     }
 
+    // --- Map set operations (return copies) ---
+    Map add(const Map& b) const {
+        Map result(*this);
+        for (_RawCIter it = b._map::begin(); it != b._map::end(); ++it) {
+            result._map::insert(*it);
+        }
+        return result.ok();
+    }
 
+    Map merge(const Map& b) const {
+        return add(b);
+    }
+
+    Map subtract(const Map& b) const {
+        Map result(*this);
+        for (_RawCIter it = b._map::begin(); it != b._map::end(); ++it) {
+            result.erase(it->first);
+        }
+        return result.ok();
+    }
+
+    Map subtract(const Key& key) const {
+        Map result(*this);
+        result.erase(key);
+        return result.ok();
+    }
+
+    Map difference(const Map& b) const {
+        Map result;
+        for (_RawCIter it = this->_map::begin(); it != this->_map::end(); ++it) {
+            if (b.find(it->first) == b.end())
+                result.add(it->first, it->second);
+        }
+        for (_RawCIter it = b._map::begin(); it != b._map::end(); ++it) {
+            if (this->find(it->first) == this->end())
+                result.add(it->first, it->second);
+        }
+        return result.ok();
+    }
+
+    Map operator+(const Map& b) const {
+        return add(b);
+    }
+
+    Map operator+(const std::pair<Key, T>& p) const {
+        Map result(*this);
+        result.add(p.first, p.second);
+        return result.ok();
+    }
+
+    template <typename A, typename B>
+    Map operator+(const Pair<A, B>& p) const {
+        Map result(*this);
+        result.add(p);
+        return result.ok();
+    }
+
+    Map operator-(const Map& b) const {
+        return subtract(b);
+    }
+
+    Map operator-(const Key& key) const {
+        return subtract(key);
+    }
 };
 
 #endif // MAP_HPP

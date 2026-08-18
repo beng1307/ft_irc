@@ -33,8 +33,10 @@ void	Server::send_status(Client &client, const Wire &code, const Wire &message)
 
 
 //Sends a message into the channel
+
 void	Server::send_message_to_channel(Client &sender, const Wire &channel_name, const Wire &message)
 {
+	// i think we can do better with okCheck.
 	ChannelMap::iterator it = get_channels().find(channel_name);
 	if (it == get_channels().end())
 	{
@@ -48,15 +50,7 @@ void	Server::send_message_to_channel(Client &sender, const Wire &channel_name, c
 		return ;
 	}
 
-	std::set<int>	member_fds = it->second.get_member_fds();
-
-	Wire	message_to_send = make_msg(sender, "PRIVMSG", channel_name, message);
-
-	for (std::set<int>::const_iterator mit = member_fds.begin(); mit != member_fds.end(); ++mit)
-	{
-		if (*mit != sender.get_socket())
-			send_string(*mit, message_to_send);
-	}
+	it->second.broadcast_from(sender, "PRIVMSG", message);
 }
 
 
@@ -77,40 +71,8 @@ void	Server::send_message_to_user(Client &sender, const Wire &nickname, const Wi
 }
 
 
-void	Server::broadcast_to_channel(const Channel &channel, const Wire &message)
-{
-	std::set<int> member_fds = channel.get_member_fds();
-	for (std::set<int>::const_iterator it = member_fds.begin(); it != member_fds.end(); ++it)
-		send_string(*it, message);
-}
 
-//Informs the members of a channel, that a new client joined.
-void	Server::broadcast_join_to_channel(Client &joining_client, const Wire &channel_name)
-{
-	if (get_channels().find(channel_name) == get_channels().end())
-	{
-		send_status(joining_client, "403", channel_name + " :No such channel");
-		return ;
-	}
 
-	std::set<int>	member_fds = get_channels()[channel_name].get_member_fds();
-
-	Wire join_message = make_msg(joining_client, "JOIN", channel_name);
-
-	for (std::set<int>::const_iterator it = member_fds.begin(); it != member_fds.end(); ++it)
-		send_string(*it, join_message);
-}
-
-// Informs the members of a channel that a member left.
-void	Server::broadcast_part_to_channel(Client &parting_client, const Wire &channel_name,
-		const Wire &reason)
-{
-	std::set<int> member_fds = get_channels()[channel_name].get_member_fds();
-	Wire part_message = make_msg(parting_client, "PART", channel_name, reason);
-
-	for (std::set<int>::const_iterator it = member_fds.begin(); it != member_fds.end(); ++it)
-		send_string(*it, part_message);
-}
 
 // Sends the RPL_NAMREPLY (353) and RPL_ENDOFNAMES (366) numeric responses to a client.
 // Situation: Triggered when a client successfully joins a channel or queries channel names.

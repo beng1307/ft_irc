@@ -29,6 +29,17 @@ public:
     }
     ~Iterator() {}
 
+    // --- Converting constructor and assignment (e.g. iterator -> const_iterator) ---
+    template <typename OtherIter>
+    Iterator(const Iterator<OtherIter>& other) : _current(other.base()), _ok(bool(other)) {}
+
+    template <typename OtherIter>
+    Iterator& operator=(const Iterator<OtherIter>& other) {
+        _current = other.base();
+        _ok = bool(other);
+        return *this;
+    }
+
     // --- Construction ---
     explicit Iterator(const IteratorT& it) : _current(it), _ok(true) {}
 
@@ -41,6 +52,7 @@ public:
 
     // --- Access the underlying iterator ---
     IteratorT base() const { return _current; }
+    operator IteratorT() const { return _current; }
 
     // --- Forward iterator operations ---
     Iterator& operator++() { ++_current; return *this; }
@@ -56,16 +68,19 @@ public:
     typename std::iterator_traits<IteratorT>::reference value() const { return *_current; }
 
     // --- Comparison (Iterator vs Iterator) ---
-    bool operator==(const Iterator& other) const { return _current == other._current; }
-    bool operator!=(const Iterator& other) const { return _current != other._current; }
+    template <typename OtherIter>
+    bool operator==(const Iterator<OtherIter>& other) const { return _current == other.base(); }
+    template <typename OtherIter>
+    bool operator!=(const Iterator<OtherIter>& other) const { return _current != other.base(); }
 
     // --- Cross-type comparison (Iterator vs raw iterator) ---
     bool operator==(const IteratorT& raw) const { return _current == raw; }
     bool operator!=(const IteratorT& raw) const { return _current != raw; }
 
     // --- Random access iterator operations ---
+    template <typename OtherIter>
     typename std::iterator_traits<IteratorT>::difference_type
-    operator-(const Iterator& other) const { return _current - other._current; }
+    operator-(const Iterator<OtherIter>& other) const { return _current - other.base(); }
 
     template <typename N>
     Iterator operator+(N n) const {
@@ -87,10 +102,14 @@ public:
     typename std::iterator_traits<IteratorT>::reference
     operator[](typename std::iterator_traits<IteratorT>::difference_type n) const { return _current[n]; }
 
-    bool operator<(const Iterator& other) const { return _current < other._current; }
-    bool operator>(const Iterator& other) const { return _current > other._current; }
-    bool operator<=(const Iterator& other) const { return _current <= other._current; }
-    bool operator>=(const Iterator& other) const { return _current >= other._current; }
+    template <typename OtherIter>
+    bool operator<(const Iterator<OtherIter>& other) const { return _current < other.base(); }
+    template <typename OtherIter>
+    bool operator>(const Iterator<OtherIter>& other) const { return _current > other.base(); }
+    template <typename OtherIter>
+    bool operator<=(const Iterator<OtherIter>& other) const { return _current <= other.base(); }
+    template <typename OtherIter>
+    bool operator>=(const Iterator<OtherIter>& other) const { return _current >= other.base(); }
 };
 
 // --- Free-function cross-type comparison (raw iterator vs Iterator) ---

@@ -3,9 +3,7 @@
 
 #include "../Client/Client.hpp"
 #include "../helpers/Wire.hpp"
-#include <string>
-#include <vector>
-#include <set>
+#include "../helpers/Set.hpp"
 
 
 class	Channel
@@ -18,9 +16,9 @@ class	Channel
 		Wire				name;
 		Wire				topic;
 
-		std::set<int> 		member_fds;
-		std::set<int> 		operator_fds;
-		std::set<int> 		invited_fds;
+		Set<int> 		member_fds;
+		Set<int> 		operator_fds;
+		Set<int> 		invited_fds;
 
 		bool				invite_only;
 		bool				topic_restricted;
@@ -58,7 +56,7 @@ class	Channel
 		void				set_user_limit(size_t limit);
 		size_t				get_user_limit() const;
 		
-		std::set<int>		get_member_fds() const;
+		Set<int>		get_member_fds() const;
 
 		void				set_invite_only(bool enabled);
 
@@ -79,6 +77,10 @@ class	Channel
 		bool				has_key() const;
 		void				clear_user_limit();
 		bool				has_user_limit() const;
+
+		void				broadcast(const Wire &message, int except_fd = -1) const;
+		void				broadcast(const Client &client, const Wire &cmd, const Wire &param = "") const;
+		void				broadcast_from(const Client &client, const Wire &cmd, const Wire &param = "") const;
 };
 
 #endif
