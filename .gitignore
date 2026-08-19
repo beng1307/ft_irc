@@ -13,3 +13,4 @@ TMP
 .clang-format
 .clangd
 .env
+.agents
