@@ -83,18 +83,54 @@ static int parse_duration_ms(const Wire& s) {
     return atoi(str.c_str()) * multiplier;
 }
 
-// Decode the small escape vocabulary used in .spec files for SEND_RAW.
-// Keeping the source specs printable makes fragmented IRC frames readable.
+// Decode the escape vocabulary used in .spec files for SEND_RAW.
+// Keeping the source specs printable makes fragmented and binary IRC frames readable.
 static Wire decode_raw_escapes(const Wire& input) {
     Wire output;
     for (size_t i = 0; i < input.size(); ++i) {
         if (input[i] == '\\' && i + 1 < input.size()) {
-            char escaped = input[i + 1];
-            if (escaped == 'r') { output += '\r'; ++i; continue; }
-            if (escaped == 'n') { output += '\n'; ++i; continue; }
-            if (escaped == '\\') { output += '\\'; ++i; continue; }
+            char next = input[i + 1];
+            if (next == 'r') { output.append(1, '\r'); ++i; continue; }
+            if (next == 'n') { output.append(1, '\n'); ++i; continue; }
+            if (next == 't') { output.append(1, '\t'); ++i; continue; }
+            if (next == '\\') { output.append(1, '\\'); ++i; continue; }
+            if (next == 'x') {
+                if (i + 2 < input.size() && isxdigit(static_cast<unsigned char>(input[i + 2]))) {
+                    int val = 0;
+                    char h1 = input[i + 2];
+                    if (h1 >= '0' && h1 <= '9') val = h1 - '0';
+                    else if (h1 >= 'a' && h1 <= 'f') val = h1 - 'a' + 10;
+                    else if (h1 >= 'A' && h1 <= 'F') val = h1 - 'A' + 10;
+
+                    if (i + 3 < input.size() && isxdigit(static_cast<unsigned char>(input[i + 3]))) {
+                        char h2 = input[i + 3];
+                        val = (val << 4);
+                        if (h2 >= '0' && h2 <= '9') val += (h2 - '0');
+                        else if (h2 >= 'a' && h2 <= 'f') val += (h2 - 'a' + 10);
+                        else if (h2 >= 'A' && h2 <= 'F') val += (h2 - 'A' + 10);
+                        output.append(1, static_cast<char>(val));
+                        i += 3;
+                        continue;
+                    } else {
+                        output.append(1, static_cast<char>(val));
+                        i += 2;
+                        continue;
+                    }
+                }
+            }
+            if (next >= '0' && next <= '7') {
+                int val = 0;
+                size_t count = 0;
+                while (count < 3 && (i + 1 + count) < input.size() && input[i + 1 + count] >= '0' && input[i + 1 + count] <= '7') {
+                    val = (val << 3) + (input[i + 1 + count] - '0');
+                    count++;
+                }
+                output.append(1, static_cast<char>(val));
+                i += count;
+                continue;
+            }
         }
-        output += input[i];
+        output.append(1, input[i]);
     }
     return output;
 }
@@ -181,6 +217,7 @@ enum DirectiveType {
     DIR_PAUSE,
     DIR_RESUME,
     DIR_FLOOD,
+    DIR_SET_SOCK_RCVBUF,
     DIR_TIMEOUT,
     DIR_UNKNOWN
 };
@@ -416,8 +453,8 @@ public:
             return false;
         }
         size_t sent = 0;
-        while (sent < data.length()) {
-            ssize_t res = send(vc.fd, data.c_str() + sent, data.length() - sent, MSG_NOSIGNAL);
+        while (sent < data.size()) {
+            ssize_t res = send(vc.fd, data.data() + sent, data.size() - sent, MSG_NOSIGNAL);
             if (res > 0) { sent += static_cast<size_t>(res); continue; }
             if (res < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
                 struct pollfd pfd; pfd.fd = vc.fd; pfd.events = POLLOUT; pfd.revents = 0;
@@ -441,15 +478,30 @@ public:
         logger.log(vc.id, "SYS", reset ? "Peer reset" : "Peer closed");
     }
 
-    bool assert_none(VirtualClient& vc, int quiet_ms) {
+    static Wire format_queue_dump(const VirtualClient& vc) {
+        std::ostringstream oss;
+        oss << " [Queue (" << vc.line_queue.size() << " lines): ";
+        if (vc.line_queue.empty()) {
+            oss << "<empty>";
+        } else {
+            for (size_t i = 0; i < vc.line_queue.size(); ++i) {
+                if (i > 0) oss << " | ";
+                oss << "\"" << vc.line_queue[i] << "\"";
+            }
+        }
+        oss << "]";
+        return Wire(oss.str());
+    }
+
+    bool assert_none(VirtualClient& vc, int quiet_ms, size_t start_index) {
         poll_all_clients(quiet_ms);
-        if (!vc.line_queue.empty()) return false;
+        if (vc.line_queue.size() > start_index) return false;
         return vc.connected;
     }
 
-    int count_matching(VirtualClient& vc, const Wire& pattern) {
+    int count_matching(const VirtualClient& vc, const Wire& pattern, size_t start_index = 0) {
         int count = 0;
-        for (size_t i = 0; i < vc.line_queue.size(); ++i)
+        for (size_t i = start_index; i < vc.line_queue.size(); ++i)
             if (match_pattern(vc.line_queue[i], pattern)) ++count;
         return count;
     }
@@ -516,6 +568,9 @@ public:
                     std::getline(iss, inst.payload); if (!inst.payload.empty() && inst.payload[0] == ' ') inst.payload.erase(0, 1);
                 } else if (token2 == "CLOSE_SOCKET" || token2 == "CLOSE_WRITE" || token2 == "RESET" || token2 == "RECONNECT" || token2 == "PAUSE" || token2 == "RESUME") {
                     inst.type = token2 == "CLOSE_SOCKET" ? DIR_CLOSE_SOCKET : token2 == "CLOSE_WRITE" ? DIR_CLOSE_WRITE : token2 == "RESET" ? DIR_RESET : token2 == "RECONNECT" ? DIR_RECONNECT : token2 == "PAUSE" ? DIR_PAUSE : DIR_RESUME;
+                } else if (token2 == "SET_SOCK_RCVBUF") {
+                    inst.type = DIR_SET_SOCK_RCVBUF;
+                    iss >> inst.payload;
                 } else if (token2 == "FLOOD") {
                     inst.type = DIR_FLOOD;
                     std::getline(iss, inst.payload); trim(inst.payload);
@@ -557,7 +612,8 @@ public:
                         client_order.push_back(cid);
                         clients[cid] = VirtualClient();
                         if (!connect_client(cid)) {
-                            printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": Failed to connect client ", cid);
+                            logger.log(cid, "ERROR", "CLIENTS directive failed to connect client " + cid);
+                            printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": CLIENTS failed to connect client ", cid);
                             return false;
                         }
                     }
@@ -572,8 +628,9 @@ public:
                 VirtualClient& vc = clients[inst.client_id];
                 poll_all_clients(200);
                 if (vc.connected) {
-                    logger.log(inst.client_id, "ERROR", "Expected socket disconnect, but socket is still connected");
-                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": ", inst.client_id, " expected disconnect but is connected");
+                    Wire dump = format_queue_dump(vc);
+                    logger.log(inst.client_id, "ERROR", "EXPECT_DISCONNECT failed: socket is still connected" + dump);
+                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": ", inst.client_id, " EXPECT_DISCONNECT failed: socket is still connected", dump);
                     return false;
                 }
                 logger.log(inst.client_id, "SYS", "Asserted DISCONNECTED successfully");
@@ -581,8 +638,9 @@ public:
                 VirtualClient& vc = clients[inst.client_id];
                 poll_all_clients(200);
                 if (!vc.connected) {
-                    logger.log(inst.client_id, "ERROR", "Expected socket connected, but socket is closed");
-                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": ", inst.client_id, " expected connected but is disconnected");
+                    Wire dump = format_queue_dump(vc);
+                    logger.log(inst.client_id, "ERROR", "EXPECT_CONNECTED failed: socket is closed" + dump);
+                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": ", inst.client_id, " EXPECT_CONNECTED failed: socket is closed", dump);
                     return false;
                 }
                 logger.log(inst.client_id, "SYS", "Asserted CONNECTED successfully");
@@ -591,7 +649,9 @@ public:
                 Wire actual_payload = apply_password_substitution(inst.payload, password);
                 logger.log(inst.client_id, "SEND_RAW", actual_payload);
                 if (!send_raw(vc, decode_raw_escapes(actual_payload))) {
-                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": SEND_RAW failed for ", inst.client_id);
+                    Wire dump = format_queue_dump(vc);
+                    logger.log(inst.client_id, "ERROR", "SEND_RAW failed for payload: " + actual_payload + dump);
+                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": ", inst.client_id, " SEND_RAW failed for payload \"", actual_payload, "\"", dump);
                     return false;
                 }
             } else if (inst.type == DIR_CLOSE_SOCKET || inst.type == DIR_RESET) {
@@ -603,23 +663,40 @@ public:
                 VirtualClient& vc = clients[inst.client_id];
                 close_client(vc, false);
                 if (!connect_client(inst.client_id)) {
-                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": Failed to reconnect client ", inst.client_id);
+                    Wire dump = format_queue_dump(vc);
+                    logger.log(inst.client_id, "ERROR", "RECONNECT failed for client " + inst.client_id + dump);
+                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": ", inst.client_id, " RECONNECT failed to reconnect client ", inst.client_id, dump);
                     return false;
                 }
             } else if (inst.type == DIR_PAUSE || inst.type == DIR_RESUME) {
                 clients[inst.client_id].reading = (inst.type == DIR_RESUME);
                 logger.log(inst.client_id, "SYS", inst.type == DIR_RESUME ? "Reading resumed" : "Reading paused");
+            } else if (inst.type == DIR_SET_SOCK_RCVBUF) {
+                VirtualClient& vc = clients[inst.client_id];
+                int buf_size = atoi(inst.payload.c_str());
+                if (vc.fd != -1 && buf_size > 0) {
+                    int res = setsockopt(vc.fd, SOL_SOCKET, SO_RCVBUF, &buf_size, sizeof(buf_size));
+                    if (res < 0) {
+                        logger.log(inst.client_id, "ERROR", "Failed to set SO_RCVBUF: " + Wire(strerror(errno)));
+                    } else {
+                        logger.log(inst.client_id, "SYS", "Set SO_RCVBUF to " + inst.payload);
+                    }
+                }
             } else if (inst.type == DIR_FLOOD) {
                 VirtualClient& vc = clients[inst.client_id];
                 std::istringstream fs(inst.payload); int count = 0; fs >> count;
                 Wire payload; std::getline(fs, payload); trim(payload);
                 if (count < 1 || count > 10000 || payload.empty()) {
-                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": Invalid FLOOD parameters: ", inst.payload);
+                    Wire dump = format_queue_dump(vc);
+                    logger.log(inst.client_id, "ERROR", "FLOOD invalid parameters: " + inst.payload + dump);
+                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": ", inst.client_id, " FLOOD invalid parameters: \"", inst.payload, "\"", dump);
                     return false;
                 }
                 for (int n = 0; n < count; ++n) {
                     if (!send_raw(vc, payload + "\r\n")) {
-                        printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": FLOOD send failed for ", inst.client_id);
+                        Wire dump = format_queue_dump(vc);
+                        logger.log(inst.client_id, "ERROR", "FLOOD send failed at iteration " + Wire(n) + dump);
+                        printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": ", inst.client_id, " FLOOD send failed at iteration ", n, dump);
                         return false;
                     }
                 }
@@ -629,37 +706,60 @@ public:
                 Wire actual_payload = apply_password_substitution(inst.payload, password);
                 logger.log(inst.client_id, "SEND", actual_payload);
                 if (!send_raw(vc, actual_payload + "\r\n")) {
-                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": Send failed for ", inst.client_id);
+                    Wire dump = format_queue_dump(vc);
+                    logger.log(inst.client_id, "ERROR", "SEND failed for payload: " + actual_payload + dump);
+                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": ", inst.client_id, " SEND failed for payload \"", actual_payload, "\"", dump);
                     return false;
                 }
             } else if (inst.type == DIR_EXPECT) {
                 VirtualClient& vc = clients[inst.client_id];
                 if (!wait_for_pattern(vc, inst.payload, timeout_ms)) {
-                    logger.log(inst.client_id, "ERROR", "EXPECT assertion failed for pattern: " + inst.payload);
-                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": EXPECT assertion failed for ", inst.client_id, " pattern: ", inst.payload);
+                    Wire dump = format_queue_dump(vc);
+                    logger.log(inst.client_id, "ERROR", "EXPECT assertion failed for pattern: \"" + inst.payload + "\"" + dump);
+                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": ", inst.client_id, " EXPECT pattern: \"", inst.payload, "\"", dump);
                     return false;
                 }
             } else if (inst.type == DIR_EXPECT_NONE) {
                 VirtualClient& vc = clients[inst.client_id];
-                if (!assert_none(vc, parse_duration_ms(inst.payload))) {
-                    logger.log(inst.client_id, "ERROR", "EXPECT_NONE observed queued data or disconnect");
-                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": EXPECT_NONE observed queued data or disconnect");
+                int quiet_ms = parse_duration_ms(inst.payload);
+                size_t start_index = vc.line_queue.size();
+                if (!assert_none(vc, quiet_ms, start_index)) {
+                    Wire dump = format_queue_dump(vc);
+                    logger.log(inst.client_id, "ERROR", "EXPECT_NONE observed queued data or disconnect" + dump);
+                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": ", inst.client_id, " EXPECT_NONE observed queued data or disconnect", dump);
                     return false;
                 }
             } else if (inst.type == DIR_EXPECT_COUNT) {
                 VirtualClient& vc = clients[inst.client_id]; std::istringstream es(inst.payload);
                 int expected = 0; es >> expected; Wire pattern; std::getline(es, pattern); trim(pattern);
-                poll_all_clients(timeout_ms);
-                if (count_matching(vc, pattern) != expected) {
-                    logger.log(inst.client_id, "ERROR", "EXPECT_COUNT mismatch: " + inst.payload);
-                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": EXPECT_COUNT mismatch: ", inst.payload);
+                size_t start_index = vc.line_queue.size();
+                long start_time = get_time_ms();
+                while (true) {
+                    poll_all_clients(50);
+                    int current_matches = count_matching(vc, pattern, start_index);
+                    if (expected > 0 && current_matches >= expected) {
+                        poll_all_clients(50);
+                        break;
+                    }
+                    if (!vc.connected) break;
+                    long elapsed = get_time_ms() - start_time;
+                    if (elapsed >= timeout_ms) break;
+                }
+                int actual = count_matching(vc, pattern, start_index);
+                if (actual != expected) {
+                    Wire dump = format_queue_dump(vc);
+                    std::ostringstream oss;
+                    oss << "Expected count " << expected << " but got " << actual << " for pattern: \"" << pattern << "\"";
+                    logger.log(inst.client_id, "ERROR", Wire(oss.str()) + dump);
+                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": ", inst.client_id, " EXPECT_COUNT (expected ", expected, ", got ", actual, ") for \"", pattern, "\"", dump);
                     return false;
                 }
             } else if (inst.type == DIR_WAIT_RECV) {
                 VirtualClient& vc = clients[inst.client_id];
                 if (!wait_for_pattern(vc, inst.payload, timeout_ms)) {
-                    logger.log(inst.client_id, "ERROR", "WAIT_RECV timeout matching pattern: " + inst.payload);
-                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": WAIT_RECV timeout for ", inst.client_id, " pattern: ", inst.payload);
+                    Wire dump = format_queue_dump(vc);
+                    logger.log(inst.client_id, "ERROR", "WAIT_RECV timeout matching pattern: \"" + inst.payload + "\"" + dump);
+                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": ", inst.client_id, " WAIT_RECV pattern: \"", inst.payload, "\"", dump);
                     return false;
                 }
             }

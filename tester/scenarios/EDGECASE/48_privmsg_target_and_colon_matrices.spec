@@ -1,0 +1,46 @@
+# Scenario 48: PRIVMSG Target and Colon Formatting Matrix
+# Tests PRIVMSG errors (401, 403, 411, 412, 442) and preservation of messages with multiple colons
+CLIENTS C1, C2
+
+# Register Alice and Bob
+C1 SEND PASS 1234
+C1 SEND NICK Alice
+C1 SEND USER alice 0 * :Alice
+C1 EXPECT 001 Alice :*
+
+C2 SEND PASS 1234
+C2 SEND NICK Bob
+C2 SEND USER bob 0 * :Bob
+C2 EXPECT 001 Bob :*
+
+# 411: No recipient
+C1 SEND PRIVMSG
+C1 EXPECT 411 Alice :*
+
+# 412: No text to send
+C1 SEND PRIVMSG Bob
+C1 EXPECT 412 Alice :*
+
+# 401: Non-existent nick
+C1 SEND PRIVMSG Nobody :Hello
+C1 EXPECT 401 Alice Nobody :No such nick/channel
+
+# 403: Non-existent channel
+C1 SEND PRIVMSG #nonexistent :Hello
+C1 EXPECT 403 Alice #nonexistent :No such channel
+
+# Alice creates #privmsgroom
+C1 SEND JOIN #privmsgroom
+C1 EXPECT :Alice!* JOIN #privmsgroom
+
+# 442: Bob is not in #privmsgroom
+C2 SEND PRIVMSG #privmsgroom :Hello from outside
+C2 EXPECT 442 Bob #privmsgroom :You're not on that channel
+
+# Bob joins
+C2 SEND JOIN #privmsgroom
+C2 WAIT_RECV :Bob!* JOIN #privmsgroom
+
+# Message containing multiple colons inside text
+C1 SEND PRIVMSG #privmsgroom :colon1: colon2: colon3 :colon4
+C2 WAIT_RECV :Alice!* PRIVMSG #privmsgroom :colon1: colon2: colon3 :colon4

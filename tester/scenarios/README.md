@@ -64,7 +64,23 @@ the central map of the executable integration coverage. Run all suites with
 | `adversarial/36_mode_parameter_skew_fuzz.spec` | Mode flag/parameter mismatch fuzzing, limit integer overflow, and last-operator demotion. |
 | `adversarial/37_abrupt_disconnect_during_traffic.spec` | Abrupt peer resets (RST) during active channel broadcasts, solo channel destruction, and mid-command EOF. |
 | `adversarial/38_pipelined_storm.spec` | Single-packet pipelined command bursts, bounded flood traffic, and multi-channel parameter overflow. |
-| `adversarial/39_invite_and_privilege_boundaries.spec` | Ghost channel re-creation hijack prevention, operator boundary integrity, and invite case-insensitivity. |
+
+## Edge Cases
+
+| Spec | Coverage |
+| --- | --- |
+| `EDGECASE/39_send_to_dead_socket_resilience.spec` | Server resilience when sending to dead/dropped client sockets. |
+| `EDGECASE/40_unauthenticated_nick_takeover_prevention.spec` | Pre-auth nick collision and takeover prevention. |
+| `EDGECASE/41_orphaned_channel_op_depletion.spec` | Operator depletion and channel behavior when no operators remain. |
+| `EDGECASE/42_self_op_demotion_and_self_kick.spec` | Self operator demotion, solo channel destruction (403), and shared channel self-kick (442). |
+| `EDGECASE/43_combined_mode_flags_parsing.spec` | Multi-flag mode changes with grouped parameters. |
+| `EDGECASE/44_channel_access_priority_matrix.spec` | Priority resolution of invite-only, key, limit, and ban channel restrictions. |
+| `EDGECASE/45_pipelined_commands_with_quit.spec` | Single-packet burst commands terminated by QUIT. |
+| `EDGECASE/46_multi_channel_audience_deduplication.spec` | Audience deduplication across multiple mutual channels. |
+| `EDGECASE/47_topic_query_set_clear_lifecycle.spec` | Channel topic query, set, change, and clear lifecycle. |
+| `EDGECASE/48_privmsg_target_and_colon_matrices.spec` | PRIVMSG target parsing, colon trailing parameters, and formatting matrix. |
+| `EDGECASE/49_compound_mode_error_resilience.spec` | Mixed compound modes with unknown flags (472), missing params (461), invalid targets (441/401), and normalized broadcasts. |
 
 All scenarios are grouped by protocol area and included in the recursive
 all-tests run.
+

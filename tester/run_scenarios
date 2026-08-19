@@ -102,13 +102,13 @@ else
                 done
             else
                 # Fallback: substring / filename glob search
-                for f in "$SCENARIOS_DIR"/*"$arg"*.spec; do
+                while IFS= read -r f; do
                     if [ -f "$f" ]; then
                         if [[ ! " ${SPECS[*]} " =~ " ${f} " ]]; then
                             SPECS+=("$f")
                         fi
                     fi
-                done
+                done < <(find "$SCENARIOS_DIR" -type f -name "*${arg}*.spec" | sort)
             fi
         fi
     done
