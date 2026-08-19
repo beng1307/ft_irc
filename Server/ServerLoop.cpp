@@ -110,21 +110,28 @@ void Server::server_loop() {
   // its flag got changed to nonblocking.
   add_fds(get_server_socket(), POLLIN, 0);
 
-  while (true) {
+  // Main Event Loop:
+  // Runs while g_running is true.
+  // When SIGINT or SIGTERM is received, sig_handler in main.cpp sets g_running = false.
+  while (g_running) {
     // Wait for events on the file descriptors (-1 == endlessly).
     // poll sets the revents flag from the fds to the current status.
-    // If poll() is interrupted by a signal, it breaks the loop.
-    // Otherwise, stop the server if poll() fails.
+    // Signal handling scenario:
+    // If poll() is interrupted by a signal (e.g. SIGINT/SIGTERM), it returns -1 with errno == EINTR.
+    // We check if g_running is false; if so, we break to execute the clean teardown below.
     int ready = poll(get_fds().data(), get_fds().size(), -1);
     if (ready == -1) {
-      if (errno == EINTR)
+      if (errno == EINTR) {
+        if (!g_running)
+          break;
         continue;
+      }
       printErr("Error: poll failed!");
-      break; // TODO: Check if it has to send a message to the clients.
+      break; // Stop the server if poll() encounters an unrecoverable system failure.
     }
 
     // Loops over the fds
-    for (size_t index = 0; index < get_fds().size(); ++index) {
+    for (size_t index = 0; index < get_fds().size() && g_running; ++index) {
         if (get_fds()[index].revents & (POLLERR | POLLHUP | POLLNVAL)) {
           if (get_fds()[index].fd == get_server_socket()) {
             printErr("Error: server socket poll failure!");
@@ -170,5 +177,19 @@ void Server::server_loop() {
         }
       }
     }
+  }
+
+  // Graceful Teardown & Resource Cleanup:
+  // Scenario: Triggered when exiting the main event loop (e.g. on SIGINT/SIGTERM or unrecoverable error).
+  // Rationale:
+  // 1. Cleanly disconnect all connected clients: removes them from channels, closes their sockets,
+  //    and frees client buffers to prevent file descriptor leaks.
+  // 2. Closes the master server listening socket descriptor so the OS immediately frees the TCP port.
+  while (!get_clients().empty()) {
+    disconnect_client(get_clients().begin()->first);
+  }
+  if (get_server_socket() > 0) {
+    close(get_server_socket());
+    set_server_socket(-1);
   }
 }

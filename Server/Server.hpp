@@ -9,6 +9,9 @@
 #include "../helpers/Map.hpp"
 #include <poll.h>
 
+// Global execution control flag (defined in main.cpp, used by ServerLoop.cpp)
+// Set to false on SIGINT / SIGTERM to trigger graceful event-loop termination.
+extern bool g_running;
 
 typedef Map<Wire, Channel> ChannelMap;
 typedef Map<int, Client>   ClientMap;

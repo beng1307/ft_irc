@@ -2,6 +2,7 @@
 #include "../Client/Client.hpp"
 #include "../Channel/Channel.hpp"
 #include "../helpers/Wire.hpp"
+#include <unistd.h>
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -38,9 +39,17 @@ Server	&Server::operator=(const Server &other)
 	return (*this);
 }
 
+// Destructor:
+// Rationale: Provides RAII cleanup guarantee. If the Server object is destroyed
+// (e.g. stack unwinding on early return or exception), ensure any still-open
+// server listening socket descriptor is closed to prevent resource/FD leaks.
 Server::~Server()
 {
-	return ;
+	if (server_socket > 0)
+	{
+		close(server_socket);
+		server_socket = -1;
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
