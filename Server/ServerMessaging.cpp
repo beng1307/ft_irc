@@ -14,9 +14,9 @@ Wire	make_msg(const Client &client, const Wire &cmd, const Wire &target, const W
 ssize_t	send_string(int fd, const Wire &str)
 {
 	if (str.length() >= 2 && str.substr(str.length() - 2) == "\r\n")
-		return send(fd, str.c_str(), str.size(), 0);
+		return send(fd, str.c_str(), str.size(), MSG_NOSIGNAL);
 	Wire out = str + "\r\n";
-	return send(fd, out.c_str(), out.size(), 0);
+	return send(fd, out.c_str(), out.size(), MSG_NOSIGNAL);
 }
 
 ssize_t	send_msg(int fd, const Client &client, const Wire &cmd, const Wire &target, const Wire &param)

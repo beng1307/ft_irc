@@ -125,6 +125,20 @@ void Server::server_loop() {
 
     // Loops over the fds
     for (size_t index = 0; index < get_fds().size(); ++index) {
+        if (get_fds()[index].revents & (POLLERR | POLLHUP | POLLNVAL)) {
+          if (get_fds()[index].fd == get_server_socket()) {
+            printErr("Error: server socket poll failure!");
+            break;
+          }
+          int disconnected_fd = get_fds()[index].fd;
+          disconnect_client(disconnected_fd);
+          if (index == 0)
+            index = static_cast<size_t>(-1);
+          else
+            --index;
+          continue;
+        }
+
       // If the current fd doesn't have POLLIN (pending input) set, go to the
       // next one.
       if (!(get_fds()[index].revents & POLLIN))
@@ -149,7 +163,10 @@ void Server::server_loop() {
         // If current_fd was disconnected and removed from get_fds(),
         // adjust index so the shifted element at this index is processed on next iteration.
         if (index < get_fds().size() && get_fds()[index].fd != current_fd) {
-          --index;
+          if (index == 0)
+            index = static_cast<size_t>(-1);
+          else
+            --index;
         }
       }
     }

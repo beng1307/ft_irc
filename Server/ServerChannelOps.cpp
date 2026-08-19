@@ -258,6 +258,14 @@ void	Server::handle_mode(Client &client, const Wire &line,
 		return ;
 	}
 
+	//A bare 'b' queries the channel ban list. Ban masks are not stored yet,
+	//so report an empty list and always terminate it with RPL_ENDOFBANLIST.
+	if (arguments[1] == "b")
+	{
+		send_status(client, "368", channel_name + " :End of Channel Ban List");
+		return ;
+	}
+
 	//Changing modes requires operator privileges.
 	if (!ensure_channel_operator(client, channel))
 		return ;
