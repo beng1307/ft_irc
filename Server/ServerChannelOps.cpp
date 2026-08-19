@@ -10,11 +10,13 @@
 // OPERATION HELPER
 
 //Function to add modes cleaner. 
-static void	append_mode_change(Wire &applied_modes, char sign, char mode)
+static Wire	append_mode_change(const Wire &applied_modes, char sign, char mode)
 {
-	if (applied_modes.empty() || applied_modes[applied_modes.size() - 1] != sign)
-		applied_modes.push_back(sign);
-	applied_modes.push_back(mode);
+	Wire result;
+	if (applied_modes.find_last_char("+-") != sign)
+		result.push_back(sign);
+	result.push_back(mode);
+	return result;
 }
 
 //Checks if the channel exists. If not, a error reply is send to the client.
@@ -294,13 +296,13 @@ void	Server::handle_mode(Client &client, const Wire &line,
 		if (mode == 'i')
 		{
 			channel.set_invite_only(sign == '+');
-			append_mode_change(applied_modes, sign, 'i');
+			applied_modes += append_mode_change(applied_modes, sign, 'i');
 		}
 		//Mode 't': topic restriction flag.
 		else if (mode == 't')
 		{
 			channel.set_topic_restricted(sign == '+');
-			append_mode_change(applied_modes, sign, 't');
+			applied_modes += append_mode_change(applied_modes, sign, 't');
 		}
 		//Mode 'k': channel key; requires a parameter when setting and clears it when removing.
 		else if (mode == 'k')
@@ -313,7 +315,7 @@ void	Server::handle_mode(Client &client, const Wire &line,
 					continue ;
 				}
 				channel.set_key(arguments[param_index]);
-				append_mode_change(applied_modes, sign, 'k');
+				applied_modes += append_mode_change(applied_modes, sign, 'k');
 				applied_params += " " + arguments[param_index];
 				param_index++;
 			}
@@ -322,7 +324,7 @@ void	Server::handle_mode(Client &client, const Wire &line,
 				if (channel.has_key())
 				{
 					channel.clear_key();
-					append_mode_change(applied_modes, sign, 'k');
+					applied_modes += append_mode_change(applied_modes, sign, 'k');
 				}
 			}
 		}
@@ -356,7 +358,7 @@ void	Server::handle_mode(Client &client, const Wire &line,
 			else
 				channel.remove_operator(target.get_socket());
 
-			append_mode_change(applied_modes, sign, 'o');
+			applied_modes += append_mode_change(applied_modes, sign, 'o');
 			applied_params += " " + target_nick;
 			param_index++;
 		}
@@ -374,7 +376,7 @@ void	Server::handle_mode(Client &client, const Wire &line,
 				}
 				size_t limit_value = static_cast<size_t>(std::atoi(arguments[param_index].c_str()));
 				channel.set_user_limit(limit_value);
-				append_mode_change(applied_modes, sign, 'l');
+				applied_modes += append_mode_change(applied_modes, sign, 'l');
 				applied_params += " " + arguments[param_index];
 				param_index++;
 			}
@@ -383,7 +385,7 @@ void	Server::handle_mode(Client &client, const Wire &line,
 				if (channel.has_user_limit())
 				{
 					channel.clear_user_limit();
-					append_mode_change(applied_modes, sign, 'l');
+					applied_modes += append_mode_change(applied_modes, sign, 'l');
 				}
 			}
 		}

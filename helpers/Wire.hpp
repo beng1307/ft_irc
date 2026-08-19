@@ -161,6 +161,12 @@ public:
         return false;
     }
 
+    char find_last_char(const string& chars, char default_char = 0) const {
+        size_t pos = this->find_last_of(chars);
+        if (pos == string::npos) return default_char;
+        return (*this)[pos];
+    }
+
     bool hasOnly(const string& allowed) const {
         return !this->empty() && this->find_first_not_of(allowed) == string::npos;
     }
