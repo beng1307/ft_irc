@@ -12,3 +12,4 @@ gen_compdb.py
 TMP
 .clang-format
 .clangd
+.env

@@ -6,6 +6,7 @@ TESTRUNNER_BIN="${SCRIPT_DIR}/testrunner"
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
+CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
 
@@ -14,20 +15,20 @@ if [ ! -f "$TESTRUNNER_BIN" ]; then
     make -C "$SCRIPT_DIR" || exit 1
 fi
 
-HOST="${HOST:-127.0.0.1}"
-PORT="${PORT:-6667}"
-SERVER_PID=""
+HOST="127.0.0.1"
+PORT="6667"
+PASSWORD="1234"
 
-# Optional isolated server lifecycle. Existing users can continue to start the
-# server themselves; when SERVER_BIN is set it receives PORT, PASSWORD, and
-# shell-word-split SERVER_EXTRA_ARGS in that order.
-if [ -n "${SERVER_BIN:-}" ]; then
-    read -r -a EXTRA_ARGS <<< "${SERVER_EXTRA_ARGS:-}"
-    "$SERVER_BIN" "$PORT" "${PASSWORD:-}" "${EXTRA_ARGS[@]}" &
-    SERVER_PID=$!
-    trap 'if [ -n "$SERVER_PID" ]; then kill "$SERVER_PID" 2>/dev/null || true; wait "$SERVER_PID" 2>/dev/null || true; fi' EXIT INT TERM
-    sleep "${SERVER_START_DELAY:-0.5}"
+# Source .env if present (relative to repo root or script dir)
+if [ -f "${SCRIPT_DIR}/../.env" ]; then
+    # shellcheck disable=SC1091
+    . "${SCRIPT_DIR}/../.env"
+elif [ -f "${SCRIPT_DIR}/.env" ]; then
+    # shellcheck disable=SC1091
+    . "${SCRIPT_DIR}/.env"
 fi
+
+SERVER_PID=""
 SCENARIOS_DIR="${SCRIPT_DIR}/scenarios"
 
 SPECS=()
@@ -53,12 +54,33 @@ add_spec_by_num() {
 VERBOSE="${VERBOSE:-0}"
 RAW_ARGS=()
 
-for arg in "$@"; do
-    if [ "$arg" = "--v" ] || [ "$arg" = "-v" ] || [ "$arg" = "--verbose" ]; then
-        VERBOSE=1
-    else
-        RAW_ARGS+=("$arg")
-    fi
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --v|-v|--verbose)
+            VERBOSE=1
+            shift
+            ;;
+        -p|--password)
+            if [ -n "${2:-}" ]; then
+                PASSWORD="$2"
+                shift 2
+            else
+                shift
+            fi
+            ;;
+        --port)
+            if [ -n "${2:-}" ]; then
+                PORT="$2"
+                shift 2
+            else
+                shift
+            fi
+            ;;
+        *)
+            RAW_ARGS+=("$1")
+            shift
+            ;;
+    esac
 done
 
 if [ ${#RAW_ARGS[@]} -eq 0 ]; then
@@ -144,6 +166,42 @@ format_test_name() {
     echo "$title"
 }
 
+cleanup() {
+    trap - INT TERM EXIT
+    if [ -n "$SERVER_PID" ]; then
+        kill "$SERVER_PID" 2>/dev/null || true
+        wait "$SERVER_PID" 2>/dev/null || true
+    fi
+    exit 130
+}
+
+trap cleanup INT TERM
+
+if [ -n "${SERVER_BIN:-}" ]; then
+    read -r -a EXTRA_ARGS <<< "${SERVER_EXTRA_ARGS:-}"
+    "$SERVER_BIN" "$PORT" "${PASSWORD:-}" "${EXTRA_ARGS[@]}" >/dev/null 2>&1 &
+    SERVER_PID=$!
+    trap 'if [ -n "$SERVER_PID" ]; then kill "$SERVER_PID" 2>/dev/null || true; wait "$SERVER_PID" 2>/dev/null || true; fi' EXIT
+    sleep "${SERVER_START_DELAY:-0.3}"
+fi
+
+# Fast check if server is reachable before running scenarios
+if command -v nc >/dev/null 2>&1; then
+    if ! nc -z -w 1 "$HOST" "$PORT" 2>/dev/null; then
+        echo -e "${RED}${BOLD}Error: IRC server is not available at ${HOST}:${PORT}.${NC}"
+        echo -e "${RED}Please start the server first (e.g. 'make run' or 'make runa <port> <pass>').${NC}\n"
+        exit 1
+    fi
+elif (echo >/dev/tcp/"$HOST"/"$PORT") 2>/dev/null; then
+    : # Server port is reachable
+else
+    echo -e "${RED}${BOLD}Error: IRC server is not available at ${HOST}:${PORT}.${NC}"
+    echo -e "${RED}Please start the server first (e.g. 'make run' or 'make runa <port> <pass>').${NC}\n"
+    exit 1
+fi
+
+echo -e "${CYAN}Running scenarios against ${HOST}:${PORT} (password: ${PASSWORD})${NC}\n"
+
 failed=0
 total=0
 current_dir=""
@@ -168,11 +226,19 @@ for spec in "${SPECS[@]}"; do
 
     test_name=$(format_test_name "$spec_base")
     RUNNER_ARGS=(--host "$HOST" --port "$PORT")
+    if [ -n "$PASSWORD" ]; then
+        RUNNER_ARGS+=(--password "$PASSWORD")
+    fi
     if [ "$VERBOSE" -eq 1 ]; then
         RUNNER_ARGS+=(--v)
     fi
     output=$("$TESTRUNNER_BIN" "${RUNNER_ARGS[@]}" "$spec" 2>&1)
     status=$?
+
+    # If the test process was killed by SIGINT/SIGQUIT (130 / 131), abort the suite immediately
+    if [ $status -eq 130 ] || [ $status -eq 131 ]; then
+        cleanup
+    fi
 
     if [ "$VERBOSE" -eq 1 ]; then
         echo -e "${BOLD}--- [${spec_base}] ---${NC}"

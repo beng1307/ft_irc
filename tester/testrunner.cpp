@@ -17,9 +17,9 @@
 #include <netdb.h>
 #include <poll.h>
 #include <sys/time.h>
-#include <signal.h>
 #include <netinet/tcp.h>
 #include "../helpers/print.hpp"
+#include "../helpers/Wire.hpp"
 
 // -----------------------------------------------------------------------------
 // Glob Pattern Matching Helper
@@ -35,16 +35,16 @@ static bool glob_match(const char* pat, const char* str) {
     return false;
 }
 
-static bool match_pattern(const std::string& line, const std::string& pattern) {
+static bool match_pattern(const Wire& line, const Wire& pattern) {
     // 1. Direct glob match
     if (glob_match(pattern.c_str(), line.c_str())) return true;
 
     // 2. Glob match with leading wildcard (* + pattern)
-    std::string wildcard_prefix = "*" + pattern;
+    Wire wildcard_prefix = "*" + pattern;
     if (glob_match(wildcard_prefix.c_str(), line.c_str())) return true;
 
     // 3. Glob match surrounded (* + pattern + *)
-    std::string wildcard_both = "*" + pattern + "*";
+    Wire wildcard_both = "*" + pattern + "*";
     if (glob_match(wildcard_both.c_str(), line.c_str())) return true;
 
     return false;
@@ -59,9 +59,9 @@ static long get_time_ms() {
     return (tv.tv_sec * 1000L) + (tv.tv_usec / 1000L);
 }
 
-static void trim(std::string& s) {
+static void trim(Wire& s) {
     size_t start = s.find_first_not_of(" \t\r\n");
-    if (start == std::string::npos) {
+    if (start == Wire::npos) {
         s.clear();
         return;
     }
@@ -70,8 +70,8 @@ static void trim(std::string& s) {
 }
 
 // Parse duration like "500ms" or "2s" or "1000" into milliseconds
-static int parse_duration_ms(const std::string& s) {
-    std::string str = s;
+static int parse_duration_ms(const Wire& s) {
+    Wire str = s;
     trim(str);
     int multiplier = 1;
     if (str.length() > 2 && str.substr(str.length() - 2) == "ms") {
@@ -85,8 +85,8 @@ static int parse_duration_ms(const std::string& s) {
 
 // Decode the small escape vocabulary used in .spec files for SEND_RAW.
 // Keeping the source specs printable makes fragmented IRC frames readable.
-static std::string decode_raw_escapes(const std::string& input) {
-    std::string output;
+static Wire decode_raw_escapes(const Wire& input) {
+    Wire output;
     for (size_t i = 0; i < input.size(); ++i) {
         if (input[i] == '\\' && i + 1 < input.size()) {
             char escaped = input[i + 1];
@@ -99,33 +99,43 @@ static std::string decode_raw_escapes(const std::string& input) {
     return output;
 }
 
+static Wire apply_password_substitution(const Wire& input, const Wire& custom_pwd) {
+    if (custom_pwd.empty()) return input;
+
+    Wire w(input);
+    if (w.contains("PASS")) {
+        return w.replaceAll("1234", custom_pwd);
+    }
+    return input;
+}
+
 // -----------------------------------------------------------------------------
 // Logger
 // -----------------------------------------------------------------------------
 class TestLogger {
 public:
     std::ofstream log_file;
-    std::string spec_name;
+    Wire spec_name;
     bool verbose;
 
     TestLogger() : verbose(false) {}
 
-    bool init(const std::string& spec_path, bool v = false) {
+    bool init(const Wire& spec_path, bool v = false) {
         verbose = v;
         size_t last_slash = spec_path.find_last_of("/\\");
-        std::string filename = (last_slash == std::string::npos) ? spec_path : spec_path.substr(last_slash + 1);
+        Wire filename = (last_slash == Wire::npos) ? spec_path : spec_path.substr(last_slash + 1);
         size_t last_dot = filename.find_last_of('.');
-        spec_name = (last_dot == std::string::npos) ? filename : filename.substr(0, last_dot);
+        spec_name = (last_dot == Wire::npos) ? filename : filename.substr(0, last_dot);
         
         mkdir("logs", 0755);
-        std::string log_filename = "logs/" + spec_name + ".log";
+        Wire log_filename = "logs/" + spec_name + ".log";
 
         log_file.open(log_filename.c_str(), std::ios::out | std::ios::trunc);
         return log_file.is_open();
     }
 
-    void log(const std::string& client, const std::string& type, const std::string& text) {
-        std::string line = client + " " + type + " " + text;
+    void log(const Wire& client, const Wire& type, const Wire& text) {
+        Wire line = client + " " + type + " " + text;
         if (log_file.is_open()) {
             log_file << line << "\n";
             log_file.flush();
@@ -140,11 +150,11 @@ public:
 // Virtual Client State
 // -----------------------------------------------------------------------------
 struct VirtualClient {
-    std::string id;
+    Wire id;
     int fd;
     bool connected;
-    std::string recv_buf;
-    std::vector<std::string> line_queue;
+    Wire recv_buf;
+    std::vector<Wire> line_queue;
     bool reading;
 
     VirtualClient() : fd(-1), connected(false), reading(true) {}
@@ -177,9 +187,9 @@ enum DirectiveType {
 
 struct Instruction {
     DirectiveType type;
-    std::string client_id;
-    std::string payload;
-    std::string original_line;
+    Wire client_id;
+    Wire payload;
+    Wire original_line;
     int line_number;
     Instruction() : type(DIR_UNKNOWN), line_number(0) {}
 };
@@ -189,15 +199,16 @@ struct Instruction {
 // -----------------------------------------------------------------------------
 class TestRunner {
 private:
-    std::string host;
+    Wire host;
     int port;
+    Wire password;
     int timeout_ms;
     TestLogger logger;
-    std::map<std::string, VirtualClient> clients;
-    std::vector<std::string> client_order;
+    std::map<Wire, VirtualClient> clients;
+    std::vector<Wire> client_order;
 
 public:
-    TestRunner(const std::string& h, int p) : host(h), port(p), timeout_ms(3000) {}
+    TestRunner(const Wire& h, int p, const Wire& pwd = "") : host(h), port(p), password(pwd), timeout_ms(3000) {}
 
     ~TestRunner() {
         cleanup();
@@ -205,7 +216,7 @@ public:
 
     void cleanup() {
         bool had_connected = false;
-        for (std::map<std::string, VirtualClient>::iterator it = clients.begin(); it != clients.end(); ++it) {
+        for (std::map<Wire, VirtualClient>::iterator it = clients.begin(); it != clients.end(); ++it) {
             if (it->second.fd != -1) {
                 close(it->second.fd);
                 it->second.fd = -1;
@@ -218,7 +229,7 @@ public:
         }
     }
 
-    bool connect_client(const std::string& client_id) {
+    bool connect_client(const Wire& client_id) {
         int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
         if (socket_fd < 0) {
             logger.log(client_id, "ERROR", "Failed to create socket");
@@ -268,7 +279,7 @@ public:
         socklen_t len = sizeof(err);
         getsockopt(socket_fd, SOL_SOCKET, SO_ERROR, &err, &len);
         if (err != 0) {
-            logger.log(client_id, "ERROR", "Socket error on connect: " + std::string(strerror(err)));
+            logger.log(client_id, "ERROR", "Socket error on connect: " + Wire(strerror(err)));
             close(socket_fd);
             return false;
         }
@@ -287,9 +298,9 @@ public:
         long start_time = get_time_ms();
         while (true) {
             std::vector<struct pollfd> pfds;
-            std::vector<std::string> ids;
+            std::vector<Wire> ids;
 
-            for (std::map<std::string, VirtualClient>::iterator it = clients.begin(); it != clients.end(); ++it) {
+            for (std::map<Wire, VirtualClient>::iterator it = clients.begin(); it != clients.end(); ++it) {
                 if (it->second.connected && it->second.fd != -1 && it->second.reading) {
                     struct pollfd pfd;
                     pfd.fd = it->second.fd;
@@ -340,8 +351,8 @@ public:
             vc.recv_buf.append(buf, bytes);
 
             size_t pos;
-            while ((pos = vc.recv_buf.find('\n')) != std::string::npos) {
-                std::string line = vc.recv_buf.substr(0, pos);
+            while ((pos = vc.recv_buf.find('\n')) != Wire::npos) {
+                Wire line = vc.recv_buf.substr(0, pos);
                 vc.recv_buf.erase(0, pos + 1);
                 trim(line);
                 if (!line.empty()) {
@@ -355,7 +366,7 @@ public:
         }
     }
 
-    bool pop_next_line(VirtualClient& vc, std::string& line, int max_wait_ms) {
+    bool pop_next_line(VirtualClient& vc, Wire& line, int max_wait_ms) {
         long start = get_time_ms();
         while (true) {
             if (!vc.line_queue.empty()) {
@@ -379,7 +390,7 @@ public:
         return false;
     }
 
-    bool wait_for_pattern(VirtualClient& vc, const std::string& pattern, int max_wait_ms) {
+    bool wait_for_pattern(VirtualClient& vc, const Wire& pattern, int max_wait_ms) {
         long start = get_time_ms();
         while (true) {
             poll_all_clients(10);
@@ -399,7 +410,7 @@ public:
         return false;
     }
 
-    bool send_raw(VirtualClient& vc, const std::string& data) {
+    bool send_raw(VirtualClient& vc, const Wire& data) {
         if (!vc.connected || vc.fd == -1) {
             logger.log(vc.id, "ERROR", "Cannot send data: socket not connected");
             return false;
@@ -413,7 +424,7 @@ public:
                 if (poll(&pfd, 1, timeout_ms) <= 0) res = -1;
                 else continue;
             }
-            logger.log(vc.id, "ERROR", "Failed to send data: " + std::string(strerror(errno)));
+            logger.log(vc.id, "ERROR", "Failed to send data: " + Wire(strerror(errno)));
             vc.connected = false;
             return false;
         }
@@ -436,14 +447,14 @@ public:
         return vc.connected;
     }
 
-    int count_matching(VirtualClient& vc, const std::string& pattern) {
+    int count_matching(VirtualClient& vc, const Wire& pattern) {
         int count = 0;
         for (size_t i = 0; i < vc.line_queue.size(); ++i)
             if (match_pattern(vc.line_queue[i], pattern)) ++count;
         return count;
     }
 
-    bool run_spec(const std::string& spec_path, bool verbose = false) {
+    bool run_spec(const Wire& spec_path, bool verbose = false) {
         if (!logger.init(spec_path, verbose)) {
             printErr("Error: Could not create log file for ", spec_path);
             return false;
@@ -456,12 +467,12 @@ public:
         }
 
         std::vector<Instruction> instructions;
-        std::string line;
+        Wire line;
         int line_num = 0;
 
         while (std::getline(spec_file, line)) {
             line_num++;
-            std::string trimmed = line;
+            Wire trimmed = line;
             trim(trimmed);
             if (trimmed.empty() || trimmed[0] == '#') continue;
 
@@ -470,12 +481,12 @@ public:
             inst.line_number = line_num;
 
             std::istringstream iss(trimmed);
-            std::string token1;
+            Wire token1;
             iss >> token1;
 
             if (token1 == "CLIENTS") {
                 inst.type = DIR_CLIENTS;
-                std::string rest;
+                Wire rest;
                 std::getline(iss, rest);
                 inst.payload = rest;
             } else if (token1 == "WAIT") {
@@ -486,7 +497,7 @@ public:
                 iss >> inst.payload;
             } else {
                 inst.client_id = token1;
-                std::string token2;
+                Wire token2;
                 iss >> token2;
 
                 if (token2 == "EXPECT_DISCONNECT") {
@@ -510,19 +521,19 @@ public:
                     std::getline(iss, inst.payload); trim(inst.payload);
                 } else if (token2 == "EXPECT") {
                     inst.type = DIR_EXPECT;
-                    std::string rest;
+                    Wire rest;
                     std::getline(iss, rest);
                     trim(rest);
                     inst.payload = rest;
                 } else if (token2 == "WAIT_RECV") {
                     inst.type = DIR_WAIT_RECV;
-                    std::string rest;
+                    Wire rest;
                     std::getline(iss, rest);
                     trim(rest);
                     inst.payload = rest;
                 } else if (token2 == "SEND") {
                     inst.type = DIR_SEND;
-                    std::string rest;
+                    Wire rest;
                     std::getline(iss, rest);
                     trim(rest);
                     inst.payload = rest;
@@ -539,7 +550,7 @@ public:
 
             if (inst.type == DIR_CLIENTS) {
                 std::istringstream css(inst.payload);
-                std::string cid;
+                Wire cid;
                 while (std::getline(css, cid, ',')) {
                     trim(cid);
                     if (!cid.empty()) {
@@ -577,8 +588,9 @@ public:
                 logger.log(inst.client_id, "SYS", "Asserted CONNECTED successfully");
             } else if (inst.type == DIR_SEND_RAW) {
                 VirtualClient& vc = clients[inst.client_id];
-                logger.log(inst.client_id, "SEND_RAW", inst.payload);
-                if (!send_raw(vc, decode_raw_escapes(inst.payload))) {
+                Wire actual_payload = apply_password_substitution(inst.payload, password);
+                logger.log(inst.client_id, "SEND_RAW", actual_payload);
+                if (!send_raw(vc, decode_raw_escapes(actual_payload))) {
                     printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": SEND_RAW failed for ", inst.client_id);
                     return false;
                 }
@@ -600,7 +612,7 @@ public:
             } else if (inst.type == DIR_FLOOD) {
                 VirtualClient& vc = clients[inst.client_id];
                 std::istringstream fs(inst.payload); int count = 0; fs >> count;
-                std::string payload; std::getline(fs, payload); trim(payload);
+                Wire payload; std::getline(fs, payload); trim(payload);
                 if (count < 1 || count > 10000 || payload.empty()) {
                     printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": Invalid FLOOD parameters: ", inst.payload);
                     return false;
@@ -614,8 +626,9 @@ public:
                 logger.log(inst.client_id, "FLOOD", payload);
             } else if (inst.type == DIR_SEND) {
                 VirtualClient& vc = clients[inst.client_id];
-                logger.log(inst.client_id, "SEND", inst.payload);
-                if (!send_raw(vc, inst.payload + "\r\n")) {
+                Wire actual_payload = apply_password_substitution(inst.payload, password);
+                logger.log(inst.client_id, "SEND", actual_payload);
+                if (!send_raw(vc, actual_payload + "\r\n")) {
                     printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": Send failed for ", inst.client_id);
                     return false;
                 }
@@ -635,7 +648,7 @@ public:
                 }
             } else if (inst.type == DIR_EXPECT_COUNT) {
                 VirtualClient& vc = clients[inst.client_id]; std::istringstream es(inst.payload);
-                int expected = 0; es >> expected; std::string pattern; std::getline(es, pattern); trim(pattern);
+                int expected = 0; es >> expected; Wire pattern; std::getline(es, pattern); trim(pattern);
                 poll_all_clients(timeout_ms);
                 if (count_matching(vc, pattern) != expected) {
                     logger.log(inst.client_id, "ERROR", "EXPECT_COUNT mismatch: " + inst.payload);
@@ -661,17 +674,20 @@ public:
 // CLI Main
 // -----------------------------------------------------------------------------
 int main(int argc, char* argv[]) {
-    std::string host = "127.0.0.1";
+    Wire host = "127.0.0.1";
     int port = 6667;
-    std::string spec_path = "";
+    Wire password = "";
+    Wire spec_path = "";
     bool verbose = false;
 
     for (int i = 1; i < argc; ++i) {
-        std::string arg = argv[i];
+        Wire arg = argv[i];
         if (arg == "--host" && i + 1 < argc) {
             host = argv[++i];
         } else if (arg == "--port" && i + 1 < argc) {
             port = atoi(argv[++i]);
+        } else if ((arg == "--password" || arg == "-p") && i + 1 < argc) {
+            password = argv[++i];
         } else if (arg == "--v" || arg == "-v" || arg == "--verbose") {
             verbose = true;
         } else if (arg[0] != '-') {
@@ -680,11 +696,11 @@ int main(int argc, char* argv[]) {
     }
 
     if (spec_path.empty()) {
-        print("Usage: testrunner [--host <host>] [--port <port>] [--v] <spec_file>");
+        print("Usage: testrunner [--host <host>] [--port <port>] [--password <pwd>] [--v] <spec_file>");
         return 1;
     }
 
-    TestRunner runner(host, port);
+    TestRunner runner(host, port, password);
     if (!runner.run_spec(spec_path, verbose)) {
         return 1;
     }
