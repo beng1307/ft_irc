@@ -64,10 +64,10 @@ def find_server_binary(custom_path=None):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     repo_dir = os.path.dirname(script_dir)
     for candidate in [
-        os.path.join(repo_dir, "ft_irc"),
         os.path.join(repo_dir, "ircserv"),
-        os.path.join(script_dir, "ft_irc"),
+        os.path.join(repo_dir, "ft_irc"),
         os.path.join(script_dir, "ircserv"),
+        os.path.join(script_dir, "ft_irc"),
     ]:
         if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
             return candidate

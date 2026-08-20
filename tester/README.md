@@ -1,6 +1,6 @@
 ### RUN SERVER
 
-`./ft_irc 6667 1234`
+`./ircserv 6667 1234`
 
 ### TESTER FOLDER
 

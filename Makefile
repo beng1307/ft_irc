@@ -1,5 +1,5 @@
 COMPILE = c++ -g -Wall -Wextra -Werror -std=c++98 -fPIE
-NAME = ft_irc
+NAME = ircserv
 SRCS = main.cpp \
 	   Channel/Channel.cpp \
 	   Client/Client.cpp \
@@ -42,32 +42,32 @@ PASSWORD := $(if $(ENV_PASSWORD),$(ENV_PASSWORD),1234)
 run: all
 	@set -- $(filter-out $@,$(MAKECMDGOALS)); \
 	if [ $$# -ge 2 ]; then \
-		./ft_irc "$$1" "$$2"; \
+		./ircserv "$$1" "$$2"; \
 	elif [ $$# -eq 1 ]; then \
-		./ft_irc $(PORT) "$$1"; \
+		./ircserv $(PORT) "$$1"; \
 	else \
-		./ft_irc $(PORT) $(PASSWORD); \
+		./ircserv $(PORT) $(PASSWORD); \
 	fi
 
 # make test [port] [password] OR make test [password] = run all scenarios (uses .env or default if omitted)
 test: all
 	@set -- $(filter-out $@,$(MAKECMDGOALS)); \
 	if [ $$# -ge 2 ]; then \
-		SERVER_BIN="$(CURDIR)/ft_irc" ./tester/run_scenarios --port "$$1" --password "$$2"; \
+		SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_scenarios --port "$$1" --password "$$2"; \
 	elif [ $$# -eq 1 ]; then \
-		SERVER_BIN="$(CURDIR)/ft_irc" ./tester/run_scenarios --port $(PORT) --password "$$1"; \
+		SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_scenarios --port $(PORT) --password "$$1"; \
 	else \
-		SERVER_BIN="$(CURDIR)/ft_irc" ./tester/run_scenarios; \
+		SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_scenarios; \
 	fi
 
 # make case <case> OR make case <port> <password> <case> = run scenario in verbose mode
 case: all
 	@set -- $(filter-out $@,$(MAKECMDGOALS)); \
 	if [ $$# -eq 1 ]; then \
-		VERBOSE=1 SERVER_BIN="$(CURDIR)/ft_irc" ./tester/run_scenarios "$$1"; \
+		VERBOSE=1 SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_scenarios "$$1"; \
 	elif [ $$# -ge 3 ]; then \
 		P="$$1"; PW="$$2"; shift 2; \
-		VERBOSE=1 SERVER_BIN="$(CURDIR)/ft_irc" ./tester/run_scenarios --port "$$P" --password "$$PW" "$$@"; \
+		VERBOSE=1 SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_scenarios --port "$$P" --password "$$PW" "$$@"; \
 	else \
 		echo "Usage: make case <case>  OR  make case <port> <password> <case>"; \
 		exit 1; \
@@ -100,7 +100,7 @@ client: all
 help:
 	@echo "Usage: make [target] [args...]"
 	@echo ""
-	@echo "  make                                - Compile ft_irc"
+	@echo "  make                                - Compile ircserv"
 	@echo "  make run [password]                 - Run server with custom password (port: .env or 6667)"
 	@echo "  make run <port> <password>          - Run server with custom port and password"
 	@echo "  make test [password]                - Run all tests with custom password (port: .env or 6667)"

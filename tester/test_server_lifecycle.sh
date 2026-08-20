@@ -12,7 +12,7 @@ if [ -z "$SERVER_BIN" ]; then
     elif [ -x "${REPO_DIR}/ft_irc" ]; then
         SERVER_BIN="${REPO_DIR}/ft_irc"
     else
-        SERVER_BIN="${REPO_DIR}/ft_irc"
+        SERVER_BIN="${REPO_DIR}/ircserv"
     fi
 fi
 

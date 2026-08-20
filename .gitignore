@@ -4,6 +4,7 @@ tester/logs
 /logs
 *.o
 ft_irc
+ircserv
 testrunner
 filters.toml
 .cache
