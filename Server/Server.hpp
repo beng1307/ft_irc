@@ -7,7 +7,7 @@
 #include "../helpers/Vector.hpp"
 #include "../helpers/Set.hpp"
 #include "../helpers/Map.hpp"
-#include <poll.h>
+#include <sys/epoll.h>
 
 // Global execution control flag (defined in main.cpp, used by ServerLoop.cpp)
 // Set to false on SIGINT / SIGTERM to trigger graceful event-loop termination.
@@ -27,10 +27,10 @@ class Server
 		Wire				password;
 
 		int					server_socket;
+		int					epoll_fd;
 
 		ClientMap			clients;
 		ChannelMap			channels;
-		Vector<pollfd>		fds;
 
 		///////////////////////////////////////////////////////////////////////////////
 		// Helper methods for the main loop
@@ -63,6 +63,9 @@ class Server
 		void set_server_socket(int socket);
 		int get_server_socket() const;
 
+		void set_epoll_fd(int epoll_fd);
+		int get_epoll_fd() const;
+
 		void set_clients(const ClientMap &clients);
 		ClientMap &get_clients();
 		const ClientMap &get_clients() const;
@@ -81,16 +84,13 @@ class Server
 		void add_channel(const Channel &channel);
 		void remove_channel(const Wire &channel_name);
 
-		void set_fds(const Vector<pollfd> &fds);
-		Vector<pollfd> &get_fds();
-		const Vector<pollfd> &get_fds() const;
-
 		///////////////////////////////////////////////////////////////////////////////
 		// Methods
 
 		int socket_setup();
 		void server_loop();
-		void add_fds(int fd, short events, short revents);
+		void add_epoll_fd(int fd, uint32_t events);
+		void remove_epoll_fd(int fd);
 		void handle_line(Client &client, const size_t &position);
 		void dispatch_command(Client &client, const Wire &command, const Wire &line, const Vector<Wire> &arguments);
 		void handle_pass_command(Client &client, const Vector<Wire> &arguments);

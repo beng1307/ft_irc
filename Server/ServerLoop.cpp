@@ -3,7 +3,7 @@
 #include <cstring>
 #include <fcntl.h>
 #include <iostream>
-#include <poll.h>
+#include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 #include "../helpers/print.hpp"
@@ -33,7 +33,7 @@ bool Server::configure_socket_nonblocking(int socket) {
   return true;
 }
 
-// Sets the accepted client socket to nonblocking and gets added to the fds.
+// Sets the accepted client socket to nonblocking and registers it with epoll.
 void Server::accept_new_client(int client_socket) {
   // Client socket flags gets set to nonblocking, otherwise the socket gets
   // closed.
@@ -42,16 +42,15 @@ void Server::accept_new_client(int client_socket) {
     return;
   }
 
-  // Adds the client socket to the fds. And the event to listen for gets set to
-  // POLLIN.
-  add_fds(client_socket, POLLIN, 0);
+  // Adds the client socket to epoll listening for EPOLLIN.
+  add_epoll_fd(client_socket, EPOLLIN);
   // Creates a new client for the client map, paired with the new socket.
-  // we access existing socket in case FD is being reused.
+  // We access existing socket in case FD is being reused.
   add_client(client_socket);
 }
 
 // Disconnects the client from channels, closes its socket, removes it from
-// clients map and fds array.
+// clients map and epoll instance.
 void Server::disconnect_client(int client_fd) {
   // Remove client from all channels and erase empty channels
   for (ChannelMap::iterator it = get_channels().begin(); it != get_channels().end();) {
@@ -65,13 +64,8 @@ void Server::disconnect_client(int client_fd) {
   // Erase from clients map
   remove_client(client_fd);
 
-  // Erase from poll fds vector
-  for (Vector<pollfd>::iterator it = get_fds().begin(); it != get_fds().end(); ++it) {
-    if (it->fd == client_fd) {
-      get_fds().erase(it);
-      break;
-    }
-  }
+  // Remove from epoll
+  remove_epoll_fd(client_fd);
 
   // Close the socket descriptor
   close(client_fd);
@@ -81,10 +75,10 @@ void Server::disconnect_client(int client_fd) {
 void Server::handle_client_input(int client_fd) {
   char buffer[512];
 
-  // Recieves the message from client and saves it into the buffer.
+  // Receives the message from client and saves it into the buffer.
   int bytes_received = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
   if (bytes_received > 0) {
-    // Nullterminates the message in the buffer, deklares the current client
+    // Nullterminates the message in the buffer, declares the current client
     // and appends the buffer to the Clients buffer.
     buffer[bytes_received] = '\0';
     Client &client = get_clients()[client_fd];
@@ -116,7 +110,6 @@ void Server::handle_client_input(int client_fd) {
   } else {
     // With a non-blocking socket, recv() can return -1 with
     // EAGAIN/EWOULDBLOCK if no data is currently available.
-    // The client stays connected and we return to poll().
     if (errno == EAGAIN || errno == EWOULDBLOCK)
       return;
     disconnect_client(client_fd);
@@ -129,79 +122,86 @@ void Server::server_loop() {
   if (!configure_socket_nonblocking(get_server_socket()))
     return;
 
-  // Adds the server socket to the fds, after
-  // its flag got changed to nonblocking.
-  add_fds(get_server_socket(), POLLIN, 0);
+  // Creates the epoll instance to monitor file descriptors.
+  int epfd = epoll_create1(0);
+  if (epfd == -1) {
+    printErr("Error: epoll_create1 failed!");
+    return;
+  }
+  set_epoll_fd(epfd);
+
+  // Adds the server socket to epoll to listen for incoming connections (EPOLLIN),
+  // after its flag got changed to nonblocking.
+  add_epoll_fd(get_server_socket(), EPOLLIN);
+
+  const int MAX_EVENTS = 64;
+  struct epoll_event events[MAX_EVENTS];
 
   while (g_running) {
-    // Wait for events on the file descriptors (-1 == endlessly).
-    // poll sets the revents flag from the fds to the current status.
-    // If poll() is interrupted by a signal, it breaks the loop.
-    // Otherwise, stop the server if poll() fails.
-    int ready = poll(get_fds().data(), get_fds().size(), -1);
-    if (ready == -1) {
+    // Wait for events on registered file descriptors (-1 == endlessly).
+    // epoll_wait fills the events array with only the file descriptors that have triggered events.
+    // If epoll_wait() is interrupted by a signal, it unblocks with EINTR and continues or breaks the loop.
+    // Otherwise, stop the server if epoll_wait() fails.
+    int nfds = epoll_wait(get_epoll_fd(), events, MAX_EVENTS, -1);
+    if (nfds == -1) {
       if (errno == EINTR) {
         if (!g_running)
           break;
         continue;
       }
-      printErr("Error: poll failed!");
+      printErr("Error: epoll_wait failed!");
       break;
     }
 
-    // Loops over the fds
-    for (size_t index = 0; index < get_fds().size() && g_running; ++index) {
-        if (get_fds()[index].revents & (POLLERR | POLLHUP | POLLNVAL)) {
-          if (get_fds()[index].fd == get_server_socket()) {
-            printErr("Error: server socket poll failure!");
-            break;
-          }
-          int disconnected_fd = get_fds()[index].fd;
-          disconnect_client(disconnected_fd);
-          if (index == 0)
-            index = static_cast<size_t>(-1);
-          else
-            --index;
-          continue;
-        }
+    // Loops over only the active/ready file descriptors returned by epoll_wait.
+    for (int i = 0; i < nfds && g_running; ++i) {
+      int current_fd = events[i].data.fd;
+      uint32_t ev = events[i].events;
 
-      // If the current fd doesn't have POLLIN (pending input) set, go to the
-      // next one.
-      if (!(get_fds()[index].revents & POLLIN))
+      // Checks for error or hangup events on the file descriptor.
+      if (ev & (EPOLLERR | EPOLLHUP)) {
+        if (current_fd == get_server_socket()) {
+          printErr("Error: server socket epoll failure!");
+          break;
+        }
+        // Disconnects and cleans up the client associated with the failed socket.
+        disconnect_client(current_fd);
         continue;
+      }
 
-      // If the fd has POLLIN set and is the server_socket, it means a client
-      // wants to connect.
-      if (get_fds()[index].fd == get_server_socket()) {
-        // Client gets accepted and gets a own socket, connected to the server
-        // socket.
-        int client_socket = accept(get_server_socket(), NULL, NULL);
-        if (client_socket == -1) {
-          printErr("Error: accept failed!");
-          continue;
-        }
-        // Handles the freshly accepted, new client.
-        accept_new_client(client_socket);
-      } else {
-        // Handles the incoming input of the current client.
-        int current_fd = get_fds()[index].fd;
-        handle_client_input(current_fd);
-        // If current_fd was disconnected and removed from get_fds(),
-        // adjust index so the shifted element at this index is processed on next iteration.
-        if (index < get_fds().size() && get_fds()[index].fd != current_fd) {
-          if (index == 0)
-            index = static_cast<size_t>(-1);
-          else
-            --index;
+      // If the current fd has EPOLLIN (pending input or incoming connection) set.
+      if (ev & EPOLLIN) {
+        // If the fd is the server_socket, it means a new client wants to connect.
+        if (current_fd == get_server_socket()) {
+          // Client gets accepted and gets its own socket, connected to the server socket.
+          int client_socket = accept(get_server_socket(), NULL, NULL);
+          if (client_socket == -1) {
+            printErr("Error: accept failed!");
+            continue;
+          }
+          // Handles and registers the freshly accepted, new client.
+          accept_new_client(client_socket);
+        } else {
+          // Handles the incoming input of the current connected client.
+          handle_client_input(current_fd);
         }
       }
     }
   }
 
+  // Gracefully disconnects all remaining clients upon server shutdown.
   while (!get_clients().empty())
     disconnect_client(get_clients().begin()->first);
+
+  // Closes the server listening socket descriptor.
   if (get_server_socket() > 0) {
     close(get_server_socket());
     set_server_socket(-1);
+  }
+
+  // Closes the epoll instance file descriptor.
+  if (get_epoll_fd() >= 0) {
+    close(get_epoll_fd());
+    set_epoll_fd(-1);
   }
 }

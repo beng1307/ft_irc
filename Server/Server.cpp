@@ -8,19 +8,20 @@
 ///////////////////////////////////////////////////////////////////////////////
 // Consturctors and destructor
 
-Server::Server()
+Server::Server():
+	port(0), password(""), server_socket(-1), epoll_fd(-1), clients(), channels()
 {
 	return ;
 }
 
 Server::Server(int port, Wire password):
-	port(port), password(password), server_socket(0), clients(), channels(), fds()
+	port(port), password(password), server_socket(-1), epoll_fd(-1), clients(), channels()
 {
 	return ;
 }
 
 Server::Server(const Server &other): port(other.port), password(other.password),
-	server_socket(other.server_socket), clients(other.clients), channels(other.channels), fds(other.fds)
+	server_socket(other.server_socket), epoll_fd(other.epoll_fd), clients(other.clients), channels(other.channels)
 {
 	return ;
 }
@@ -32,9 +33,9 @@ Server	&Server::operator=(const Server &other)
 		port = other.port;
 		password = other.password;
 		server_socket = other.server_socket;
+		epoll_fd = other.epoll_fd;
 		clients = other.clients;
 		channels = other.channels;
-		fds = other.fds;
 	}
 	return (*this);
 }
@@ -42,13 +43,18 @@ Server	&Server::operator=(const Server &other)
 // Destructor:
 // Rationale: Provides RAII cleanup guarantee. If the Server object is destroyed
 // (e.g. stack unwinding on early return or exception), ensure any still-open
-// server listening socket descriptor is closed to prevent resource/FD leaks.
+// server listening socket descriptor and epoll instance are closed.
 Server::~Server()
 {
-	if (server_socket > 0)
+	if (server_socket >= 0)
 	{
 		close(server_socket);
 		server_socket = -1;
+	}
+	if (epoll_fd >= 0)
+	{
+		close(epoll_fd);
+		epoll_fd = -1;
 	}
 }
 
@@ -170,17 +176,12 @@ void	Server::remove_channel(const Wire &channel_name)
 	channels.erase(channel_name);
 }
 
-void	Server::set_fds(const Vector<pollfd> &fds)
+void	Server::set_epoll_fd(int epoll_fd)
 {
-	this->fds = fds;
+	this->epoll_fd = epoll_fd;
 }
 
-Vector<pollfd>	&Server::get_fds()
+int		Server::get_epoll_fd() const
 {
-	return (fds);
-}
-
-const Vector<pollfd>	&Server::get_fds() const
-{
-	return (fds);
+	return (epoll_fd);
 }

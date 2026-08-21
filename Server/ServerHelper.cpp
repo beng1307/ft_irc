@@ -14,18 +14,37 @@ bool	Server::is_positive_number(const Wire &value)
 bool	Server::is_valid_nickname(const Wire &nickname) { return  nickname.hasOnlyAlphaNum("_") ;}
 
 
-//Creates a new filedescriptor and adds it to the fds.
-//Events are the events to monitor and the reevents are
-//the events that have occurred.
-void	Server::add_fds(int fd, short events, short revents)
+#include <cstring>
+
+// Adds a file descriptor to the epoll interest list.
+// - get_epoll_fd(): The epoll instance file descriptor managing monitored events.
+// - EPOLL_CTL_ADD: Operation flag instructing epoll to register the target fd.
+// - fd: The target socket file descriptor to monitor.
+// - &ev: Pointer to the epoll_event struct defining events to listen for (e.g. EPOLLIN) and associated data.
+void	Server::add_epoll_fd(int fd, uint32_t events)
 {
-	pollfd poll_filedescriptor;
+	struct epoll_event ev;
+	std::memset(&ev, 0, sizeof(ev));
+	ev.events = events;
+	ev.data.fd = fd;
+	// Registers the file descriptor with epoll using the specified event mask.
+	if (epoll_ctl(get_epoll_fd(), EPOLL_CTL_ADD, fd, &ev) == -1)
+	{
+		printErr("Error: epoll_ctl ADD failed!");
+	}
+}
 
-	poll_filedescriptor.fd = fd;
-	poll_filedescriptor.events = events;
-	poll_filedescriptor.revents = revents;
-
-	get_fds().push_back(poll_filedescriptor);
+// Removes a file descriptor from the epoll interest list.
+// - get_epoll_fd(): The epoll instance file descriptor.
+// - EPOLL_CTL_DEL: Operation flag instructing epoll to deregister/remove the target fd.
+// - fd: The socket file descriptor to remove.
+// - NULL: Ignored for DEL operations in Linux >= 2.6.9.
+void	Server::remove_epoll_fd(int fd)
+{
+	if (get_epoll_fd() >= 0 && fd >= 0)
+	{
+		epoll_ctl(get_epoll_fd(), EPOLL_CTL_DEL, fd, NULL);
+	}
 }
 
 //Checks if it's a legit command from the client.
