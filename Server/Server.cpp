@@ -170,6 +170,14 @@ void	Server::remove_channel(const Wire &channel_name)
 	channels.erase(channel_name);
 }
 
+void	Server::remove_client_from_channel(Channel &channel, int client_fd)
+{
+	Wire channel_name = channel.get_name();
+	channel.remove_member_from_channel(client_fd);
+	if (channel.empty())
+		remove_channel(channel_name);
+}
+
 void	Server::set_fds(const Vector<pollfd> &fds)
 {
 	this->fds = fds;

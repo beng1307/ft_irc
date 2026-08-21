@@ -90,10 +90,7 @@ void	Server::part_client_from_channel(Client &client, const Wire &channel_name,
 	}
 
 	channel.broadcast(client, "PART", reason);
-	channel.remove_member_from_channel(client.get_socket());
-	// delete channel if last member left
-	if (channel.empty())
-		remove_channel(channel_name);
+	remove_client_from_channel(channel, client.get_socket());
 	print("Client left channel ", channel_name, "!");
 }
 

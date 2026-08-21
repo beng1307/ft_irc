@@ -80,6 +80,7 @@ class Server
 		const Channel &get_channel(const Wire &name) const;
 		void add_channel(const Channel &channel);
 		void remove_channel(const Wire &channel_name);
+		void remove_client_from_channel(Channel &channel, int client_fd);
 
 		void set_fds(const Vector<pollfd> &fds);
 		Vector<pollfd> &get_fds();

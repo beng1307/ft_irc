@@ -101,10 +101,7 @@ void	Server::handle_kick(Client &client, const Wire &line,
 
 	Wire kick_message = make_msg(client, "KICK", channel_name + " " + target_nick, reason);
 	channel.broadcast(kick_message);
-	channel.remove_member_from_channel(target.get_socket());
-	// delete channel if self kick
-	if (channel.empty())
-		remove_channel(channel_name);
+	remove_client_from_channel(channel, target.get_socket());
 }
 
 
