@@ -4,6 +4,7 @@
 #include "../Client/Client.hpp"
 #include "../helpers/Wire.hpp"
 #include "../helpers/Set.hpp"
+#include "../helpers/Int.hpp"
 
 
 class	Channel
@@ -16,9 +17,9 @@ class	Channel
 		Wire				name;
 		Wire				topic;
 
-		Set<int> 		member_fds;
-		Set<int> 		operator_fds;
-		Set<int> 		invited_fds;
+		Set<Fd> 		member_fds;
+		Set<Fd> 		operator_fds;
+		Set<Fd> 		invited_fds;
 
 		bool				invite_only;
 		bool				topic_restricted;
@@ -58,21 +59,21 @@ class	Channel
 		void				set_user_limit(size_t limit);
 		size_t				get_user_limit() const;
 		
-		Set<int>		get_member_fds() const;
+		Set<Fd>			get_member_fds() const;
 		bool				empty() const;
 
 		void				set_invite_only(bool enabled);
 
-		void				add_member(int client_fd);
-		bool				has_member(int client_fd) const;
-		void				remove_member_from_channel(int client_fd);
-		void				remove_invited(int client_fd);
-		void				remove_operator(int client_fd);
-		void				remove_member(int client_fd);
-		void				add_operator(int client_fd);
-		bool				is_operator(int client_fd) const;
-		void				add_invited(int client_fd);
-		bool				is_invited(int client_fd) const;
+		void				add_member(Fd client_fd);
+		bool				has_member(Fd client_fd) const;
+		void				remove_member_from_channel(Fd client_fd);
+		void				remove_invited(Fd client_fd);
+		void				remove_operator(Fd client_fd);
+		void				remove_member(Fd client_fd);
+		void				add_operator(Fd client_fd);
+		bool				is_operator(Fd client_fd) const;
+		void				add_invited(Fd client_fd);
+		bool				is_invited(Fd client_fd) const;
 		bool				is_invite_only() const;
 		void				set_topic_restricted(bool enabled);
 		bool				is_topic_restricted() const;
@@ -81,7 +82,7 @@ class	Channel
 		void				clear_user_limit();
 		bool				has_user_limit() const;
 
-		void				broadcast(const Wire &message, int except_fd = -1) const;
+		void				broadcast(const Wire &message, Fd except_fd = -1) const;
 		void				broadcast(const Client &client, const Wire &cmd, const Wire &param = "") const;
 		void				broadcast_from(const Client &client, const Wire &cmd, const Wire &param = "") const;
 };

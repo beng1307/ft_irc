@@ -3,6 +3,9 @@
 
 #include <string>
 #include "../helpers/Wire.hpp"
+#include "../helpers/Int.hpp"
+
+typedef Int Fd;
 
 
 class Client
@@ -12,7 +15,7 @@ class Client
 		///////////////////////////////////////////////////////////////////////////////
 		// Private Variables
 		
-		int				socket;
+		Fd				socket;
 
 		Wire			password;
 		Wire			username;
@@ -32,7 +35,7 @@ class Client
 		// Constructors and destructor
 
 		Client();
-		Client(int socket);
+		Client(Fd socket);
 		Client &operator=(const Client &other);
 		Client(const Client &other);
 
@@ -46,8 +49,8 @@ class Client
 		///////////////////////////////////////////////////////////////////////////////
 		// Setter & Getter
 
-		void		set_socket(const int &socket);
-		int			get_socket() const;
+		void		set_socket(const Fd &socket);
+		Fd			get_socket() const;
 
 		void		set_password(const Wire &password);
 		Wire		get_password() const;

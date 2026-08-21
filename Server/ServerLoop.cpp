@@ -24,7 +24,9 @@ static bool input_exceeds_irc_line_limit(const Wire &input) {
 }
 
 // Sets the socket to non-blocking mode and returns false if it fails.
-bool Server::configure_socket_nonblocking(int socket) {
+bool Server::configure_socket_nonblocking(Fd socket) {
+  if (!socket)
+    return false;
   // fcntl sets the socket flags to nonblocking with F_SETFL
   if (fcntl(socket, F_SETFL, O_NONBLOCK) == -1) {
     printErr("Error: fcntl failed!");
@@ -34,7 +36,9 @@ bool Server::configure_socket_nonblocking(int socket) {
 }
 
 // Sets the accepted client socket to nonblocking and registers it with epoll.
-void Server::accept_new_client(int client_socket) {
+void Server::accept_new_client(Fd client_socket) {
+  if (!client_socket)
+    return;
   // Client socket flags gets set to nonblocking, otherwise the socket gets
   // closed.
   if (!configure_socket_nonblocking(client_socket)) {
@@ -51,28 +55,33 @@ void Server::accept_new_client(int client_socket) {
 
 // Disconnects the client from channels, closes its socket, removes it from
 // clients map and epoll instance.
-void Server::disconnect_client(int client_fd) {
+void Server::disconnect_client(Fd client_fd) {
+  if (!client_fd)
+    return;
+
   // Remove client from all channels and erase empty channels
   for (ChannelMap::iterator it = get_channels().begin(); it != get_channels().end();) {
-    it->second.remove_member(client_fd);
+    it->second.remove_member_from_channel(client_fd);
     if (it->second.empty())
       get_channels().erase(it++);
     else
       ++it;
   }
 
-  // Erase from clients map
-  remove_client(client_fd);
-
   // Remove from epoll
   remove_epoll_fd(client_fd);
 
   // Close the socket descriptor
   close(client_fd);
+
+  // Erase from clients map
+  remove_client(client_fd);
 }
 
 // Handles input from client.
-void Server::handle_client_input(int client_fd) {
+void Server::handle_client_input(Fd client_fd) {
+  if (!client_fd)
+    return;
   char buffer[512];
 
   // Receives the message from client and saves it into the buffer.
@@ -81,7 +90,9 @@ void Server::handle_client_input(int client_fd) {
     // Nullterminates the message in the buffer, declares the current client
     // and appends the buffer to the Clients buffer.
     buffer[bytes_received] = '\0';
-    Client &client = get_clients()[client_fd];
+    Client &client = get_client(client_fd);
+    if (!client)
+      return;
     client.get_buffer().append(buffer, bytes_received);
 
     // If the end of a message is found, it gets processed.
@@ -123,12 +134,12 @@ void Server::server_loop() {
     return;
 
   // Creates the epoll instance to monitor file descriptors.
-  int epfd = epoll_create1(0);
-  if (epfd == -1) {
+  int raw_epfd = epoll_create1(0);
+  if (raw_epfd == -1) {
     printErr("Error: epoll_create1 failed!");
     return;
   }
-  set_epoll_fd(epfd);
+  set_epoll_fd(raw_epfd);
 
   // Adds the server socket to epoll to listen for incoming connections (EPOLLIN),
   // after its flag got changed to nonblocking.
@@ -155,8 +166,12 @@ void Server::server_loop() {
 
     // Loops over only the active/ready file descriptors returned by epoll_wait.
     for (int i = 0; i < nfds && g_running; ++i) {
-      int current_fd = events[i].data.fd;
+      Fd current_fd = events[i].data.fd;
       uint32_t ev = events[i].events;
+
+      // Skip stale event if this client was already disconnected during an earlier iteration in this batch
+      if (current_fd != get_server_socket() && !get_client(current_fd))
+        continue;
 
       // Checks for error or hangup events on the file descriptor.
       if (ev & (EPOLLERR | EPOLLHUP)) {
@@ -174,13 +189,13 @@ void Server::server_loop() {
         // If the fd is the server_socket, it means a new client wants to connect.
         if (current_fd == get_server_socket()) {
           // Client gets accepted and gets its own socket, connected to the server socket.
-          int client_socket = accept(get_server_socket(), NULL, NULL);
-          if (client_socket == -1) {
+          int raw_client_socket = accept(get_server_socket(), NULL, NULL);
+          if (raw_client_socket == -1) {
             printErr("Error: accept failed!");
             continue;
           }
           // Handles and registers the freshly accepted, new client.
-          accept_new_client(client_socket);
+          accept_new_client(raw_client_socket);
         } else {
           // Handles the incoming input of the current connected client.
           handle_client_input(current_fd);
@@ -194,14 +209,14 @@ void Server::server_loop() {
     disconnect_client(get_clients().begin()->first);
 
   // Closes the server listening socket descriptor.
-  if (get_server_socket() > 0) {
+  if (get_server_socket() && get_server_socket() > 0) {
     close(get_server_socket());
-    set_server_socket(-1);
+    set_server_socket(Fd());
   }
 
   // Closes the epoll instance file descriptor.
-  if (get_epoll_fd() >= 0) {
+  if (get_epoll_fd() && get_epoll_fd() >= 0) {
     close(get_epoll_fd());
-    set_epoll_fd(-1);
+    set_epoll_fd(Fd());
   }
 }

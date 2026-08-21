@@ -21,8 +21,10 @@ bool	Server::is_valid_nickname(const Wire &nickname) { return  nickname.hasOnlyA
 // - EPOLL_CTL_ADD: Operation flag instructing epoll to register the target fd.
 // - fd: The target socket file descriptor to monitor.
 // - &ev: Pointer to the epoll_event struct defining events to listen for (e.g. EPOLLIN) and associated data.
-void	Server::add_epoll_fd(int fd, uint32_t events)
+void	Server::add_epoll_fd(Fd fd, uint32_t events)
 {
+	if (!fd || !get_epoll_fd())
+		return ;
 	struct epoll_event ev;
 	std::memset(&ev, 0, sizeof(ev));
 	ev.events = events;
@@ -39,9 +41,9 @@ void	Server::add_epoll_fd(int fd, uint32_t events)
 // - EPOLL_CTL_DEL: Operation flag instructing epoll to deregister/remove the target fd.
 // - fd: The socket file descriptor to remove.
 // - NULL: Ignored for DEL operations in Linux >= 2.6.9.
-void	Server::remove_epoll_fd(int fd)
+void	Server::remove_epoll_fd(Fd fd)
 {
-	if (get_epoll_fd() >= 0 && fd >= 0)
+	if (get_epoll_fd() && fd)
 	{
 		epoll_ctl(get_epoll_fd(), EPOLL_CTL_DEL, fd, NULL);
 	}

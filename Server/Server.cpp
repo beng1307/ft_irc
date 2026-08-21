@@ -2,6 +2,7 @@
 #include "../Client/Client.hpp"
 #include "../Channel/Channel.hpp"
 #include "../helpers/Wire.hpp"
+#include "../helpers/Int.hpp"
 #include <unistd.h>
 
 
@@ -9,13 +10,13 @@
 // Consturctors and destructor
 
 Server::Server():
-	port(0), password(""), server_socket(-1), epoll_fd(-1), clients(), channels()
+	port(0), password(""), server_socket(), epoll_fd(), clients(), channels()
 {
 	return ;
 }
 
 Server::Server(int port, Wire password):
-	port(port), password(password), server_socket(-1), epoll_fd(-1), clients(), channels()
+	port(port), password(password), server_socket(), epoll_fd(), clients(), channels()
 {
 	return ;
 }
@@ -46,15 +47,15 @@ Server	&Server::operator=(const Server &other)
 // server listening socket descriptor and epoll instance are closed.
 Server::~Server()
 {
-	if (server_socket >= 0)
+	if (server_socket && server_socket >= 0)
 	{
 		close(server_socket);
-		server_socket = -1;
+		server_socket.notok();
 	}
-	if (epoll_fd >= 0)
+	if (epoll_fd && epoll_fd >= 0)
 	{
 		close(epoll_fd);
-		epoll_fd = -1;
+		epoll_fd.notok();
 	}
 }
 
@@ -81,12 +82,12 @@ Wire	Server::get_password() const
 	return (password);
 }
 
-void	Server::set_server_socket(int socket)
+void	Server::set_server_socket(Fd socket)
 {
 	this->server_socket = socket;
 }
 
-int	Server::get_server_socket() const
+Fd	Server::get_server_socket() const
 {
 	return (server_socket);
 }
@@ -106,12 +107,12 @@ const ClientMap	&Server::get_clients() const
 	return (clients);
 }
 
-Client	&Server::get_client(int fd)
+Client	&Server::get_client(Fd fd)
 {
 	return (clients.fetch(fd));
 }
 
-const Client	&Server::get_client(int fd) const
+const Client	&Server::get_client(Fd fd) const
 {
 	return (clients.fetch(fd));
 }
@@ -131,12 +132,12 @@ const Client	&Server::get_client(const Wire &nickname) const
 	return (clients.fetch(match_nickname, nickname));
 }
 
-void	Server::add_client(int socket)
+void	Server::add_client(Fd socket)
 {
 	clients[socket] = Client(socket);
 }
 
-void	Server::remove_client(int socket)
+void	Server::remove_client(Fd socket)
 {
 	clients.erase(socket);
 }
@@ -176,12 +177,12 @@ void	Server::remove_channel(const Wire &channel_name)
 	channels.erase(channel_name);
 }
 
-void	Server::set_epoll_fd(int epoll_fd)
+void	Server::set_epoll_fd(Fd epoll_fd)
 {
 	this->epoll_fd = epoll_fd;
 }
 
-int		Server::get_epoll_fd() const
+Fd		Server::get_epoll_fd() const
 {
 	return (epoll_fd);
 }

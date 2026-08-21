@@ -20,12 +20,14 @@ int	Server::socket_setup()
 {
 	// Creates a socket
 	// AF_INET: IPv4, SOCK_STREAM: TCP stream, 0: default protocol
-	set_server_socket(socket(AF_INET, SOCK_STREAM, 0));
-	if (get_server_socket() == -1)
+	int sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (sock == -1)
 	{
+		set_server_socket(Fd());
 		printErr("Error: socket creation failed!");
 		return (1);
 	}
+	set_server_socket(sock);
 
 	// Sets the socket options to allow fast reuse of the address and port
 	// Scenario: Server restarts immediately after shutdown while previous sockets may linger in kernel TIME_WAIT.
@@ -35,7 +37,7 @@ int	Server::socket_setup()
 	{
 		printErr("Error: setsockopt failed!");
 		close(get_server_socket());
-		set_server_socket(-1);
+		set_server_socket(Fd());
 		return (1);
 	}
 
@@ -55,7 +57,7 @@ int	Server::socket_setup()
 	{
 		printErr("Error: bind failed!");
 		close(get_server_socket());
-		set_server_socket(-1);
+		set_server_socket(Fd());
 		return (1);
 	}
 
@@ -65,7 +67,7 @@ int	Server::socket_setup()
 	{
 		printErr("Error: listen failed!");
 		close(get_server_socket());
-		set_server_socket(-1);
+		set_server_socket(Fd());
 		return (1);
 	}
 

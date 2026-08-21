@@ -13,7 +13,7 @@
 //Joins the client to a channel after checking access restrictions.
 void	Server::let_client_join_channel(const Wire &channel_name, Client &client, const Wire &key)
 {
-	int client_fd = client.get_socket();
+	Fd client_fd = client.get_socket();
 
 	if (!get_channel(channel_name))
 	{
@@ -273,7 +273,7 @@ void	Server::handle_quit_command(Client &client, const Wire &line,
 	get_client_audience(client.get_socket())
 		.forEach(send_string, make_msg(client, "QUIT", ":" + reason));
 
-	int client_fd = client.get_socket();
+	Fd client_fd = client.get_socket();
 	Wire bye = "ERROR :Closing connection";
 	send_string(client_fd, bye);
 

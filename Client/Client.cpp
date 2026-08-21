@@ -9,7 +9,7 @@
 // Consturctors and destructor
 
 Client::Client():
-	socket(0), password(""), username(""),
+	socket(), password(""), username(""),
 	nickname(""), pass_ok(false), is_registered(false), is_admin(false),
 	buffer("")
 {
@@ -17,7 +17,7 @@ Client::Client():
 	return ;
 }
 
-Client::Client(int socket):
+Client::Client(Fd socket):
 	socket(socket), password(""), username(""),
 	nickname(""), pass_ok(false), is_registered(false), is_admin(false),
 	buffer("")
@@ -70,12 +70,12 @@ void	Client::register_client(const Wire &password)
 ///////////////////////////////////////////////////////////////////////////////
 // Setter & Getter
 
-void	Client::set_socket(const int &socket)
+void	Client::set_socket(const Fd &socket)
 {
 	this->socket = socket;
 }
 
-int	Client::get_socket() const
+Fd	Client::get_socket() const
 {
 	return (socket);
 }

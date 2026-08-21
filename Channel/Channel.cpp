@@ -90,61 +90,77 @@ Wire	Channel::get_topic() const
 	return (topic);
 }
 
-void	Channel::add_member(int client_fd)
+void	Channel::add_member(Fd client_fd)
 {
-	if (has_member(client_fd))
+	if (!client_fd || has_member(client_fd))
 		return ;
 
 	member_fds.insert(client_fd);
 }
 
-bool	Channel::has_member(int client_fd) const
+bool	Channel::has_member(Fd client_fd) const
 {
+	if (!client_fd)
+		return false;
 	return (member_fds.find(client_fd));
 }
 
 //Erases member from the member/operater/invited fds.
-void	Channel::remove_member_from_channel(int client_fd)
+void	Channel::remove_member_from_channel(Fd client_fd)
 {
+	if (!client_fd)
+		return ;
 	remove_invited(client_fd);
 	remove_operator(client_fd);
 	remove_member(client_fd);
 }
 
-void	Channel::remove_operator(int client_fd)
+void	Channel::remove_operator(Fd client_fd)
 {
+	if (!client_fd)
+		return ;
 	operator_fds.erase(client_fd);
 }
 
-void	Channel::remove_invited(int client_fd)
+void	Channel::remove_invited(Fd client_fd)
 {
+	if (!client_fd)
+		return ;
 	invited_fds.erase(client_fd);
 }
 
-void	Channel::remove_member(int client_fd)
+void	Channel::remove_member(Fd client_fd)
 {
+	if (!client_fd)
+		return ;
 	member_fds.erase(client_fd);
 }
 
-void	Channel::add_operator(int client_fd)
+void	Channel::add_operator(Fd client_fd)
 {
-	if (!has_member(client_fd))
+	if (!client_fd || !has_member(client_fd))
 		return ;
 	operator_fds.insert(client_fd);
 }
 
-bool	Channel::is_operator(int client_fd) const
+bool	Channel::is_operator(Fd client_fd) const
 {
+	if (!client_fd)
+		return false;
 	return (operator_fds.find(client_fd));
 }
 
-void	Channel::add_invited(int client_fd)
+void	Channel::add_invited(Fd client_fd)
 {
+	if (!client_fd)
+		return ;
 	invited_fds.insert(client_fd);
 }
 
-bool	Channel::is_invited(int client_fd) const
+bool	Channel::is_invited(Fd client_fd) const
 {
+	if (!client_fd)
+		return false;
 	return (invited_fds.find(client_fd));
 }
 
@@ -212,7 +228,7 @@ size_t	Channel::get_user_limit() const
 	return (user_limit);
 }
 
-Set<int>	Channel::get_member_fds() const
+Set<Fd>	Channel::get_member_fds() const
 {
 	return (member_fds);
 }
@@ -222,7 +238,7 @@ bool	Channel::empty() const
 	return (member_fds.empty());
 }
 
-void	Channel::broadcast(const Wire &message, int except_fd) const
+void	Channel::broadcast(const Wire &message, Fd except_fd) const
 {
 	member_fds.subtract(except_fd).forEach(send_string, message);
 }

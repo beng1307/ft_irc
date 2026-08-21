@@ -11,8 +11,10 @@ Wire	make_msg(const Client &client, const Wire &cmd, const Wire &target, const W
 	return msg;
 }
 
-ssize_t	send_string(int fd, const Wire &str)
+ssize_t	send_string(Fd fd, const Wire &str)
 {
+	if (!fd)
+		return -1;
 	if (str.length() >= 2 && str.substr(str.length() - 2) == "\r\n")
 	// MSG_NOSIGNAL prevents errors when fd closed or smth.
 		return send(fd, str.c_str(), str.size(), MSG_NOSIGNAL);
@@ -20,7 +22,7 @@ ssize_t	send_string(int fd, const Wire &str)
 	return send(fd, out.c_str(), out.size(), MSG_NOSIGNAL);
 }
 
-ssize_t	send_msg(int fd, const Client &client, const Wire &cmd, const Wire &target, const Wire &param)
+ssize_t	send_msg(Fd fd, const Client &client, const Wire &cmd, const Wire &target, const Wire &param)
 {
 	return send_string(fd, make_msg(client, cmd, target, param));
 }
@@ -73,7 +75,7 @@ void	Server::send_message_to_user(Client &sender, const Wire &nickname, const Wi
 
 
 
-static Wire	collect_channel_member_names(Wire names, int member_fd, const ClientMap &clients, const Channel &channel)
+static Wire	collect_channel_member_names(Wire names, Fd member_fd, const ClientMap &clients, const Channel &channel)
 {
 	Client member = clients.fetch(member_fd);
 	if (member)
@@ -104,15 +106,15 @@ void	Server::send_channel_names_reply(Client &client, const Wire &channel_name)
 	send_status(client, "366", channel_name + " :End of /NAMES list");
 }
 
-static Set<int>	collect_members_of_mutual_channels(Set<int> recipients, const Wire, const Channel &current, int client_fd)
+static Set<Fd>	collect_members_of_mutual_channels(Set<Fd> recipients, const Wire, const Channel &current, Fd client_fd)
 {
 	if (current.has_member(client_fd))
 		return recipients.add(current.get_member_fds());
 	return recipients;
 }
 
-Set<int>	Server::get_client_audience(int client_fd) const
+Set<Fd>	Server::get_client_audience(Fd client_fd) const
 {
-	return get_channels().reduceX(collect_members_of_mutual_channels, Set<int>().ok(), client_fd).subtract(client_fd);
+	return get_channels().reduceX(collect_members_of_mutual_channels, Set<Fd>().ok(), client_fd).subtract(client_fd);
 }
 
