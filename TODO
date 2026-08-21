@@ -1,22 +1,10 @@
-1. Reread it and remember again what bullshit i wrote
+-Remove TODO comments
 
-2. Do tests and debug
 
-3. Implement PING/PONG
+-Check last edge cases
 
-4. Add a joining message to the channel if a new member joins
 
-5. Write a README
+-Check if everything is conform with the eval Sheet
 
-6. Handle signals
 
-//////////////////////////////////
-// TO DEBUG
-
-1. Do a check if port is correct, currently it takes everything and doesnt seem to throw a error
-
-2. On registraion comes "user:No such channel" Check why
-
-3. Also it registers with only the password, make a check so it registers only when nick and user are set
-
-4. User Disconnect after some time, check if its also because of ping pong or something else
+-Ask somebody for a pre eval

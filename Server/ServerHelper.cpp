@@ -47,7 +47,6 @@ Vector<Wire>	Server::split_arguments(const Wire &line)
 //and sends welcome message.
 void	Server::try_register_client(Client &client)
 {
-	//TODO: Check if the behaviour is correct and if Error messages need to be added
 	if (client.get_register_status())
 		return ;
 	if (!client.get_pass_ok())

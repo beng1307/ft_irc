@@ -53,7 +53,7 @@ void Server::accept_new_client(int client_socket) {
 // Disconnects the client from channels, closes its socket, removes it from
 // clients map and fds array.
 void Server::disconnect_client(int client_fd) {
-  // 1. Remove client from all channels and erase empty channels
+  // Remove client from all channels and erase empty channels
   for (ChannelMap::iterator it = get_channels().begin(); it != get_channels().end();) {
     it->second.remove_member(client_fd);
     if (it->second.empty())
@@ -62,10 +62,10 @@ void Server::disconnect_client(int client_fd) {
       ++it;
   }
 
-  // 2. Erase from clients map
+  // Erase from clients map
   remove_client(client_fd);
 
-  // 3. Erase from poll fds vector
+  // Erase from poll fds vector
   for (Vector<pollfd>::iterator it = get_fds().begin(); it != get_fds().end(); ++it) {
     if (it->fd == client_fd) {
       get_fds().erase(it);
@@ -73,7 +73,7 @@ void Server::disconnect_client(int client_fd) {
     }
   }
 
-  // 4. Close the socket descriptor
+  // Close the socket descriptor
   close(client_fd);
 }
 
@@ -133,21 +133,24 @@ void Server::server_loop() {
   // its flag got changed to nonblocking.
   add_fds(get_server_socket(), POLLIN, 0);
 
-  while (true) {
+  while (g_running) {
     // Wait for events on the file descriptors (-1 == endlessly).
     // poll sets the revents flag from the fds to the current status.
     // If poll() is interrupted by a signal, it breaks the loop.
     // Otherwise, stop the server if poll() fails.
     int ready = poll(get_fds().data(), get_fds().size(), -1);
     if (ready == -1) {
-      if (errno == EINTR)
+      if (errno == EINTR) {
+        if (!g_running)
+          break;
         continue;
+      }
       printErr("Error: poll failed!");
-      break; // TODO: Check if it has to send a message to the clients.
+      break;
     }
 
     // Loops over the fds
-    for (size_t index = 0; index < get_fds().size(); ++index) {
+    for (size_t index = 0; index < get_fds().size() && g_running; ++index) {
         if (get_fds()[index].revents & (POLLERR | POLLHUP | POLLNVAL)) {
           if (get_fds()[index].fd == get_server_socket()) {
             printErr("Error: server socket poll failure!");
@@ -193,5 +196,12 @@ void Server::server_loop() {
         }
       }
     }
+  }
+
+  while (!get_clients().empty())
+    disconnect_client(get_clients().begin()->first);
+  if (get_server_socket() > 0) {
+    close(get_server_socket());
+    set_server_socket(-1);
   }
 }
