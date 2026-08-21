@@ -111,9 +111,12 @@ void	Channel::remove_member_from_channel(int client_fd)
 	remove_member(client_fd);
 }
 
-void	Channel::remove_operator(int client_fd)
+bool	Channel::remove_operator(int client_fd)
 {
+	if (!is_operator(client_fd))
+		return (false);
 	operator_fds.erase(client_fd);
+	return (true);
 }
 
 void	Channel::remove_invited(int client_fd)
@@ -126,11 +129,12 @@ void	Channel::remove_member(int client_fd)
 	member_fds.erase(client_fd);
 }
 
-void	Channel::add_operator(int client_fd)
+bool	Channel::add_operator(int client_fd)
 {
-	if (!has_member(client_fd))
-		return ;
+	if (!has_member(client_fd) || is_operator(client_fd))
+		return (false);
 	operator_fds.insert(client_fd);
+	return (true);
 }
 
 bool	Channel::is_operator(int client_fd) const
@@ -148,9 +152,12 @@ bool	Channel::is_invited(int client_fd) const
 	return (invited_fds.find(client_fd));
 }
 
-void	Channel::set_invite_only(bool enabled)
+bool	Channel::set_invite_only(bool enabled)
 {
+	if (invite_only == enabled)
+		return (false);
 	invite_only = enabled;
+	return (true);
 }
 
 bool	Channel::is_invite_only() const
@@ -158,9 +165,12 @@ bool	Channel::is_invite_only() const
 	return (invite_only);
 }
 
-void	Channel::set_topic_restricted(bool enabled)
+bool	Channel::set_topic_restricted(bool enabled)
 {
+	if (topic_restricted == enabled)
+		return (false);
 	topic_restricted = enabled;
+	return (true);
 }
 
 bool	Channel::is_topic_restricted() const
@@ -168,16 +178,22 @@ bool	Channel::is_topic_restricted() const
 	return (topic_restricted);
 }
 
-void	Channel::set_key(const Wire &key)
+bool	Channel::set_key(const Wire &key)
 {
+	if (key_enabled && channel_key == key)
+		return (false);
 	channel_key = key;
 	key_enabled = true;
+	return (true);
 }
 
-void	Channel::clear_key()
+bool	Channel::clear_key()
 {
+	if (!key_enabled)
+		return (false);
 	channel_key.clear();
 	key_enabled = false;
+	return (true);
 }
 
 bool	Channel::has_key() const
@@ -190,16 +206,22 @@ Wire	Channel::get_key() const
 	return (channel_key);
 }
 
-void	Channel::set_user_limit(size_t limit)
+bool	Channel::set_user_limit(size_t limit)
 {
+	if (limit_enabled && user_limit == limit)
+		return (false);
 	user_limit = limit;
 	limit_enabled = true;
+	return (true);
 }
 
-void	Channel::clear_user_limit()
+bool	Channel::clear_user_limit()
 {
+	if (!limit_enabled)
+		return (false);
 	user_limit = 0;
 	limit_enabled = false;
+	return (true);
 }
 
 bool	Channel::has_user_limit() const

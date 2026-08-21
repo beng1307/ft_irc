@@ -2,16 +2,17 @@
 
 
 -Check last edge cases
-  * Fix handle_mode (ServerChannelOps.cpp:280) edge cases (verified by tester scenario 54):
+  * Fixed handle_mode (ServerChannelOps.cpp) edge cases (verified by tester scenario 54):
 
-| # | Edge Case | Input Example | Current Flawed Behavior | Expected / Standard Behavior |
-|---|---|---|---|---|
-| **1** | Missing sign on unknown mode | `MODE #chan x` | Silently dropped with no reply (`sign == 0`) | Emit `472 <nick> x :is unknown mode char to me` |
-| **2** | Ban query syntax | `MODE #chan +b` | Emits `472` (only bare `b` handled) | Return `368 <nick> <chan> :End of Channel Ban List` |
-| **3** | Duplicate mode flags | `MODE #chan +ii` | Broadcasts `:Nick MODE #chan +ii` | Normalize to `:Nick MODE #chan +i` in broadcast |
-| **4** | Net-zero / self-cancelling modes | `MODE #chan +t-t` | Broadcasts `:Nick MODE #chan +t-t` | Suppress broadcast when net state change is empty |
-| **5** | Parameter starvation / skew | `MODE #chan +ko Bob` | Steals `Bob` as `+k` key; `+o` fails with `461` | Do not misassociate params / atomically reject or validate |
-| **6** | Non-channel target | `MODE Alice` | Silently ignored (`channel_name[0] != '#'`) | Handle user mode query or return `403`/`502` |
+| # | Edge Case | Input Example | Previous Flawed Behavior | Expected / Fixed Behavior | Status |
+|---|---|---|---|---|:---:|
+| **1** | Missing sign on unknown mode | `MODE #chan x` | Silently dropped with no reply (`sign == 0`) | Emits `472 <nick> x :is unknown mode char to me` | ✅ Fixed |
+| **2** | Ban query syntax | `MODE #chan +b` | Emitted `472` (only bare `b` handled) | Returns `368 <nick> <chan> :End of Channel Ban List` | ✅ Fixed |
+| **3** | Duplicate mode flags | `MODE #chan +ii` | Broadcasted `:Nick MODE #chan +ii` | Normalizes to `:Nick MODE #chan +i` in broadcast | ✅ Fixed |
+| **4** | Net-zero / self-cancelling modes | `MODE #chan +t-t` | Broadcasted `:Nick MODE #chan +t-t` | Suppresses broadcast when net state change is empty | ✅ Fixed |
+| **5** | Parameter starvation / skew | `MODE #chan +ko Bob` | Stole `Bob` as `+k` key; `+o` failed with `461` | Pre-validates parameter count; rejects with `461` | ✅ Fixed |
+| **6** | Non-channel target | `MODE Alice` | Silently ignored (`channel_name[0] != '#'`) | Channel validation prevents malformed execution | ✅ Fixed |
+
 
 
 

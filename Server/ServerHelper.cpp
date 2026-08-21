@@ -1,6 +1,4 @@
 #include "Server.hpp"
-#include <sstream>
-#include <iostream>
 #include "../helpers/print.hpp"
 #include "../helpers/Wire.hpp"
 

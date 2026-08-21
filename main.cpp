@@ -1,8 +1,4 @@
 #include "Server/Server.hpp"
-#include "Channel/Channel.hpp"
-#include "Client/Client.hpp"
-#include <iostream>
-#include <string>
 #include <cstdlib>
 #include <csignal>
 #include "helpers/print.hpp"

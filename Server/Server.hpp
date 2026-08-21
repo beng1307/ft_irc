@@ -111,6 +111,10 @@ class Server
 		void handle_invite(Client &client, const Vector<Wire> &arguments);
 		void handle_topic(Client &client, const Wire &line, const Vector<Wire> &arguments);
 		void handle_mode(Client &client, const Wire &line, const Vector<Wire> &arguments);
+		void send_channel_modes_reply(Client &client, const Channel &channel);
+		bool apply_mode_key(Client &client, Channel &channel, char sign, const Vector<Wire> &arguments, size_t &param_index, Wire &applied_modes, Wire &applied_params);
+		bool apply_mode_operator(Client &client, Channel &channel, char sign, const Vector<Wire> &arguments, size_t &param_index, Wire &applied_modes, Wire &applied_params);
+		bool apply_mode_limit(Client &client, Channel &channel, char sign, const Vector<Wire> &arguments, size_t &param_index, Wire &applied_modes, Wire &applied_params);
 		Channel &ensure_channel_exists(Client &client, const Wire &channel_name);
 		bool ensure_channel_member(Client &client, Channel &channel);
 		bool ensure_channel_operator(Client &client, Channel &channel);

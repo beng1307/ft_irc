@@ -1,6 +1,4 @@
 #include "Client.hpp"
-#include <iostream>
-#include <string>
 #include "../helpers/print.hpp"
 #include "../helpers/Wire.hpp"
 

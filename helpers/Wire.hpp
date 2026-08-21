@@ -143,7 +143,7 @@ public:
         return *this;
     }
 
-    bool contains(string delimiter) const {
+    bool contains(Wire delimiter) const {
         return this->find(delimiter) != string::npos;
     }
 

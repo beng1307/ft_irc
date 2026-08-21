@@ -2,7 +2,6 @@
 #include <cerrno>
 #include <cstring>
 #include <fcntl.h>
-#include <iostream>
 #include <poll.h>
 #include <sys/socket.h>
 #include <unistd.h>

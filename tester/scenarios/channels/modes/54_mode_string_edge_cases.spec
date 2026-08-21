@@ -38,6 +38,8 @@ C2 WAIT_RECV :Alice!* MODE #testmode +i
 # 4. Self-cancelling mode changes '+t-t' produce no net change and should not broadcast
 C1 SEND MODE #testmode +t-t
 C1 EXPECT_NONE 0.5
+C1 SEND MODE #testmode
+C1 EXPECT 324 Alice #testmode +i
 
 # 5. Parameter starvation in compound modes (+ko Bob):
 # When not enough parameters are given for all flags, it should fail with 461 and NOT apply +k with a stolen nick

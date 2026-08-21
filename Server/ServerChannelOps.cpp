@@ -9,14 +9,15 @@
 ///////////////////////////////////////////////////////////////////////////////
 // OPERATION HELPER
 
-//Function to add modes cleaner. 
-static Wire	append_mode_change(const Wire &applied_modes, char sign, char mode)
+// Appends a mode change to applied_modes, managing signs and deduplicating in the current group.
+static void	append_mode_change(Wire &applied_modes, char sign, char mode)
 {
-	Wire result;
 	if (applied_modes.find_last_char("+-") != sign)
-		result.push_back(sign);
-	result.push_back(mode);
-	return result;
+		applied_modes.push_back(sign);
+
+	size_t last_sign_pos = applied_modes.find_last_of("+-");
+	if (applied_modes.find(mode, last_sign_pos) == string::npos)
+		applied_modes.push_back(mode);
 }
 
 //Checks if the channel exists. If not, a error reply is send to the client.
@@ -203,201 +204,235 @@ void	Server::handle_topic(Client &client, const Wire &line,
 
 
 ///////////////////////////////////////////////////////////////////////////////
+// MODE HELPERS
+
+// Counts parameters required by mode flags in the mode string.
+static size_t	count_required_mode_parameters(const Wire &mode_string)
+{
+	char sign = 0;
+	size_t count = 0;
+
+	for (size_t i = 0; i < mode_string.size(); ++i)
+	{
+		char c = mode_string[i];
+		if (Wire("+-").contains(c))
+			sign = c;
+		else if ((sign == '+' && Wire("klo").contains(c)) || (sign == '-' && c == 'o'))
+			count++;
+	}
+	return count;
+}
+
+// Builds and sends the active channel modes (RPL_CHANNELMODEIS 324).
+void	Server::send_channel_modes_reply(Client &client, const Channel &channel)
+{
+	Wire current_modes = "+";
+	Wire current_params;
+
+	if (channel.is_invite_only())
+		current_modes.push_back('i');
+	if (channel.is_topic_restricted())
+		current_modes.push_back('t');
+	if (channel.has_key())
+	{
+		current_modes.push_back('k');
+		current_params += " " + channel.get_key();
+	}
+	if (channel.has_user_limit())
+	{
+		current_modes.push_back('l');
+		current_params += " " + Wire(channel.get_user_limit());
+	}
+
+	send_status(client, "324", Wire(channel.get_name(), " ", current_modes, current_params));
+}
+
+// Applies channel key flag ('k').
+bool	Server::apply_mode_key(Client &client, Channel &channel, char sign,
+	const Vector<Wire> &arguments, size_t &param_index,
+	Wire &applied_modes, Wire &applied_params)
+{
+	if (sign == '+')
+	{
+		if (param_index >= arguments.size())
+		{
+			send_status(client, "461", "MODE :Not enough parameters");
+			return (false);
+		}
+		const Wire &key = arguments[param_index++];
+		bool changed = channel.set_key(key);
+		append_mode_change(applied_modes, sign, 'k');
+		applied_params += " " + key;
+		return (changed);
+	}
+	if (channel.has_key())
+	{
+		bool changed = channel.clear_key();
+		append_mode_change(applied_modes, sign, 'k');
+		return (changed);
+	}
+	return (false);
+}
+
+// Applies channel operator flag ('o').
+bool	Server::apply_mode_operator(Client &client, Channel &channel, char sign,
+	const Vector<Wire> &arguments, size_t &param_index,
+	Wire &applied_modes, Wire &applied_params)
+{
+	if (param_index >= arguments.size())
+	{
+		send_status(client, "461", "MODE :Not enough parameters");
+		return (false);
+	}
+
+	const Wire &target_nick = arguments[param_index++];
+	Client &target = get_client(target_nick);
+	if (!target)
+	{
+		send_status(client, "401", target_nick + " :No such nick/channel");
+		return (false);
+	}
+	if (!channel.has_member(target.get_socket()))
+	{
+		send_status(client, "441", Wire(target_nick, " ", channel.get_name(),
+			" :They aren't on that channel"));
+		return (false);
+	}
+
+	bool changed = (sign == '+') ? channel.add_operator(target.get_socket())
+		: channel.remove_operator(target.get_socket());
+	append_mode_change(applied_modes, sign, 'o');
+	applied_params += " " + target_nick;
+	return (changed);
+}
+
+// Applies channel user limit flag ('l').
+bool	Server::apply_mode_limit(Client &client, Channel &channel, char sign,
+	const Vector<Wire> &arguments, size_t &param_index,
+	Wire &applied_modes, Wire &applied_params)
+{
+	if (sign == '+')
+	{
+		if (param_index >= arguments.size() || !is_positive_number(arguments[param_index]))
+		{
+			send_status(client, "461", "MODE :Not enough parameters");
+			if (param_index < arguments.size())
+				param_index++;
+			return (false);
+		}
+		const Wire &limit_str = arguments[param_index++];
+		size_t limit_value = static_cast<size_t>(std::atoi(limit_str.c_str()));
+		bool changed = channel.set_user_limit(limit_value);
+		append_mode_change(applied_modes, sign, 'l');
+		applied_params += " " + limit_str;
+		return (changed);
+	}
+	if (channel.has_user_limit())
+	{
+		bool changed = channel.clear_user_limit();
+		append_mode_change(applied_modes, sign, 'l');
+		return (changed);
+	}
+	return (false);
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
 // MODE
 
 void	Server::handle_mode(Client &client, const Wire &line,
 	const Vector<Wire> &arguments)
 {
 	(void)line;
-	//Check that the args are not empty.
 	if (arguments.empty())
 	{
 		send_status(client, "461", "MODE :Not enough parameters");
 		return ;
 	}
 
-	//Get the channel name.
 	const Wire &channel_name = arguments[0];
-
-	//Only channel names beginning with '#' are valid.
 	if (channel_name.empty() || channel_name[0] != '#')
 		return ;
 
-	//Ensure the channel exists and the client is part of it.
 	Channel &channel = ensure_channel_exists(client, channel_name);
-	if (!channel)
-		return ;
-	if (!ensure_channel_member(client, channel))
+	if (!channel || !ensure_channel_member(client, channel))
 		return ;
 
-	//If only the channel name was provided, return the current channel modes.
 	if (arguments.size() == 1)
 	{
-		//Collect the active modes and any additional parameters they need.
-		Wire current_modes = "+";
-		Wire current_params;
-
-		if (channel.is_invite_only())
-			current_modes.push_back('i');
-		if (channel.is_topic_restricted())
-			current_modes.push_back('t');
-		if (channel.has_key())
-		{
-			current_modes.push_back('k');
-			current_params += " " + channel.get_key();
-		}
-		if (channel.has_user_limit())
-		{
-			current_modes.push_back('l');
-			current_params += " " + Wire(channel.get_user_limit());
-		}
-
-		//Send the exact MODES the channel has active.
-		send_status(client, "324", Wire(channel_name, " ", current_modes, current_params));
+		send_channel_modes_reply(client, channel);
 		return ;
 	}
 
-	//A bare 'b' queries the channel ban list. Ban masks are not stored yet,
-	//so report an empty list and always terminate it with RPL_ENDOFBANLIST.
-	if (arguments[1] == "b")
+	const Wire &mode_string = arguments[1];
+	if (mode_string == "b" || mode_string == "+b")
 	{
 		send_status(client, "368", channel_name + " :End of Channel Ban List");
 		return ;
 	}
 
-	//Changing modes requires operator privileges.
 	if (!ensure_channel_operator(client, channel))
 		return ;
 
-	//Get the actual mode string something like: "+itk secret" or "-l".
-	const Wire &mode_string = arguments[1];
+	// Reject if parameters are starved for the requested flags
+	size_t required_params = count_required_mode_parameters(mode_string);
+	if (arguments.size() < 2 + required_params)
+	{
+		send_status(client, "461", "MODE :Not enough parameters");
+		return ;
+	}
+
+	bool state_changed = false;
 	char sign = 0;
 	size_t param_index = 2;
 	Wire applied_modes;
 	Wire applied_params;
 
-	//Parse the mode string one character at a time.
 	for (size_t i = 0; i < mode_string.size(); ++i)
 	{
 		char mode = mode_string[i];
 		if (mode == '+' || mode == '-')
 		{
-			//Remember whether the following mode changes are adding or removing.
 			sign = mode;
 			continue ;
 		}
 		if (sign == 0)
+		{
+			send_status(client, "472", Wire(mode) + " :is unknown mode char to me");
 			continue ;
+		}
 
-		//Mode 'i': invite-only flag.
 		if (mode == 'i')
 		{
-			channel.set_invite_only(sign == '+');
-			applied_modes += append_mode_change(applied_modes, sign, 'i');
+			state_changed = channel.set_invite_only(sign == '+') || state_changed;
+			append_mode_change(applied_modes, sign, 'i');
 		}
-		//Mode 't': topic restriction flag.
 		else if (mode == 't')
 		{
-			channel.set_topic_restricted(sign == '+');
-			applied_modes += append_mode_change(applied_modes, sign, 't');
+			state_changed = channel.set_topic_restricted(sign == '+') || state_changed;
+			append_mode_change(applied_modes, sign, 't');
 		}
-		//Mode 'k': channel key; requires a parameter when setting and clears it when removing.
 		else if (mode == 'k')
 		{
-			if (sign == '+')
-			{
-				if (param_index >= arguments.size())
-				{
-					send_status(client, "461", "MODE :Not enough parameters");
-					continue ;
-				}
-				channel.set_key(arguments[param_index]);
-				applied_modes += append_mode_change(applied_modes, sign, 'k');
-				applied_params += " " + arguments[param_index];
-				param_index++;
-			}
-			else
-			{
-				if (channel.has_key())
-				{
-					channel.clear_key();
-					applied_modes += append_mode_change(applied_modes, sign, 'k');
-				}
-			}
+			state_changed = apply_mode_key(client, channel, sign, arguments, param_index, applied_modes, applied_params) || state_changed;
 		}
-		//Mode 'o': operator assignment; target is a user nick and must be in the channel.
 		else if (mode == 'o')
 		{
-			if (param_index >= arguments.size())
-			{
-				send_status(client, "461", "MODE :Not enough parameters");
-				continue ;
-			}
-
-			const Wire &target_nick = arguments[param_index];
-			Client &target = get_client(target_nick);
-			if (!target)
-			{
-				send_status(client, "401", target_nick + " :No such nick/channel");
-				param_index++;
-				continue ;
-			}
-			if (!channel.has_member(target.get_socket()))
-			{
-				send_status(client, "441", target_nick + " " + channel_name
-					+ " :They aren't on that channel");
-				param_index++;
-				continue ;
-			}
-
-			if (sign == '+')
-				channel.add_operator(target.get_socket());
-			else
-				channel.remove_operator(target.get_socket());
-
-			applied_modes += append_mode_change(applied_modes, sign, 'o');
-			applied_params += " " + target_nick;
-			param_index++;
+			state_changed = apply_mode_operator(client, channel, sign, arguments, param_index, applied_modes, applied_params) || state_changed;
 		}
-		//Mode 'l': user limit; requires a numeric value when setting, and clears the limit when removing.
 		else if (mode == 'l')
 		{
-			if (sign == '+')
-			{
-				if (param_index >= arguments.size() || !is_positive_number(arguments[param_index]))
-				{
-					send_status(client, "461", "MODE :Not enough parameters");
-					if (param_index < arguments.size())
-						param_index++;
-					continue ;
-				}
-				size_t limit_value = static_cast<size_t>(std::atoi(arguments[param_index].c_str()));
-				channel.set_user_limit(limit_value);
-				applied_modes += append_mode_change(applied_modes, sign, 'l');
-				applied_params += " " + arguments[param_index];
-				param_index++;
-			}
-			else
-			{
-				if (channel.has_user_limit())
-				{
-					channel.clear_user_limit();
-					applied_modes += append_mode_change(applied_modes, sign, 'l');
-				}
-			}
+			state_changed = apply_mode_limit(client, channel, sign, arguments, param_index, applied_modes, applied_params) || state_changed;
 		}
-		//Any other character is unsupported and gets an IRC error reply.
 		else
 		{
 			send_status(client, "472", Wire(mode) + " :is unknown mode char to me");
 		}
 	}
 
-	//If no valid mode actually changed, do not broadcast anything.
-	if (applied_modes.empty())
+	if (applied_modes.empty() || !state_changed)
 		return ;
 
-	//Build a single MODE message containing all accepted mode changes and their parameters.
 	Wire mode_message = make_msg(client, "MODE", Wire(channel_name, " ", applied_modes, applied_params));
 	channel.broadcast(mode_message);
 }
