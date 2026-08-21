@@ -60,16 +60,33 @@ test: all
 		SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_scenarios; \
 	fi
 
-# make case <case> OR make case <port> <password> <case> = run scenario in verbose mode
+# make case <case> OR make case <password> <case> OR make case <port> <password> <case> = run scenario
 case: all
 	@set -- $(filter-out $@,$(MAKECMDGOALS)); \
 	if [ $$# -eq 1 ]; then \
+		SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_scenarios "$$1"; \
+	elif [ $$# -eq 2 ]; then \
+		SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_scenarios --port $(PORT) --password "$$1" "$$2"; \
+	elif [ $$# -ge 3 ]; then \
+		P="$$1"; PW="$$2"; shift 2; \
+		SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_scenarios --port "$$P" --password "$$PW" "$$@"; \
+	else \
+		echo "Usage: make case <case>  OR  make case <password> <case>  OR  make case <port> <password> <case>"; \
+		exit 1; \
+	fi
+
+# make caseverbose <case> OR make caseverbose <password> <case> OR make caseverbose <port> <password> <case> = run scenario in verbose mode
+caseverbose: all
+	@set -- $(filter-out $@,$(MAKECMDGOALS)); \
+	if [ $$# -eq 1 ]; then \
 		VERBOSE=1 SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_scenarios "$$1"; \
+	elif [ $$# -eq 2 ]; then \
+		VERBOSE=1 SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_scenarios --port $(PORT) --password "$$1" "$$2"; \
 	elif [ $$# -ge 3 ]; then \
 		P="$$1"; PW="$$2"; shift 2; \
 		VERBOSE=1 SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_scenarios --port "$$P" --password "$$PW" "$$@"; \
 	else \
-		echo "Usage: make case <case>  OR  make case <port> <password> <case>"; \
+		echo "Usage: make caseverbose <case>  OR  make caseverbose <password> <case>  OR  make caseverbose <port> <password> <case>"; \
 		exit 1; \
 	fi
 
@@ -105,8 +122,13 @@ help:
 	@echo "  make run <port> <password>          - Run server with custom port and password"
 	@echo "  make test [password]                - Run all tests with custom password (port: .env or 6667)"
 	@echo "  make test <port> <password>         - Run all tests with custom port and password"
-	@echo "  make case <case>                    - Run single test in verbose mode"
-	@echo "  make case <port> <password> <case>  - Run single scenario with custom credentials in verbose mode"
+	@echo "  make case <case>                    - Run single test scenario"
+	@echo "  make case <password> <case>         - Run single scenario with custom password"
+	@echo "  make case <port> <password> <case>  - Run single scenario with custom credentials"
+	@echo "  make caseverbose <case>             - Run single test scenario in verbose mode"
+	@echo "  make caseverbose <pass> <case>      - Run single scenario with custom password in verbose mode"
+	@echo "  make caseverbose <p> <pass> <case>  - Run single scenario with custom credentials in verbose mode"
+	@echo "  make runv <case>                    - Alias for make caseverbose"
 	@echo ""
 	@echo "  [.env file = can persist custom port/password configuration]"
 	@echo ""
@@ -120,4 +142,4 @@ help:
 %:
 	@:
 
-.PHONY: all clean fclean re run test case env client help
+.PHONY: all clean fclean re run test case caseverbose env client help

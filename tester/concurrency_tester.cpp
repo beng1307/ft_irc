@@ -453,6 +453,15 @@ static void print_usage(const char* prog) {
 }
 
 int main(int argc, char* argv[]) {
+    const char* env_host = std::getenv("HOST");
+    if (env_host) g_config.host = env_host;
+
+    const char* env_port = std::getenv("PORT");
+    if (env_port) g_config.port = std::atoi(env_port);
+
+    const char* env_pass = std::getenv("PASSWORD");
+    if (env_pass) g_config.password = env_pass;
+
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "--host" && i + 1 < argc) g_config.host = argv[++i];

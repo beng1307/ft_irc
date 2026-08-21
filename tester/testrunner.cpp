@@ -177,7 +177,12 @@ public:
             log_file.flush();
         }
         if (verbose) {
-            print(line);
+            const size_t MAX_LEN = 120;
+            if (line.length() > MAX_LEN) {
+                print(line.substr(0, MAX_LEN), "...");
+            } else {
+                print(line);
+            }
         }
     }
 };
@@ -205,12 +210,14 @@ enum DirectiveType {
     DIR_SEND_RAW,
     DIR_REPEAT_RAW,
     DIR_EXPECT,
+    DIR_CONSUME,
     DIR_WAIT_RECV,
     DIR_WAIT,
     DIR_EXPECT_DISCONNECT,
     DIR_EXPECT_CONNECTED,
     DIR_EXPECT_NONE,
     DIR_EXPECT_COUNT,
+    DIR_CONSUME_COUNT,
     DIR_CLOSE_SOCKET,
     DIR_CLOSE_WRITE,
     DIR_RESET,
@@ -448,6 +455,26 @@ public:
         return false;
     }
 
+    bool consume_pattern(VirtualClient& vc, const Wire& pattern, int max_wait_ms) {
+        long start = get_time_ms();
+        while (true) {
+            poll_all_clients(10);
+
+            for (size_t i = 0; i < vc.line_queue.size(); ++i) {
+                if (match_pattern(vc.line_queue[i], pattern)) {
+                    vc.line_queue.erase(vc.line_queue.begin() + i);
+                    return true;
+                }
+            }
+
+            if (!vc.connected) return false;
+
+            long elapsed = get_time_ms() - start;
+            if (elapsed >= max_wait_ms) break;
+        }
+        return false;
+    }
+
     bool send_raw(VirtualClient& vc, const Wire& data) {
         if (!vc.connected || vc.fd == -1) {
             logger.log(vc.id, "ERROR", "Cannot send data: socket not connected");
@@ -485,9 +512,18 @@ public:
         if (vc.line_queue.empty()) {
             oss << "<empty>";
         } else {
-            for (size_t i = 0; i < vc.line_queue.size(); ++i) {
+            const size_t max_items = 5;
+            size_t count = std::min(vc.line_queue.size(), max_items);
+            for (size_t i = 0; i < count; ++i) {
                 if (i > 0) oss << " | ";
-                oss << "\"" << vc.line_queue[i] << "\"";
+                Wire msg = vc.line_queue[i];
+                if (msg.length() > 60) {
+                    msg = msg.substr(0, 57) + "...";
+                }
+                oss << "\"" << msg << "\"";
+            }
+            if (vc.line_queue.size() > max_items) {
+                oss << " | ... (" << (vc.line_queue.size() - max_items) << " more)";
             }
         }
         oss << "]";
@@ -564,6 +600,9 @@ public:
                 } else if (token2 == "EXPECT_COUNT") {
                     inst.type = DIR_EXPECT_COUNT;
                     std::getline(iss, inst.payload); trim(inst.payload);
+                } else if (token2 == "CONSUME_COUNT") {
+                    inst.type = DIR_CONSUME_COUNT;
+                    std::getline(iss, inst.payload); trim(inst.payload);
                 } else if (token2 == "SEND_RAW") {
                     inst.type = DIR_SEND_RAW;
                     std::getline(iss, inst.payload); if (!inst.payload.empty() && inst.payload[0] == ' ') inst.payload.erase(0, 1);
@@ -580,6 +619,12 @@ public:
                     std::getline(iss, inst.payload); trim(inst.payload);
                 } else if (token2 == "EXPECT") {
                     inst.type = DIR_EXPECT;
+                    Wire rest;
+                    std::getline(iss, rest);
+                    trim(rest);
+                    inst.payload = rest;
+                } else if (token2 == "CONSUME") {
+                    inst.type = DIR_CONSUME;
                     Wire rest;
                     std::getline(iss, rest);
                     trim(rest);
@@ -746,6 +791,14 @@ public:
                     printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": ", inst.client_id, " EXPECT pattern: \"", inst.payload, "\"", dump);
                     return false;
                 }
+            } else if (inst.type == DIR_CONSUME) {
+                VirtualClient& vc = clients[inst.client_id];
+                if (!consume_pattern(vc, inst.payload, timeout_ms)) {
+                    Wire dump = format_queue_dump(vc);
+                    logger.log(inst.client_id, "ERROR", "CONSUME assertion failed for pattern: \"" + inst.payload + "\"" + dump);
+                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": ", inst.client_id, " CONSUME pattern: \"", inst.payload, "\"", dump);
+                    return false;
+                }
             } else if (inst.type == DIR_EXPECT_NONE) {
                 VirtualClient& vc = clients[inst.client_id];
                 int quiet_ms = parse_duration_ms(inst.payload);
@@ -779,6 +832,84 @@ public:
                     oss << "Expected count " << expected << " but got " << actual << " for pattern: \"" << pattern << "\"";
                     logger.log(inst.client_id, "ERROR", Wire(oss.str()) + dump);
                     printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": ", inst.client_id, " EXPECT_COUNT (expected ", expected, ", got ", actual, ") for \"", pattern, "\"", dump);
+                    return false;
+                }
+            } else if (inst.type == DIR_CONSUME_COUNT) {
+                VirtualClient& vc = clients[inst.client_id]; std::istringstream es(inst.payload);
+                Wire op_or_num; es >> op_or_num;
+                Wire op = "==";
+                int target_val = 0;
+                if (op_or_num.rfind(">=", 0) == 0) {
+                    op = ">=";
+                    Wire num_str = op_or_num.substr(2);
+                    if (num_str.empty()) es >> target_val;
+                    else target_val = atoi(num_str.c_str());
+                } else if (op_or_num.rfind("<=", 0) == 0) {
+                    op = "<=";
+                    Wire num_str = op_or_num.substr(2);
+                    if (num_str.empty()) es >> target_val;
+                    else target_val = atoi(num_str.c_str());
+                } else if (op_or_num.rfind(">", 0) == 0) {
+                    op = ">";
+                    Wire num_str = op_or_num.substr(1);
+                    if (num_str.empty()) es >> target_val;
+                    else target_val = atoi(num_str.c_str());
+                } else if (op_or_num.rfind("<", 0) == 0) {
+                    op = "<";
+                    Wire num_str = op_or_num.substr(1);
+                    if (num_str.empty()) es >> target_val;
+                    else target_val = atoi(num_str.c_str());
+                } else if (op_or_num.rfind("==", 0) == 0) {
+                    op = "==";
+                    Wire num_str = op_or_num.substr(2);
+                    if (num_str.empty()) es >> target_val;
+                    else target_val = atoi(num_str.c_str());
+                } else {
+                    op = "==";
+                    target_val = atoi(op_or_num.c_str());
+                }
+
+                Wire pattern; std::getline(es, pattern); trim(pattern);
+                long start_time = get_time_ms();
+                while (true) {
+                    poll_all_clients(50);
+                    int current_matches = count_matching(vc, pattern, 0);
+                    bool satisfied = false;
+                    if (op == ">=" && current_matches >= target_val) satisfied = true;
+                    else if (op == ">" && current_matches > target_val) satisfied = true;
+                    else if (op == "==" && target_val > 0 && current_matches >= target_val) satisfied = true;
+
+                    if (satisfied) {
+                        poll_all_clients(50);
+                        break;
+                    }
+                    if (!vc.connected) break;
+                    long elapsed = get_time_ms() - start_time;
+                    if (elapsed >= timeout_ms) break;
+                }
+                int actual = 0;
+                for (size_t i = 0; i < vc.line_queue.size(); ) {
+                    if (match_pattern(vc.line_queue[i], pattern)) {
+                        ++actual;
+                        vc.line_queue.erase(vc.line_queue.begin() + i);
+                    } else {
+                        ++i;
+                    }
+                }
+
+                bool pass = false;
+                if (op == ">=") pass = (actual >= target_val);
+                else if (op == "<=") pass = (actual <= target_val);
+                else if (op == ">") pass = (actual > target_val);
+                else if (op == "<") pass = (actual < target_val);
+                else pass = (actual == target_val);
+
+                if (!pass) {
+                    Wire dump = format_queue_dump(vc);
+                    std::ostringstream oss;
+                    oss << "Expected count " << op << " " << target_val << " but got " << actual << " for pattern: \"" << pattern << "\"";
+                    logger.log(inst.client_id, "ERROR", Wire(oss.str()) + dump);
+                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": ", inst.client_id, " CONSUME_COUNT (expected ", op, " ", target_val, ", got ", actual, ") for \"", pattern, "\"", dump);
                     return false;
                 }
             } else if (inst.type == DIR_WAIT_RECV) {

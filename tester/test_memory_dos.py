@@ -250,6 +250,160 @@ def test_unbounded_stream_and_memory(host, port, password, srv_pid, stream_mb=50
     print("----------------------------------------")
     return passed_checks
 
+def test_outbound_backpressure_and_memory(host, port, password, srv_pid, flood_count=5000, max_latency_ms=150):
+    print(f"\n{BOLD}[TEST] Outbound Write Backpressure & Send Buffer Growth Probes ({flood_count} messages){NC}")
+
+    initial_rss = get_process_rss_kb(srv_pid) if srv_pid else None
+    if initial_rss is not None:
+        print(f"       -> Baseline Server RSS: {initial_rss} KB ({initial_rss / 1024:.2f} MB)")
+    else:
+        print(f"       -> {YELLOW}Warning: Server PID not monitored, skipping RSS delta calculation.{NC}")
+
+    passed_checks = True
+
+    try:
+        # C1: Flooder, C2: Slow/Backpressured client (small rcvbuf, paused reads), C3: Concurrent probe
+        c1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        c2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        c3 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        c1.settimeout(5.0)
+        c2.settimeout(5.0)
+        c3.settimeout(5.0)
+
+        # Connect and register clients
+        c1.connect((host, port))
+        c1.sendall(f"PASS {password}\r\nNICK bp_alice\r\nUSER bp_alice 0 * :Alice\r\nJOIN #bptest\r\n".encode())
+
+        c2.connect((host, port))
+        c2.sendall(f"PASS {password}\r\nNICK bp_bob\r\nUSER bp_bob 0 * :Bob\r\nJOIN #bptest\r\n".encode())
+
+        c3.connect((host, port))
+        c3.sendall(f"PASS {password}\r\nNICK bp_charlie\r\nUSER bp_charlie 0 * :Charlie\r\nJOIN #bptest\r\n".encode())
+
+        # Wait for registration and joins to settle
+        time.sleep(0.2)
+        # Drain initial registration/join bursts
+        c1.setblocking(False)
+        c2.setblocking(False)
+        c3.setblocking(False)
+        for c in [c1, c2, c3]:
+            try:
+                while c.recv(8192):
+                    pass
+            except Exception:
+                pass
+        c1.setblocking(True)
+        c2.setblocking(True)
+        c3.setblocking(True)
+
+        # Throttle C2 TCP receive buffer to 1024 bytes and pause reading on C2
+        try:
+            c2.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1024)
+        except Exception as e:
+            print(f"       [{YELLOW}WARN{NC}] setsockopt SO_RCVBUF failed: {e}")
+
+        payload_line = "PRIVMSG #bptest :" + ("A" * 300) + "\r\n"
+        payload_bytes = payload_line.encode()
+
+        print(f"       -> Flooding {flood_count} large broadcast messages while C2 receive is paused...")
+        messages_sent = 0
+        c1_start = time.perf_counter()
+        for _ in range(flood_count):
+            try:
+                c1.sendall(payload_bytes)
+                messages_sent += 1
+            except Exception as e:
+                print(f"       [{YELLOW}WARN{NC}] Flooder sendall error at msg {messages_sent}: {e}")
+                break
+
+        # Check server responsiveness on C3 while C2's server send queue is full
+        start_c3 = time.perf_counter()
+        c3.sendall(b"PING :bp_alive_check\r\n")
+        c3_buf = ""
+        c3.settimeout(1.5)
+        try:
+            while True:
+                data = c3.recv(4096)
+                if not data:
+                    break
+                c3_buf += data.decode(errors="ignore")
+                if "PONG" in c3_buf or ":bp_alive_check" in c3_buf:
+                    break
+                if time.perf_counter() - start_c3 > 1.5:
+                    break
+        except Exception as e:
+            c3_buf += f" [Error: {e}]"
+
+        c3_latency = (time.perf_counter() - start_c3) * 1000.0
+
+        # Sample memory under full backpressure queue
+        post_flood_rss = get_process_rss_kb(srv_pid) if srv_pid else None
+
+        # Resume reading on C2 and drain messages
+        c2.settimeout(0.5)
+        c2_received_bytes = 0
+        c2_drain_start = time.perf_counter()
+        while time.perf_counter() - c2_drain_start < 2.0:
+            try:
+                data = c2.recv(16384)
+                if not data:
+                    break
+                c2_received_bytes += len(data)
+            except socket.timeout:
+                break
+            except Exception:
+                break
+
+        # Cleanup test sockets
+        try:
+            c1.close()
+            c2.close()
+            c3.close()
+        except Exception:
+            pass
+
+        time.sleep(0.2)
+        final_rss = get_process_rss_kb(srv_pid) if srv_pid else None
+
+        # Evaluate diagnostic results
+        print(f"\n{BOLD}--- Backpressure Diagnostic Results ---{NC}")
+        print(f"       Messages Broadcast: {messages_sent}/{flood_count} ({messages_sent * len(payload_bytes) // 1024} KB)")
+        print(f"       C2 Drained: {c2_received_bytes // 1024} KB after resuming")
+
+        if initial_rss is not None and post_flood_rss is not None:
+            delta_kb = post_flood_rss - initial_rss
+            delta_mb = delta_kb / 1024.0
+            print(f"       Peak Outbound Queue Server RSS: {post_flood_rss} KB ({post_flood_rss / 1024:.2f} MB), Delta: {delta_kb} KB ({delta_mb:.2f} MB)")
+            if delta_mb < 20.0:
+                print(f"       [{GREEN}PASS{NC}] Check 1: Outbound buffer memory delta {delta_mb:.2f} MB is within threshold (< 20.0 MB)")
+            else:
+                print(f"       [{RED}FAIL{NC}] Check 1: Excessive memory growth during backpressure: {delta_mb:.2f} MB")
+                passed_checks = False
+
+        if "PONG" in c3_buf or ":bp_alive_check" in c3_buf:
+            if c3_latency <= max_latency_ms:
+                print(f"       [{GREEN}PASS{NC}] Check 2: Independent client C3 responded in {c3_latency:.2f} ms (<= {max_latency_ms} ms)")
+            else:
+                print(f"       [{YELLOW}WARN{NC}] Check 2: Independent client C3 responded in {c3_latency:.2f} ms (> {max_latency_ms} ms)")
+        else:
+            print(f"       [{RED}FAIL{NC}] Check 2: Independent client C3 failed to get PONG during backpressure (Latency: {c3_latency:.2f} ms)")
+            passed_checks = False
+
+        is_alive = check_server_responsive(host, port, password, timeout=1.5)
+        if is_alive:
+            print(f"       [{GREEN}PASS{NC}] Server Liveness: Server remains responsive after backpressure drain.")
+        else:
+            print(f"       [{RED}FAIL{NC}] Server Liveness: Server became unresponsive after backpressure drain!")
+            passed_checks = False
+
+        print("----------------------------------------")
+        return passed_checks
+
+    except Exception as e:
+        print(f"       [{RED}FAIL{NC}] Backpressure test encountered an unexpected exception: {e}")
+        return False
+
 def main():
     parser = argparse.ArgumentParser(description="IRC Server Memory & Slowloris Probe")
     parser.add_argument("--host", default="127.0.0.1", help="Server host (default: 127.0.0.1)")
@@ -301,8 +455,8 @@ def main():
         else:
             print(f"{YELLOW}Warning: Server PID could not be determined; RSS delta checks will be skipped.{NC}")
 
-        # Run test
-        success = test_unbounded_stream_and_memory(
+        # Run inbound stream & memory test
+        success_stream = test_unbounded_stream_and_memory(
             host=args.host,
             port=args.port,
             password=args.password,
@@ -311,11 +465,19 @@ def main():
             max_latency_ms=args.latency_ms
         )
 
-        if success:
-            print(f"{GREEN}{BOLD}Memory & Stream Probes Passed Successfully!{NC}\n")
+        # Run outbound backpressure & memory test
+        success_bp = test_outbound_backpressure_and_memory(
+            host=args.host,
+            port=args.port,
+            password=args.password,
+            srv_pid=srv_pid
+        )
+
+        if success_stream and success_bp:
+            print(f"\n{GREEN}{BOLD}All Memory, Stream & Backpressure Probes Passed Successfully!{NC}\n")
             sys.exit(0)
         else:
-            print(f"{RED}{BOLD}Memory & Stream Probes Failed.{NC}\n")
+            print(f"\n{RED}{BOLD}Memory, Stream & Backpressure Probes Failed.{NC}\n")
             sys.exit(1)
 
     finally:
