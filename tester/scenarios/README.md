@@ -69,6 +69,7 @@ the central map of the executable integration coverage. Run all suites with
 
 | Spec | Coverage |
 | --- | --- |
+| `edge_cases/52_unterminated_line_limit.spec` | Oversized incomplete IRC input is disconnected without blocking other clients. |
 | `EDGECASE/39_send_to_dead_socket_resilience.spec` | Server resilience when sending to dead/dropped client sockets. |
 | `EDGECASE/40_unauthenticated_nick_takeover_prevention.spec` | Pre-auth nick collision and takeover prevention. |
 | `EDGECASE/41_orphaned_channel_op_depletion.spec` | Operator depletion and channel behavior when no operators remain. |

@@ -9,6 +9,20 @@
 #include "../helpers/print.hpp"
 #include "../helpers/Wire.hpp"
 
+// IRC messages are limited to 512 bytes including the trailing CRLF.
+static const size_t MAX_IRC_LINE_CONTENT_LENGTH = 510;
+
+static bool input_exceeds_irc_line_limit(const Wire &input) {
+  size_t delimiter_position = input.find("\r\n");
+  if (delimiter_position != std::string::npos)
+    return delimiter_position > MAX_IRC_LINE_CONTENT_LENGTH;
+  if (input.size() > MAX_IRC_LINE_CONTENT_LENGTH + 1)
+    return true;
+  // A final CR may be waiting for its LF in the next recv() call.
+  return input.size() == MAX_IRC_LINE_CONTENT_LENGTH + 1
+    && input[input.size() - 1] != '\r';
+}
+
 // Sets the socket to non-blocking mode and returns false if it fails.
 bool Server::configure_socket_nonblocking(int socket) {
   // fcntl sets the socket flags to nonblocking with F_SETFL
@@ -78,12 +92,21 @@ void Server::handle_client_input(int client_fd) {
 
     // If the end of a message is found, it gets processed.
     size_t position = client.get_buffer().find("\r\n");
+    if (input_exceeds_irc_line_limit(client.get_buffer())) {
+      // Prevent a client from retaining an unbounded incomplete input buffer.
+      disconnect_client(client_fd);
+      return;
+    }
     while (position != std::string::npos) {
       handle_line(client, position);
       // If client was disconnected by QUIT or error during handle_line, stop processing immediately
       if (!get_client(client_fd))
         return;
       position = client.get_buffer().find("\r\n");
+      if (input_exceeds_irc_line_limit(client.get_buffer())) {
+        disconnect_client(client_fd);
+        return;
+      }
     }
 
     print("Received from client ", client_fd, ": ", buffer);
@@ -110,28 +133,21 @@ void Server::server_loop() {
   // its flag got changed to nonblocking.
   add_fds(get_server_socket(), POLLIN, 0);
 
-  // Main Event Loop:
-  // Runs while g_running is true.
-  // When SIGINT or SIGTERM is received, sig_handler in main.cpp sets g_running = false.
-  while (g_running) {
+  while (true) {
     // Wait for events on the file descriptors (-1 == endlessly).
     // poll sets the revents flag from the fds to the current status.
-    // Signal handling scenario:
-    // If poll() is interrupted by a signal (e.g. SIGINT/SIGTERM), it returns -1 with errno == EINTR.
-    // We check if g_running is false; if so, we break to execute the clean teardown below.
+    // If poll() is interrupted by a signal, it breaks the loop.
+    // Otherwise, stop the server if poll() fails.
     int ready = poll(get_fds().data(), get_fds().size(), -1);
     if (ready == -1) {
-      if (errno == EINTR) {
-        if (!g_running)
-          break;
+      if (errno == EINTR)
         continue;
-      }
       printErr("Error: poll failed!");
-      break; // Stop the server if poll() encounters an unrecoverable system failure.
+      break; // TODO: Check if it has to send a message to the clients.
     }
 
     // Loops over the fds
-    for (size_t index = 0; index < get_fds().size() && g_running; ++index) {
+    for (size_t index = 0; index < get_fds().size(); ++index) {
         if (get_fds()[index].revents & (POLLERR | POLLHUP | POLLNVAL)) {
           if (get_fds()[index].fd == get_server_socket()) {
             printErr("Error: server socket poll failure!");
@@ -177,19 +193,5 @@ void Server::server_loop() {
         }
       }
     }
-  }
-
-  // Graceful Teardown & Resource Cleanup:
-  // Scenario: Triggered when exiting the main event loop (e.g. on SIGINT/SIGTERM or unrecoverable error).
-  // Rationale:
-  // 1. Cleanly disconnect all connected clients: removes them from channels, closes their sockets,
-  //    and frees client buffers to prevent file descriptor leaks.
-  // 2. Closes the master server listening socket descriptor so the OS immediately frees the TCP port.
-  while (!get_clients().empty()) {
-    disconnect_client(get_clients().begin()->first);
-  }
-  if (get_server_socket() > 0) {
-    close(get_server_socket());
-    set_server_socket(-1);
   }
 }

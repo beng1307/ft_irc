@@ -203,6 +203,7 @@ enum DirectiveType {
     DIR_CLIENTS,
     DIR_SEND,
     DIR_SEND_RAW,
+    DIR_REPEAT_RAW,
     DIR_EXPECT,
     DIR_WAIT_RECV,
     DIR_WAIT,
@@ -566,6 +567,9 @@ public:
                 } else if (token2 == "SEND_RAW") {
                     inst.type = DIR_SEND_RAW;
                     std::getline(iss, inst.payload); if (!inst.payload.empty() && inst.payload[0] == ' ') inst.payload.erase(0, 1);
+                } else if (token2 == "REPEAT_RAW") {
+                    inst.type = DIR_REPEAT_RAW;
+                    std::getline(iss, inst.payload); trim(inst.payload);
                 } else if (token2 == "CLOSE_SOCKET" || token2 == "CLOSE_WRITE" || token2 == "RESET" || token2 == "RECONNECT" || token2 == "PAUSE" || token2 == "RESUME") {
                     inst.type = token2 == "CLOSE_SOCKET" ? DIR_CLOSE_SOCKET : token2 == "CLOSE_WRITE" ? DIR_CLOSE_WRITE : token2 == "RESET" ? DIR_RESET : token2 == "RECONNECT" ? DIR_RECONNECT : token2 == "PAUSE" ? DIR_PAUSE : DIR_RESUME;
                 } else if (token2 == "SET_SOCK_RCVBUF") {
@@ -654,6 +658,29 @@ public:
                     printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": ", inst.client_id, " SEND_RAW failed for payload \"", actual_payload, "\"", dump);
                     return false;
                 }
+            } else if (inst.type == DIR_REPEAT_RAW) {
+                VirtualClient& vc = clients[inst.client_id];
+                std::istringstream rs(inst.payload);
+                int count = 0;
+                rs >> count;
+                Wire payload;
+                std::getline(rs, payload);
+                trim(payload);
+                Wire decoded_payload = decode_raw_escapes(payload);
+                if (count < 1 || count > 10000 || decoded_payload.empty()) {
+                    logger.log(inst.client_id, "ERROR", "REPEAT_RAW invalid parameters: " + inst.payload);
+                    printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": ", inst.client_id, " REPEAT_RAW invalid parameters: \"", inst.payload, "\"");
+                    return false;
+                }
+                for (int n = 0; n < count; ++n) {
+                    if (!send_raw(vc, decoded_payload)) {
+                        Wire dump = format_queue_dump(vc);
+                        logger.log(inst.client_id, "ERROR", "REPEAT_RAW send failed at iteration " + Wire(n) + dump);
+                        printErr("FAIL [", logger.spec_name, "] Line ", inst.line_number, ": ", inst.client_id, " REPEAT_RAW send failed at iteration ", n, dump);
+                        return false;
+                    }
+                }
+                logger.log(inst.client_id, "REPEAT_RAW", inst.payload);
             } else if (inst.type == DIR_CLOSE_SOCKET || inst.type == DIR_RESET) {
                 close_client(clients[inst.client_id], inst.type == DIR_RESET);
             } else if (inst.type == DIR_CLOSE_WRITE) {
