@@ -2,9 +2,46 @@
 
 
 -Check last edge cases
+  * Fix handle_mode (ServerChannelOps.cpp:280) edge cases (verified by tester scenario 54):
+
+| # | Edge Case | Input Example | Current Flawed Behavior | Expected / Standard Behavior |
+|---|---|---|---|---|
+| **1** | Missing sign on unknown mode | `MODE #chan x` | Silently dropped with no reply (`sign == 0`) | Emit `472 <nick> x :is unknown mode char to me` |
+| **2** | Ban query syntax | `MODE #chan +b` | Emits `472` (only bare `b` handled) | Return `368 <nick> <chan> :End of Channel Ban List` |
+| **3** | Duplicate mode flags | `MODE #chan +ii` | Broadcasts `:Nick MODE #chan +ii` | Normalize to `:Nick MODE #chan +i` in broadcast |
+| **4** | Net-zero / self-cancelling modes | `MODE #chan +t-t` | Broadcasts `:Nick MODE #chan +t-t` | Suppress broadcast when net state change is empty |
+| **5** | Parameter starvation / skew | `MODE #chan +ko Bob` | Steals `Bob` as `+k` key; `+o` fails with `461` | Do not misassociate params / atomically reject or validate |
+| **6** | Non-channel target | `MODE Alice` | Silently ignored (`channel_name[0] != '#'`) | Handle user mode query or return `403`/`502` |
+
 
 
 -Check if everything is conform with the eval Sheet
 
 
 -Ask somebody for a pre eval
+
+
+Status: Mostly Satisfied, but pay attention to 
+
+ServerLoop.cpp:124
+Verification & Explanation:
+What the rule targets: The 42 rule ("must not rely on errno to decide what to do next (for instance, reading again after errno == EAGAIN)") exists to forbid busy-waiting loops like:
+cpp
+// FORBIDDEN anti-pattern:
+while ((n = recv(fd, buf, size, 0)) == -1 && errno == EAGAIN) {
+    // trying again immediately without going back to poll/epoll
+}
+Your current code:
+cpp
+// ServerLoop.cpp:121-127
+} else {
+  if (errno == EAGAIN || errno == EWOULDBLOCK)
+    return;
+  disconnect_client(client_fd);
+}
+
+
+You simply exit and return control to epoll_wait(), which is safe.
+Peer-evaluation tip: Because evaluators often grep for EAGAIN due to the strict wording in the subject / evaluation sheet:
+Be ready to explain that you never perform a retry read/write when errno == EAGAIN.
+Alternatively, on recv() < 0, you could simply treat any hard socket error as disconnection / return to epoll without special-casing EAGAIN.
