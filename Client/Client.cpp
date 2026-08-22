@@ -9,7 +9,7 @@
 Client::Client():
 	socket(0), password(""), username(""),
 	nickname(""), pass_ok(false), is_registered(false), is_admin(false),
-	buffer("")
+	buffer(""), out_buffer("")
 {
 	_ok = false;
 	return ;
@@ -18,7 +18,7 @@ Client::Client():
 Client::Client(int socket):
 	socket(socket), password(""), username(""),
 	nickname(""), pass_ok(false), is_registered(false), is_admin(false),
-	buffer("")
+	buffer(""), out_buffer("")
 {
 	_ok = true;
 	return ;
@@ -28,7 +28,7 @@ Client::Client(const Client &other):
 	socket(other.socket), password(other.password),
 	username(other.username), nickname(other.nickname),
 	pass_ok(other.pass_ok), is_registered(other.is_registered), is_admin(other.is_admin),
-	buffer(other.buffer)
+	buffer(other.buffer), out_buffer(other.out_buffer)
 {
 	_ok = other._ok;
 	return ;
@@ -46,6 +46,7 @@ Client	&Client::operator=(const Client &other)
 		is_registered = other.is_registered;
 		is_admin = other.is_admin;
 		buffer = other.buffer;
+		out_buffer = other.out_buffer;
 		_ok = other._ok;
 	}
 	return (*this);
@@ -156,4 +157,19 @@ Wire	&Client::get_buffer()
 Wire	Client::get_buffer() const
 {
 	return (buffer);
+}
+
+void	Client::set_out_buffer(const Wire &out_buffer)
+{
+	this->out_buffer = out_buffer;
+}
+
+Wire	&Client::get_out_buffer()
+{
+	return (out_buffer);
+}
+
+Wire	Client::get_out_buffer() const
+{
+	return (out_buffer);
 }

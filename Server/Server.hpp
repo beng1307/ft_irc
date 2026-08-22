@@ -13,6 +13,12 @@
 // Set to false on SIGINT / SIGTERM to trigger graceful event-loop termination.
 extern bool g_running;
 
+// The single running Server instance (defined/set in ServerLoop.cpp).
+// Free helper functions (send_string/send_msg) are invoked as bare callbacks
+// (e.g. via Set::forEach) that cannot carry a Server& through every call
+// site, so they reach the live instance through this pointer instead.
+extern class Server *g_active_server;
+
 typedef Map<Wire, Channel> ChannelMap;
 typedef Map<int, Client>   ClientMap;
 
@@ -92,6 +98,9 @@ class Server
 		int socket_setup();
 		void server_loop();
 		void add_fds(int fd, short events, short revents);
+		void set_pollout(int fd, bool enable);
+		void queue_output(int fd, const Wire &data);
+		void flush_client_output(int fd);
 		void handle_line(Client &client, const size_t &position);
 		void dispatch_command(Client &client, const Wire &command, const Wire &line, const Vector<Wire> &arguments);
 		void handle_pass_command(Client &client, const Vector<Wire> &arguments);

@@ -11,6 +11,16 @@
 // IRC messages are limited to 512 bytes including the trailing CRLF.
 static const size_t MAX_IRC_LINE_CONTENT_LENGTH = 510;
 
+// Upper bound on how much unsent data we buffer for one client (analogous to
+// an IRC server's "SendQ"). Guards against unbounded memory growth if a
+// client never drains its receive side, while staying well above realistic
+// burst sizes (e.g. large channel floods) so normal traffic is never dropped.
+static const size_t MAX_OUTPUT_BUFFER_SIZE = 32 * 1024 * 1024;
+
+// The single running Server instance, used by the free send_string()/send_msg()
+// helpers (see ServerMessaging.cpp) so they can route through queue_output().
+Server *g_active_server = NULL;
+
 static bool input_exceeds_irc_line_limit(const Wire &input) {
   size_t delimiter_position = input.find("\r\n");
   if (delimiter_position != std::string::npos)
@@ -76,6 +86,89 @@ void Server::disconnect_client(int client_fd) {
   close(client_fd);
 }
 
+// Arms/disarms POLLOUT for a client's pollfd entry. Kept disarmed whenever
+// there is nothing buffered, since a writable socket is almost always ready
+// and would otherwise make poll() return immediately on every call.
+void Server::set_pollout(int fd, bool enable) {
+  for (Vector<pollfd>::iterator it = get_fds().begin(); it != get_fds().end(); ++it) {
+    if (it->fd == fd) {
+      if (enable)
+        it->events = static_cast<short>(it->events | POLLOUT);
+      else
+        it->events = static_cast<short>(it->events & ~POLLOUT);
+      break;
+    }
+  }
+}
+
+// Sends data to a client, buffering whatever the kernel socket buffer can't
+// accept right now instead of silently dropping it (the previous behavior of
+// send_string(), whose return value nobody checked). Arms POLLOUT so the
+// event loop resumes the flush once the client is writable again.
+void Server::queue_output(int fd, const Wire &data) {
+  Client &client = get_client(fd);
+  if (!client)
+    return;
+
+  Wire &out = client.get_out_buffer();
+  size_t start = 0;
+
+  // Only attempt an immediate send while nothing is already queued;
+  // otherwise this write would be delivered ahead of already-buffered data.
+  if (out.empty()) {
+    ssize_t sent = send(fd, data.c_str(), data.size(), MSG_NOSIGNAL);
+    if (sent == static_cast<ssize_t>(data.size()))
+      return;
+    if (sent == -1) {
+      // A full kernel send buffer reports EAGAIN/EWOULDBLOCK on a
+      // non-blocking socket; buffer the whole message for later.
+      if (errno != EAGAIN && errno != EWOULDBLOCK) {
+        // Any other error means the connection is dead. Disconnecting here
+        // is safe even though this call can be nested inside a channel
+        // broadcast: broadcasts iterate a temporary snapshot of member fds
+        // that disconnect_client() never touches.
+        disconnect_client(fd);
+        return;
+      }
+      sent = 0;
+    }
+    start = static_cast<size_t>(sent);
+  }
+
+  out += data.substr(start);
+  if (out.size() > MAX_OUTPUT_BUFFER_SIZE) {
+    // Client isn't draining its receive side fast enough ("SendQ exceeded").
+    disconnect_client(fd);
+    return;
+  }
+  set_pollout(fd, true);
+}
+
+// Flushes as much of a client's buffered output as the kernel currently
+// accepts. Called when poll() reports the client's socket is writable again.
+void Server::flush_client_output(int fd) {
+  Client &client = get_client(fd);
+  if (!client)
+    return;
+
+  Wire &out = client.get_out_buffer();
+  if (out.empty()) {
+    set_pollout(fd, false);
+    return;
+  }
+
+  ssize_t sent = send(fd, out.c_str(), out.size(), MSG_NOSIGNAL);
+  if (sent > 0)
+    out.erase(0, static_cast<size_t>(sent));
+  else if (sent == -1 && errno != EAGAIN && errno != EWOULDBLOCK) {
+    disconnect_client(fd);
+    return;
+  }
+
+  if (out.empty())
+    set_pollout(fd, false);
+}
+
 // Handles input from client.
 void Server::handle_client_input(int client_fd) {
   char buffer[512];
@@ -131,6 +224,7 @@ void Server::server_loop() {
   // Adds the server socket to the fds, after
   // its flag got changed to nonblocking.
   add_fds(get_server_socket(), POLLIN, 0);
+  g_active_server = this;
 
   while (g_running) {
     // Wait for events on the file descriptors (-1 == endlessly).
@@ -148,30 +242,47 @@ void Server::server_loop() {
       break;
     }
 
-    // Loops over the fds
-    for (size_t index = 0; index < get_fds().size() && g_running; ++index) {
-        if (get_fds()[index].revents & (POLLERR | POLLHUP | POLLNVAL)) {
-          if (get_fds()[index].fd == get_server_socket()) {
-            printErr("Error: server socket poll failure!");
-            break;
-          }
-          int disconnected_fd = get_fds()[index].fd;
-          disconnect_client(disconnected_fd);
-          if (index == 0)
-            index = static_cast<size_t>(-1);
-          else
-            --index;
-          continue;
+    // Snapshot the fds/revents for this cycle before reacting to any of
+    // them: reacting to one fd (a broadcast that overflows another client's
+    // SendQ, a POLLOUT flush that errors out) can disconnect other clients
+    // and mutate the live fds vector, which would corrupt index-based
+    // iteration directly over it.
+    Vector<pollfd> snapshot = get_fds();
+
+    for (size_t index = 0; index < snapshot.size() && g_running; ++index) {
+      int fd = snapshot[index].fd;
+      short revents = snapshot[index].revents;
+      bool is_server_socket = (fd == get_server_socket());
+
+      // Skip fds already closed earlier in this same poll cycle.
+      if (!is_server_socket && !get_client(fd))
+        continue;
+
+      if (revents & (POLLERR | POLLHUP | POLLNVAL)) {
+        if (is_server_socket) {
+          printErr("Error: server socket poll failure!");
+          break;
         }
+        disconnect_client(fd);
+        continue;
+      }
+
+      // A writable client socket: flush whatever output is still queued.
+      if (revents & POLLOUT)
+        flush_client_output(fd);
+
+      // The flush above may have disconnected the client on a hard error.
+      if (!is_server_socket && !get_client(fd))
+        continue;
 
       // If the current fd doesn't have POLLIN (pending input) set, go to the
       // next one.
-      if (!(get_fds()[index].revents & POLLIN))
+      if (!(revents & POLLIN))
         continue;
 
       // If the fd has POLLIN set and is the server_socket, it means a client
       // wants to connect.
-      if (get_fds()[index].fd == get_server_socket()) {
+      if (is_server_socket) {
         // Client gets accepted and gets a own socket, connected to the server
         // socket.
         int client_socket = accept(get_server_socket(), NULL, NULL);
@@ -183,16 +294,7 @@ void Server::server_loop() {
         accept_new_client(client_socket);
       } else {
         // Handles the incoming input of the current client.
-        int current_fd = get_fds()[index].fd;
-        handle_client_input(current_fd);
-        // If current_fd was disconnected and removed from get_fds(),
-        // adjust index so the shifted element at this index is processed on next iteration.
-        if (index < get_fds().size() && get_fds()[index].fd != current_fd) {
-          if (index == 0)
-            index = static_cast<size_t>(-1);
-          else
-            --index;
-        }
+        handle_client_input(fd);
       }
     }
   }
@@ -204,3 +306,4 @@ void Server::server_loop() {
     set_server_socket(-1);
   }
 }
+

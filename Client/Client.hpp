@@ -22,6 +22,7 @@ class Client
 		bool 			is_admin;
 
 		Wire			buffer;
+		Wire			out_buffer;
 
 	public:
 
@@ -69,6 +70,10 @@ class Client
 		void		set_buffer(const Wire &buffer);
 		Wire		&get_buffer();
 		Wire		get_buffer() const;
+
+		void		set_out_buffer(const Wire &out_buffer);
+		Wire		&get_out_buffer();
+		Wire		get_out_buffer() const;
 
 };
 		

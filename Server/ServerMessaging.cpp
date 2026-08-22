@@ -13,11 +13,16 @@ Wire	make_msg(const Client &client, const Wire &cmd, const Wire &target, const W
 
 ssize_t	send_string(int fd, const Wire &str)
 {
-	if (str.length() >= 2 && str.substr(str.length() - 2) == "\r\n")
-	// MSG_NOSIGNAL prevents errors when fd closed or smth.
-		return send(fd, str.c_str(), str.size(), MSG_NOSIGNAL);
-	Wire out = str + "\r\n";
-	return send(fd, out.c_str(), out.size(), MSG_NOSIGNAL);
+	Wire out = str;
+	if (out.length() < 2 || out.substr(out.length() - 2) != "\r\n")
+		out += "\r\n";
+	// Routed through the running Server's output queue (see queue_output() in
+	// ServerLoop.cpp) instead of calling send() directly, so data survives a
+	// full kernel send buffer (e.g. a slow/paused client) rather than being
+	// silently dropped whenever send() returns EAGAIN/EWOULDBLOCK.
+	if (g_active_server)
+		g_active_server->queue_output(fd, out);
+	return static_cast<ssize_t>(out.size());
 }
 
 ssize_t	send_msg(int fd, const Client &client, const Wire &cmd, const Wire &target, const Wire &param)
