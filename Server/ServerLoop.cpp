@@ -110,31 +110,9 @@ void Server::queue_output(int fd, const Wire &data) {
     return;
 
   Wire &out = client.get_out_buffer();
-  size_t start = 0;
-
-  // Only attempt an immediate send while nothing is already queued;
-  // otherwise this write would be delivered ahead of already-buffered data.
-  if (out.empty()) {
-    ssize_t sent = send(fd, data.c_str(), data.size(), MSG_NOSIGNAL);
-    if (sent == static_cast<ssize_t>(data.size()))
-      return;
-    if (sent == -1) {
-      // A full kernel send buffer reports EAGAIN/EWOULDBLOCK on a
-      // non-blocking socket; buffer the whole message for later.
-      if (errno != EAGAIN && errno != EWOULDBLOCK) {
-        // Any other error means the connection is dead. Disconnecting here
-        // is safe even though this call can be nested inside a channel
-        // broadcast: broadcasts iterate a temporary snapshot of member fds
-        // that disconnect_client() never touches.
-        disconnect_client(fd);
-        return;
-      }
-      sent = 0;
-    }
-    start = static_cast<size_t>(sent);
-  }
-
-  out += data.substr(start);
+  // Always queue: sending must happen only from the POLLOUT flush path,
+  // never as a side effect of formatting/handling a command.
+  out += data;
   if (out.size() > MAX_OUTPUT_BUFFER_SIZE) {
     // Client isn't draining its receive side fast enough ("SendQ exceeded").
     disconnect_client(fd);
@@ -159,7 +137,7 @@ void Server::flush_client_output(int fd) {
   ssize_t sent = send(fd, out.c_str(), out.size(), MSG_NOSIGNAL);
   if (sent > 0)
     out.erase(0, static_cast<size_t>(sent));
-  else if (sent == -1 && errno != EAGAIN && errno != EWOULDBLOCK) {
+  else {
     disconnect_client(fd);
     return;
   }
@@ -201,13 +179,16 @@ void Server::handle_client_input(int client_fd) {
       }
     }
 
+    // QUIT queues its own closing reply; flush and close once it's sent.
+    if (get_client(client_fd).get_close_after_output()) {
+      flush_client_output(client_fd);
+      if (get_client(client_fd) && get_client(client_fd).get_out_buffer().empty())
+        disconnect_client(client_fd);
+      return;
+    }
+
     print("Received from client ", client_fd, ": ", buffer);
   } else {
-    // With a non-blocking socket, recv() can return -1 with
-    // EAGAIN/EWOULDBLOCK if no data is currently available.
-    // The client stays connected and we return to poll().
-    if (errno == EAGAIN || errno == EWOULDBLOCK)
-      return;
     disconnect_client(client_fd);
   }
 }
@@ -270,6 +251,13 @@ void Server::server_loop() {
       // The flush above may have disconnected the client on a hard error.
       if (!is_server_socket && !get_client(fd))
         continue;
+
+      // A queued QUIT reply has now fully drained; close the connection.
+      if (!is_server_socket && get_client(fd).get_close_after_output()
+          && get_client(fd).get_out_buffer().empty()) {
+        disconnect_client(fd);
+        continue;
+      }
 
       // If the current fd doesn't have POLLIN (pending input) set, go to the
       // next one.

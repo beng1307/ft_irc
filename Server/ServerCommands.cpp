@@ -267,11 +267,11 @@ void	Server::handle_quit_command(Client &client, const Wire &line,
 	get_client_audience(client.get_socket())
 		.forEach(send_string_fn, make_msg(client, "QUIT", ":" + reason), this);
 
-	int client_fd = client.get_socket();
 	Wire bye = "ERROR :Closing connection";
-	send_string(client_fd, bye);
+	send_string(client.get_socket(), bye);
 
-	disconnect_client(client_fd);
+	// Defer the actual close until POLLOUT confirms bye was sent.
+	client.set_close_after_output(true);
 }
 
 void	Server::handle_ping_command(Client &client, const Vector<Wire> &arguments)
