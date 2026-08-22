@@ -281,11 +281,7 @@ public:
             return false;
         }
 
-        // Set non-blocking
-        int flags = fcntl(socket_fd, F_GETFL, 0);
-        if (flags != -1) {
-            fcntl(socket_fd, F_SETFL, flags | O_NONBLOCK);
-        }
+        fcntl(socket_fd, F_SETFL, O_NONBLOCK);
 
         struct sockaddr_in serv_addr;
         std::memset(&serv_addr, 0, sizeof(serv_addr));
