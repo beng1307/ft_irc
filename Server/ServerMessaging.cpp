@@ -11,31 +11,37 @@ Wire	make_msg(const Client &client, const Wire &cmd, const Wire &target, const W
 	return msg;
 }
 
-ssize_t	Server::send_string(int fd, const Wire &str)
-{
-	Wire out = str;
-	if (out.length() < 2 || out.substr(out.length() - 2) != "\r\n")
-		out += "\r\n";
-	queue_output(fd, out);
-	return static_cast<ssize_t>(out.size());
-}
+// ssize_t	Server::send_string(int fd, const Wire &str)
+// {
+// 	Client &client = get_client(fd);
+// 	if (client)
+// 		client.send(str);
+// 	return static_cast<ssize_t>(str.size());
+// }
 
 ssize_t	Server::send_msg(int fd, const Client &client, const Wire &cmd, const Wire &target, const Wire &param)
 {
-	return send_string(fd, make_msg(client, cmd, target, param));
+	Client &dest = get_client(fd);
+	if (dest)
+		dest.send(make_msg(client, cmd, target, param));
+	return 0;
 }
 
 ssize_t	send_string_fn(int fd, const Wire &str, Server *server)
 {
 	if (server)
-		return server->send_string(fd, str);
+	{
+		Client &client = server->get_client(fd);
+		if (client)
+			client.send(str);
+	}
 	return 0;
 }
 
 //Sends a status/reply to a client
 void	Server::send_status(Client &client, const Wire &code, const Wire &message)
 {
-	send_string(client.get_socket(), Wire(":localhost ", code, " ", client.get_nickname().placeholder("*"), " ", message));
+	client.send(Wire(":localhost ", code, " ", client.get_nickname().placeholder("*"), " ", message));
 }
 
 
@@ -73,7 +79,7 @@ void	Server::send_message_to_user(Client &sender, const Wire &nickname, const Wi
 		return ;
 	}
 
-	send_msg(target.get_socket(), sender, "PRIVMSG", nickname, message);
+	target.send(make_msg(sender, "PRIVMSG", nickname, message));
 }
 
 

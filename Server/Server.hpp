@@ -94,8 +94,7 @@ class Server
 		void server_loop();
 		void add_fds(int fd, short events, short revents);
 		void set_pollout(int fd, bool enable);
-		void queue_output(int fd, const Wire &data);
-		void flush_client_output(int fd);
+		void send_to_client(int fd, const Wire &message = Wire());
 		void handle_line(Client &client, const size_t &position);
 		void dispatch_command(Client &client, const Wire &command, const Wire &line, const Vector<Wire> &arguments);
 		void handle_pass_command(Client &client, const Vector<Wire> &arguments);
@@ -126,7 +125,7 @@ class Server
 		void part_client_from_channel(Client &client, const Wire &channel_name, const Wire &reason);
 		void send_message_to_channel(Client &sender, const Wire &channel_name, const Wire &message);
 
-		ssize_t send_string(int fd, const Wire &str);
+		// ssize_t send_string(int fd, const Wire &str);
 		ssize_t send_msg(int fd, const Client &client, const Wire &cmd, const Wire &target, const Wire &param = "");
 		void send_message_to_user(Client &sender, const Wire &nickname, const Wire &message);
 		void send_status(Client &client, const Wire &code, const Wire &message);

@@ -147,7 +147,7 @@ void	Server::handle_invite(Client &client,
 	}
 
 	//Builds the invite message and reply, then sends it to the clients.
-	send_msg(target.get_socket(), client, "INVITE", target_nick, channel_name);
+	target.send(make_msg(client, "INVITE", target_nick, channel_name));
 	send_status(client, "341", target_nick + " " + channel_name);
 
 	channel.add_invited(target.get_socket());

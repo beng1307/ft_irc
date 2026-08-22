@@ -104,68 +104,48 @@ void Server::set_pollout(int fd, bool enable) {
 // accept right now instead of silently dropping it (the previous behavior of
 // send_string(), whose return value nobody checked). Arms POLLOUT so the
 // event loop resumes the flush once the client is writable again.
-void Server::queue_output(int fd, const Wire &data) {
+// Also flushes buffered output when called on POLLOUT (message is empty).
+void Server::send_to_client(int fd, const Wire &message) {
   Client &client = get_client(fd);
   if (!client)
     return;
 
   Wire &out = client.get_out_buffer();
-  size_t start = 0;
 
-  // Only attempt an immediate send while nothing is already queued;
-  // otherwise this write would be delivered ahead of already-buffered data.
-  if (out.empty()) {
-    ssize_t sent = send(fd, data.c_str(), data.size(), MSG_NOSIGNAL);
-    if (sent == static_cast<ssize_t>(data.size()))
+  if (!message.empty()) {
+    out += message;
+    if (out.size() > MAX_OUTPUT_BUFFER_SIZE) {
+      // Client isn't draining its receive side fast enough ("SendQ exceeded").
+      disconnect_client(fd);
       return;
-    if (sent == -1) {
-      // A full kernel send buffer reports EAGAIN/EWOULDBLOCK on a
-      // non-blocking socket; buffer the whole message for later.
-      if (errno != EAGAIN && errno != EWOULDBLOCK) {
-        // Any other error means the connection is dead. Disconnecting here
-        // is safe even though this call can be nested inside a channel
-        // broadcast: broadcasts iterate a temporary snapshot of member fds
-        // that disconnect_client() never touches.
-        disconnect_client(fd);
-        return;
-      }
-      sent = 0;
     }
-    start = static_cast<size_t>(sent);
   }
 
-  out += data.substr(start);
-  if (out.size() > MAX_OUTPUT_BUFFER_SIZE) {
-    // Client isn't draining its receive side fast enough ("SendQ exceeded").
-    disconnect_client(fd);
-    return;
-  }
-  set_pollout(fd, true);
-}
-
-// Flushes as much of a client's buffered output as the kernel currently
-// accepts. Called when poll() reports the client's socket is writable again.
-void Server::flush_client_output(int fd) {
-  Client &client = get_client(fd);
-  if (!client)
-    return;
-
-  Wire &out = client.get_out_buffer();
   if (out.empty()) {
     set_pollout(fd, false);
     return;
   }
 
   ssize_t sent = send(fd, out.c_str(), out.size(), MSG_NOSIGNAL);
-  if (sent > 0)
+  if (sent > 0) {
     out.erase(0, static_cast<size_t>(sent));
-  else if (sent == -1 && errno != EAGAIN && errno != EWOULDBLOCK) {
-    disconnect_client(fd);
-    return;
+  } else if (sent == -1) {
+    // A full kernel send buffer reports EAGAIN/EWOULDBLOCK on a
+    // non-blocking socket; buffer the whole message for later.
+    if (errno != EAGAIN && errno != EWOULDBLOCK) {
+      // Any other error means the connection is dead. Disconnecting here
+      // is safe even though this call can be nested inside a channel
+      // broadcast: broadcasts iterate a temporary snapshot of member fds
+      // that disconnect_client() never touches.
+      disconnect_client(fd);
+      return;
+    }
   }
 
   if (out.empty())
     set_pollout(fd, false);
+  else
+    set_pollout(fd, true);
 }
 
 // Handles input from client.
@@ -249,9 +229,10 @@ void Server::server_loop() {
       int fd = snapshot[index].fd;
       short revents = snapshot[index].revents;
       bool is_server_socket = (fd == get_server_socket());
+      Client &client = get_client(fd);
 
       // Skip fds already closed earlier in this same poll cycle.
-      if (!is_server_socket && !get_client(fd))
+      if (!is_server_socket && !client)
         continue;
 
       if (revents & (POLLERR | POLLHUP | POLLNVAL)) {
@@ -265,7 +246,8 @@ void Server::server_loop() {
 
       // A writable client socket: flush whatever output is still queued.
       if (revents & POLLOUT)
-        flush_client_output(fd);
+        // tells us client might be ready to receive again
+        client.send(); // flush cached messages in buffer
 
       // The flush above may have disconnected the client on a hard error.
       if (!is_server_socket && !get_client(fd))

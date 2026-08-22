@@ -44,6 +44,7 @@ class Client
 		// Methods & helper functions
 		
 		void register_client(const Wire &password);
+		void send(Wire message = Wire());
 
 
 		///////////////////////////////////////////////////////////////////////////////

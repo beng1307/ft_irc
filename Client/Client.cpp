@@ -1,6 +1,7 @@
 #include "Client.hpp"
 #include "../helpers/print.hpp"
 #include "../helpers/Wire.hpp"
+#include "../Server/Server.hpp"
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -64,6 +65,15 @@ void	Client::register_client(const Wire &password)
 		print("Client ", nickname, " registered successfully!");
 		this->is_registered = true;
 	}
+}
+
+void	Client::send(Wire message)
+{
+	if (!server)
+		return ;
+	if (!message.empty() && (message.length() < 2 || message.substr(message.length() - 2) != "\r\n"))
+		message += "\r\n";
+	server->send_to_client(socket, message);
 }
 
 

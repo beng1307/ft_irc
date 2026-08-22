@@ -165,6 +165,8 @@ void	Server::handle_nick_command(Client &client, const Vector<Wire> &arguments)
 
 	if (client.get_register_status())
 	{
+		// we do it like this because we want to avoid sending the same message 
+		// multiple times to a client because they share multiple channels.
 		get_client_audience(client.get_socket())
 			.add(client.get_socket())
 			.forEach(send_string_fn, make_msg(client, "NICK", ":" + new_nick), this);
@@ -220,7 +222,7 @@ void	Server::handle_cap_command(Client &client, const Vector<Wire> &arguments)
 		if (arguments[0] == "LS")
 		{
 			Wire cap_response = ":localhost CAP * LS :";
-			send_string(client.get_socket(), cap_response);
+			client.send(cap_response);
 		}
 		else if (arguments[0] == "END") {}
 	}
@@ -269,7 +271,7 @@ void	Server::handle_quit_command(Client &client, const Wire &line,
 
 	int client_fd = client.get_socket();
 	Wire bye = "ERROR :Closing connection";
-	send_string(client_fd, bye);
+	client.send(bye);
 
 	disconnect_client(client_fd);
 }
@@ -280,7 +282,7 @@ void	Server::handle_ping_command(Client &client, const Vector<Wire> &arguments)
 	if (!token.empty() && token[0] == ':')
 		token = token.substr(1);
 	Wire pong(":localhost PONG localhost :", token);
-	send_string(client.get_socket(), pong);
+	client.send(pong);
 }
 
 //Checks which command it is and uses the right function for it.
