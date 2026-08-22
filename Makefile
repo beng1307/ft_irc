@@ -10,7 +10,7 @@ SRCS = main.cpp \
 	   Server/ServerChannelOps.cpp \
 	   Server/ServerMessaging.cpp \
 	   Server/ServerHelper.cpp
-OBJS_FOLDER = obj
+OBJS_FOLDER = .obj
 OBJS = $(SRCS:%.cpp=$(OBJS_FOLDER)/%.o)
 HEADERS = Server/Server.hpp Channel/Channel.hpp Client/Client.hpp 
 
@@ -114,6 +114,9 @@ client: all
 		irssi -c localhost -p $(PORT) -w $(PASSWORD); \
 	fi
 
+final:
+	@./copy_to_final.sh
+
 help:
 	@echo "Usage: make [target] [args...]"
 	@echo ""
@@ -129,6 +132,7 @@ help:
 	@echo "  make caseverbose <pass> <case>      - Run single scenario with custom password in verbose mode"
 	@echo "  make caseverbose <p> <pass> <case>  - Run single scenario with custom credentials in verbose mode"
 	@echo "  make runv <case>                    - Alias for make caseverbose"
+	@echo "  make final                          - Export submission files to ../ft_irc_final"
 	@echo ""
 	@echo "  [.env file = can persist custom port/password configuration]"
 	@echo ""
@@ -142,4 +146,4 @@ help:
 %:
 	@:
 
-.PHONY: all clean fclean re run test case caseverbose env client help
+.PHONY: all clean fclean re run test case caseverbose env client help final

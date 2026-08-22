@@ -15,3 +15,5 @@ TMP
 .clangd
 .env
 .agents
+StyleTest
+WireTest

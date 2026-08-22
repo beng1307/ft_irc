@@ -1,0 +1,50 @@
+COMPILE = c++ -g -Wall -Wextra -Werror -std=c++98 -fPIE
+NAME = ircserv
+SRCS = main.cpp \
+	   Channel/Channel.cpp \
+	   Client/Client.cpp \
+	   Server/Server.cpp \
+	   Server/ServerSocket.cpp \
+	   Server/ServerLoop.cpp \
+	   Server/ServerCommands.cpp \
+	   Server/ServerChannelOps.cpp \
+	   Server/ServerMessaging.cpp \
+	   Server/ServerHelper.cpp
+OBJS_FOLDER = .obj
+OBJS = $(SRCS:%.cpp=$(OBJS_FOLDER)/%.o)
+HEADERS = Server/Server.hpp Channel/Channel.hpp Client/Client.hpp 
+
+$(NAME): $(OBJS)
+	$(COMPILE) $(OBJS) -o $(NAME)	
+
+$(OBJS_FOLDER)/%.o: %.cpp $(HEADERS)
+	@mkdir -p $(dir $@)
+	$(COMPILE) -c $< -o $@
+
+all: $(NAME)
+
+clean:
+	@rm -rf $(OBJS_FOLDER)
+
+fclean:	clean
+	@rm -f $(NAME)
+
+re: fclean all
+
+PORT ?= 6667
+PASSWORD ?= 1234
+
+run: all
+	@set -- $(filter-out $@,$(MAKECMDGOALS)); \
+	if [ $$# -ge 2 ]; then \
+		./$(NAME) "$$1" "$$2"; \
+	elif [ $$# -eq 1 ]; then \
+		./$(NAME) $(PORT) "$$1"; \
+	else \
+		./$(NAME) $(PORT) $(PASSWORD); \
+	fi
+
+%:
+	@:
+
+.PHONY: all clean fclean re run
