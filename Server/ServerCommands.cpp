@@ -270,10 +270,9 @@ void	Server::handle_quit_command(Client &client, const Wire &line,
 		.forEach(send_string_fn, make_msg(client, "QUIT", ":" + reason), this);
 
 	Wire bye = "ERROR :Closing connection";
+	// Defer the actual close until output buffer drains.
+	client.should_disconnect(true);
 	client.send(bye);
-
-	// Defer the actual close until POLLOUT confirms bye was sent.
-	client.set_close_after_output(true);
 }
 
 void	Server::handle_ping_command(Client &client, const Vector<Wire> &arguments)

@@ -121,31 +121,32 @@ void Server::send_to_client(int fd, const Wire &message) {
     }
   }
 
-  if (out.empty()) {
-    set_pollout(fd, false);
-    return;
-  }
-
-  ssize_t sent = send(fd, out.c_str(), out.size(), MSG_NOSIGNAL);
-  if (sent > 0) {
-    out.erase(0, static_cast<size_t>(sent));
-  } else if (sent == -1) {
-    // A full kernel send buffer reports EAGAIN/EWOULDBLOCK on a
-    // non-blocking socket; buffer the whole message for later.
-    if (errno != EAGAIN && errno != EWOULDBLOCK) {
-      // Any other error means the connection is dead. Disconnecting here
-      // is safe even though this call can be nested inside a channel
-      // broadcast: broadcasts iterate a temporary snapshot of member fds
-      // that disconnect_client() never touches.
-      disconnect_client(fd);
-      return;
+  if (!out.empty()) {
+    ssize_t sent = send(fd, out.c_str(), out.size(), MSG_NOSIGNAL);
+    if (sent > 0) {
+      out.erase(0, static_cast<size_t>(sent));
+    } else if (sent == -1) {
+      // A full kernel send buffer reports EAGAIN/EWOULDBLOCK on a
+      // non-blocking socket; buffer the whole message for later.
+      if (errno != EAGAIN && errno != EWOULDBLOCK) {
+        // Any other error means the connection is dead. Disconnecting here
+        // is safe even though this call can be nested inside a channel
+        // broadcast: broadcasts iterate a temporary snapshot of member fds
+        // that disconnect_client() never touches.
+        disconnect_client(fd);
+        return;
+      }
     }
   }
 
-  if (out.empty())
+  if (out.empty()) {
     set_pollout(fd, false);
-  else
+    // A queued QUIT reply has now fully drained; close the connection.
+    if (client.should_disconnect())
+      disconnect_client(fd);
+  } else {
     set_pollout(fd, true);
+  }
 }
 
 // Handles input from client.
@@ -179,14 +180,6 @@ void Server::handle_client_input(int client_fd) {
         disconnect_client(client_fd);
         return;
       }
-    }
-
-    // QUIT queues its own closing reply; flush and close once it's sent.
-    if (get_client(client_fd).get_close_after_output()) {
-      client.send();
-      if (get_client(client_fd) && get_client(client_fd).get_out_buffer().empty())
-        disconnect_client(client_fd);
-      return;
     }
 
     print("Received from client ", client_fd, ": ", buffer);
@@ -255,13 +248,6 @@ void Server::server_loop() {
       // The flush above may have disconnected the client on a hard error.
       if (!is_server_socket && !get_client(fd))
         continue;
-
-      // A queued QUIT reply has now fully drained; close the connection.
-      if (!is_server_socket && get_client(fd).get_close_after_output()
-          && get_client(fd).get_out_buffer().empty()) {
-        disconnect_client(fd);
-        continue;
-      }
 
       // If the current fd doesn't have POLLIN (pending input) set, go to the
       // next one.

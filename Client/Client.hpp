@@ -23,7 +23,7 @@ class Client
 		bool			pass_ok;
 		bool			is_registered;
 		bool 			is_admin;
-		bool			close_after_output;
+		bool			_should_disconnect;
 
 		Wire			buffer;
 		Wire			out_buffer;
@@ -84,8 +84,8 @@ class Client
 		void		set_out_buffer(const Wire &out_buffer);
 		Wire		&get_out_buffer();
 		Wire		get_out_buffer() const;
-		void		set_close_after_output(bool close_after_output);
-		bool		get_close_after_output() const;
+		bool		should_disconnect(bool state);
+		bool		should_disconnect() const;
 
 };
 		
