@@ -102,7 +102,7 @@ void	Server::handle_kick(Client &client, const Wire &line,
 
 	Wire kick_message = make_msg(client, "KICK", channel_name + " " + target_nick, reason);
 	channel.broadcast(kick_message);
-	remove_client_from_channel(channel, target.get_socket());
+	channel.remove_client_from_channel(target.get_socket());
 }
 
 
@@ -321,7 +321,7 @@ bool	Server::apply_mode_limit(Client &client, Channel &channel, char sign,
 			return (false);
 		}
 		const Wire &limit_str = arguments[param_index++];
-		size_t limit_value = static_cast<size_t>(std::atoi(limit_str.c_str()));
+		size_t limit_value = limit_str.toInt();
 		bool changed = channel.set_user_limit(limit_value);
 		append_mode_change(applied_modes, sign, 'l');
 		applied_params += " " + limit_str;

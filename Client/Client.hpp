@@ -4,6 +4,8 @@
 #include "../helpers/Wire.hpp"
 
 
+class Server;
+
 class Client
 {
 	private:
@@ -11,6 +13,7 @@ class Client
 		///////////////////////////////////////////////////////////////////////////////
 		// Private Variables
 		
+		Server			*server;
 		int				socket;
 
 		Wire			password;
@@ -32,7 +35,7 @@ class Client
 		// Constructors and destructor
 
 		Client();
-		Client(int socket);
+		Client(int socket, Server *server = NULL);
 		Client &operator=(const Client &other);
 		Client(const Client &other);
 
@@ -45,6 +48,9 @@ class Client
 
 		///////////////////////////////////////////////////////////////////////////////
 		// Setter & Getter
+
+		void		set_server(Server *server);
+		Server		*get_server() const;
 
 		void		set_socket(const int &socket);
 		int			get_socket() const;
@@ -70,6 +76,8 @@ class Client
 		void		set_buffer(const Wire &buffer);
 		Wire		&get_buffer();
 		Wire		get_buffer() const;
+		void		append_raw_buffer(const char *data, size_t size);
+		void		append_buffer(const Wire &data);
 
 		void		set_out_buffer(const Wire &out_buffer);
 		Wire		&get_out_buffer();

@@ -13,21 +13,19 @@
 void	Server::let_client_join_channel(const Wire &channel_name, Client &client, const Wire &key)
 {
 	int client_fd = client.get_socket();
-
-	if (!get_channel(channel_name))
+	Channel &channel = get_channel(channel_name);
+	if (!channel)
 	{
-		Channel new_channel(channel_name);
+		Channel &new_channel = create_new_channel(channel_name);
 		new_channel.add_member(client_fd);
 		new_channel.add_operator(client_fd);
 		new_channel.broadcast(client, "JOIN");
-		
-		add_channel(new_channel);
 		print("Client joined channel ", channel_name, "!");
 		print("Channel ", channel_name, " created!");
 	}
 	else
 	{
-		Channel &channel = get_channel(channel_name);
+
 
 		//It gets checked if the client has the right to join.
 
@@ -89,7 +87,7 @@ void	Server::part_client_from_channel(Client &client, const Wire &channel_name,
 	}
 
 	channel.broadcast(client, "PART", reason);
-	remove_client_from_channel(channel, client.get_socket());
+	channel.remove_client_from_channel(client.get_socket());
 	print("Client left channel ", channel_name, "!");
 }
 
@@ -169,7 +167,7 @@ void	Server::handle_nick_command(Client &client, const Vector<Wire> &arguments)
 	{
 		get_client_audience(client.get_socket())
 			.add(client.get_socket())
-			.forEach(send_string, make_msg(client, "NICK", ":" + new_nick));
+			.forEach(send_string_fn, make_msg(client, "NICK", ":" + new_nick), this);
 	}
 	client.set_nickname(new_nick);
 	try_register_client(client);
@@ -267,7 +265,7 @@ void	Server::handle_quit_command(Client &client, const Wire &line,
 		reason = arguments[0];
 
 	get_client_audience(client.get_socket())
-		.forEach(send_string, make_msg(client, "QUIT", ":" + reason));
+		.forEach(send_string_fn, make_msg(client, "QUIT", ":" + reason), this);
 
 	int client_fd = client.get_socket();
 	Wire bye = "ERROR :Closing connection";

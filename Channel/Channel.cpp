@@ -8,7 +8,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 // Consturctors and destructor
 
-Channel::Channel(): name(""), topic(""), member_fds(), operator_fds(), invited_fds(),
+Channel::Channel(): server(NULL), name(""), topic(""), member_fds(), operator_fds(), invited_fds(),
 	invite_only(false), topic_restricted(false), key_enabled(false), channel_key(""),
 	limit_enabled(false), user_limit(0)
 {
@@ -19,7 +19,7 @@ Channel::Channel(): name(""), topic(""), member_fds(), operator_fds(), invited_f
 	return ;
 }
 
-Channel::Channel(const Wire &name): name(name), topic(""), member_fds(), operator_fds(), invited_fds(),
+Channel::Channel(const Wire &name, Server *server): server(server), name(name), topic(""), member_fds(), operator_fds(), invited_fds(),
 	invite_only(false), topic_restricted(false), key_enabled(false), channel_key(""),
 	limit_enabled(false), user_limit(0)
 {
@@ -30,7 +30,7 @@ Channel::Channel(const Wire &name): name(name), topic(""), member_fds(), operato
 	return ;
 }
 
-Channel::Channel(const Channel &other): name(other.name), topic(other.topic),
+Channel::Channel(const Channel &other): server(other.server), name(other.name), topic(other.topic),
 	member_fds(other.member_fds), operator_fds(other.operator_fds), invited_fds(other.invited_fds),
 	invite_only(other.invite_only), topic_restricted(other.topic_restricted),
 	key_enabled(other.key_enabled), channel_key(other.channel_key),
@@ -44,6 +44,7 @@ Channel	&Channel::operator=(const Channel &other)
 {
 	if (this != &other)
 	{
+		server = other.server;
 		name = other.name;
 		topic = other.topic;
 		member_fds = other.member_fds;
@@ -69,6 +70,16 @@ Channel::~Channel()
 
 ///////////////////////////////////////////////////////////////////////////////
 // Setter, Getter & Helper
+
+void	Channel::set_server(Server *server)
+{
+	this->server = server;
+}
+
+Server	*Channel::get_server() const
+{
+	return (server);
+}
 
 void	Channel::set_name(const Wire &name)
 {
@@ -104,11 +115,13 @@ bool	Channel::has_member(int client_fd) const
 }
 
 //Erases member from the member/operater/invited fds.
-void	Channel::remove_member_from_channel(int client_fd)
+void	Channel::remove_client_from_channel(int client_fd)
 {
 	remove_invited(client_fd);
 	remove_operator(client_fd);
 	remove_member(client_fd);
+	if (empty() && server)
+		server->remove_channel(name);
 }
 
 bool	Channel::remove_operator(int client_fd)
@@ -246,7 +259,7 @@ bool	Channel::empty() const
 
 void	Channel::broadcast(const Wire &message, int except_fd) const
 {
-	member_fds.subtract(except_fd).forEach(send_string, message);
+	member_fds.subtract(except_fd).forEach(send_string_fn, message, server);
 }
 
 void	Channel::broadcast(const Client &client, const Wire &cmd, const Wire &param) const

@@ -13,11 +13,7 @@
 // Set to false on SIGINT / SIGTERM to trigger graceful event-loop termination.
 extern bool g_running;
 
-// The single running Server instance (defined/set in ServerLoop.cpp).
-// Free helper functions (send_string/send_msg) are invoked as bare callbacks
-// (e.g. via Set::forEach) that cannot carry a Server& through every call
-// site, so they reach the live instance through this pointer instead.
-extern class Server *g_active_server;
+
 
 typedef Map<Wire, Channel> ChannelMap;
 typedef Map<int, Client>   ClientMap;
@@ -84,9 +80,8 @@ class Server
 		const ChannelMap &get_channels() const;
 		Channel &get_channel(const Wire &name);
 		const Channel &get_channel(const Wire &name) const;
-		void add_channel(const Channel &channel);
+		Channel &create_new_channel(const Wire &channel_name);
 		void remove_channel(const Wire &channel_name);
-		void remove_client_from_channel(Channel &channel, int client_fd);
 
 		void set_fds(const Vector<pollfd> &fds);
 		Vector<pollfd> &get_fds();
@@ -131,6 +126,8 @@ class Server
 		void part_client_from_channel(Client &client, const Wire &channel_name, const Wire &reason);
 		void send_message_to_channel(Client &sender, const Wire &channel_name, const Wire &message);
 
+		ssize_t send_string(int fd, const Wire &str);
+		ssize_t send_msg(int fd, const Client &client, const Wire &cmd, const Wire &target, const Wire &param = "");
 		void send_message_to_user(Client &sender, const Wire &nickname, const Wire &message);
 		void send_status(Client &client, const Wire &code, const Wire &message);
 		void send_channel_names_reply(Client &client, const Wire &channel_name);
@@ -139,8 +136,7 @@ class Server
 
 };
 Wire	make_msg(const Client &client, const Wire &cmd, const Wire &target, const Wire &param = "");
-ssize_t	send_string(int fd, const Wire &str);
-ssize_t	send_msg(int fd, const Client &client, const Wire &cmd, const Wire &target, const Wire &param = "");
+ssize_t	send_string_fn(int fd, const Wire &str, Server *server);
 
 
 #endif

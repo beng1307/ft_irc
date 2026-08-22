@@ -6,6 +6,8 @@
 #include "../helpers/Set.hpp"
 
 
+class Server;
+
 class	Channel
 {
 	private:
@@ -13,6 +15,7 @@ class	Channel
 ///////////////////////////////////////////////////////////////////////////////
 // Variables
 
+		Server				*server;
 		Wire				name;
 		Wire				topic;
 
@@ -37,7 +40,7 @@ class	Channel
 // Consturctors and destructor
 
 		Channel();
-		Channel(const Wire &name);
+		Channel(const Wire &name, Server *server = NULL);
 		Channel(const Channel &other);
 		Channel &operator=(const Channel &other);
 		~Channel();
@@ -45,6 +48,9 @@ class	Channel
 
 ///////////////////////////////////////////////////////////////////////////////
 // Setter, Getter & Helper
+
+		void				set_server(Server *server);
+		Server				*get_server() const;
 
 		void				set_name(const Wire &name);
 		Wire				get_name() const;
@@ -67,7 +73,7 @@ class	Channel
 
 		void				add_member(int client_fd);
 		bool				has_member(int client_fd) const;
-		void				remove_member_from_channel(int client_fd);
+		void				remove_client_from_channel(int client_fd);
 		void				remove_invited(int client_fd);
 		bool				remove_operator(int client_fd);
 		void				remove_member(int client_fd);

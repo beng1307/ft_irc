@@ -11,23 +11,25 @@ Wire	make_msg(const Client &client, const Wire &cmd, const Wire &target, const W
 	return msg;
 }
 
-ssize_t	send_string(int fd, const Wire &str)
+ssize_t	Server::send_string(int fd, const Wire &str)
 {
 	Wire out = str;
 	if (out.length() < 2 || out.substr(out.length() - 2) != "\r\n")
 		out += "\r\n";
-	// Routed through the running Server's output queue (see queue_output() in
-	// ServerLoop.cpp) instead of calling send() directly, so data survives a
-	// full kernel send buffer (e.g. a slow/paused client) rather than being
-	// silently dropped whenever send() returns EAGAIN/EWOULDBLOCK.
-	if (g_active_server)
-		g_active_server->queue_output(fd, out);
+	queue_output(fd, out);
 	return static_cast<ssize_t>(out.size());
 }
 
-ssize_t	send_msg(int fd, const Client &client, const Wire &cmd, const Wire &target, const Wire &param)
+ssize_t	Server::send_msg(int fd, const Client &client, const Wire &cmd, const Wire &target, const Wire &param)
 {
 	return send_string(fd, make_msg(client, cmd, target, param));
+}
+
+ssize_t	send_string_fn(int fd, const Wire &str, Server *server)
+{
+	if (server)
+		return server->send_string(fd, str);
+	return 0;
 }
 
 //Sends a status/reply to a client

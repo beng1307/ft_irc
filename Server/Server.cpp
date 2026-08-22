@@ -22,6 +22,10 @@ Server::Server(int port, Wire password):
 Server::Server(const Server &other): port(other.port), password(other.password),
 	server_socket(other.server_socket), clients(other.clients), channels(other.channels), fds(other.fds)
 {
+	for (ChannelMap::iterator it = channels.begin(); it != channels.end(); ++it)
+		it->second.set_server(this);
+	for (ClientMap::iterator it = clients.begin(); it != clients.end(); ++it)
+		it->second.set_server(this);
 	return ;
 }
 
@@ -35,6 +39,10 @@ Server	&Server::operator=(const Server &other)
 		clients = other.clients;
 		channels = other.channels;
 		fds = other.fds;
+		for (ChannelMap::iterator it = channels.begin(); it != channels.end(); ++it)
+			it->second.set_server(this);
+		for (ClientMap::iterator it = clients.begin(); it != clients.end(); ++it)
+			it->second.set_server(this);
 	}
 	return (*this);
 }
@@ -88,6 +96,8 @@ int	Server::get_server_socket() const
 void	Server::set_clients(const ClientMap &clients)
 {
 	this->clients = clients;
+	for (ClientMap::iterator it = this->clients.begin(); it != this->clients.end(); ++it)
+		it->second.set_server(this);
 }
 
 ClientMap	&Server::get_clients()
@@ -127,7 +137,7 @@ const Client	&Server::get_client(const Wire &nickname) const
 
 void	Server::add_client(int socket)
 {
-	clients[socket] = Client(socket);
+	clients[socket] = Client(socket, this);
 }
 
 void	Server::remove_client(int socket)
@@ -138,6 +148,8 @@ void	Server::remove_client(int socket)
 void	Server::set_channels(const ChannelMap &channels)
 {
 	this->channels = channels;
+	for (ChannelMap::iterator it = this->channels.begin(); it != this->channels.end(); ++it)
+		it->second.set_server(this);
 }
 
 ChannelMap	&Server::get_channels()
@@ -160,22 +172,15 @@ const Channel	&Server::get_channel(const Wire &name) const
 	return (channels.fetch(name));
 }
 
-void	Server::add_channel(const Channel &channel)
+Channel	&Server::create_new_channel(const Wire &channel_name)
 {
-	channels[channel.get_name()] = channel;
+	channels[channel_name] = Channel(channel_name, this);
+	return (channels[channel_name]);
 }
 
 void	Server::remove_channel(const Wire &channel_name)
 {
 	channels.erase(channel_name);
-}
-
-void	Server::remove_client_from_channel(Channel &channel, int client_fd)
-{
-	Wire channel_name = channel.get_name();
-	channel.remove_member_from_channel(client_fd);
-	if (channel.empty())
-		remove_channel(channel_name);
 }
 
 void	Server::set_fds(const Vector<pollfd> &fds)

@@ -17,9 +17,7 @@ static const size_t MAX_IRC_LINE_CONTENT_LENGTH = 510;
 // burst sizes (e.g. large channel floods) so normal traffic is never dropped.
 static const size_t MAX_OUTPUT_BUFFER_SIZE = 32 * 1024 * 1024;
 
-// The single running Server instance, used by the free send_string()/send_msg()
-// helpers (see ServerMessaging.cpp) so they can route through queue_output().
-Server *g_active_server = NULL;
+
 
 static bool input_exceeds_irc_line_limit(const Wire &input) {
   size_t delimiter_position = input.find("\r\n");
@@ -63,13 +61,14 @@ void Server::accept_new_client(int client_socket) {
 // clients map and fds array.
 void Server::disconnect_client(int client_fd) {
   // Remove client from all channels and erase empty channels
-  for (ChannelMap::iterator it = get_channels().begin(); it != get_channels().end();) {
+  Vector<Wire> empty_channels;
+  for (ChannelMap::iterator it = get_channels().begin(); it != get_channels().end(); ++it) {
     it->second.remove_member(client_fd);
     if (it->second.empty())
-      get_channels().erase(it++);
-    else
-      ++it;
+      empty_channels.push_back(it->first);
   }
+  for (size_t i = 0; i < empty_channels.size(); ++i)
+    remove_channel(empty_channels[i]);
 
   // Erase from clients map
   remove_client(client_fd);
@@ -173,14 +172,15 @@ void Server::flush_client_output(int fd) {
 void Server::handle_client_input(int client_fd) {
   char buffer[512];
 
+  Client &client = get_client(client_fd);
   // Recieves the message from client and saves it into the buffer.
   int bytes_received = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
-  if (bytes_received > 0) {
-    // Nullterminates the message in the buffer, deklares the current client
-    // and appends the buffer to the Clients buffer.
+  if (bytes_received == 0) {
+    disconnect_client(client_fd);
+    // Client closed the connection. So he has to be removed.
+  } else if (bytes_received > 0) {
     buffer[bytes_received] = '\0';
-    Client &client = get_clients()[client_fd];
-    client.get_buffer().append(buffer, bytes_received);
+    client.append_raw_buffer(buffer, bytes_received);
 
     // If the end of a message is found, it gets processed.
     size_t position = client.get_buffer().find("\r\n");
@@ -202,9 +202,6 @@ void Server::handle_client_input(int client_fd) {
     }
 
     print("Received from client ", client_fd, ": ", buffer);
-  } else if (bytes_received == 0) {
-    // Client closed the connection. So he has to be removed.
-    disconnect_client(client_fd);
   } else {
     // With a non-blocking socket, recv() can return -1 with
     // EAGAIN/EWOULDBLOCK if no data is currently available.
@@ -224,7 +221,6 @@ void Server::server_loop() {
   // Adds the server socket to the fds, after
   // its flag got changed to nonblocking.
   add_fds(get_server_socket(), POLLIN, 0);
-  g_active_server = this;
 
   while (g_running) {
     // Wait for events on the file descriptors (-1 == endlessly).

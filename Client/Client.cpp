@@ -7,7 +7,7 @@
 // Consturctors and destructor
 
 Client::Client():
-	socket(0), password(""), username(""),
+	server(NULL), socket(0), password(""), username(""),
 	nickname(""), pass_ok(false), is_registered(false), is_admin(false),
 	buffer(""), out_buffer("")
 {
@@ -15,8 +15,8 @@ Client::Client():
 	return ;
 }
 
-Client::Client(int socket):
-	socket(socket), password(""), username(""),
+Client::Client(int socket, Server *server):
+	server(server), socket(socket), password(""), username(""),
 	nickname(""), pass_ok(false), is_registered(false), is_admin(false),
 	buffer(""), out_buffer("")
 {
@@ -25,7 +25,7 @@ Client::Client(int socket):
 }
 
 Client::Client(const Client &other):
-	socket(other.socket), password(other.password),
+	server(other.server), socket(other.socket), password(other.password),
 	username(other.username), nickname(other.nickname),
 	pass_ok(other.pass_ok), is_registered(other.is_registered), is_admin(other.is_admin),
 	buffer(other.buffer), out_buffer(other.out_buffer)
@@ -38,6 +38,7 @@ Client	&Client::operator=(const Client &other)
 {
 	if (this != &other)
 	{
+		server = other.server;
 		socket = other.socket;
 		nickname = other.nickname;
 		username = other.username;
@@ -68,6 +69,16 @@ void	Client::register_client(const Wire &password)
 
 ///////////////////////////////////////////////////////////////////////////////
 // Setter & Getter
+
+void	Client::set_server(Server *server)
+{
+	this->server = server;
+}
+
+Server	*Client::get_server() const
+{
+	return (server);
+}
 
 void	Client::set_socket(const int &socket)
 {
@@ -157,6 +168,16 @@ Wire	&Client::get_buffer()
 Wire	Client::get_buffer() const
 {
 	return (buffer);
+}
+
+void	Client::append_raw_buffer(const char *data, size_t size)
+{
+	buffer.append(data, size);
+}
+
+void	Client::append_buffer(const Wire &data)
+{
+	buffer += data;
 }
 
 void	Client::set_out_buffer(const Wire &out_buffer)
