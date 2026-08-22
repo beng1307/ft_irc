@@ -143,8 +143,11 @@ public:
         return *this;
     }
 
-    bool contains(Wire delimiter) const {
-        return this->find(delimiter) != string::npos;
+    bool contains(Wire delimiter, bool caseSensitive = true) const {
+        if (caseSensitive) {
+            return this->find(delimiter) != string::npos;
+        }
+        return this->toLower().find(delimiter.toLower()) != string::npos;
     }
 
     bool containsOneOf(const Vector<Wire>& options) const {

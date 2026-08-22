@@ -15,7 +15,7 @@ static const size_t MAX_IRC_LINE_CONTENT_LENGTH = 510;
 // an IRC server's "SendQ"). Guards against unbounded memory growth if a
 // client never drains its receive side, while staying well above realistic
 // burst sizes (e.g. large channel floods) so normal traffic is never dropped.
-static const size_t MAX_OUTPUT_BUFFER_SIZE = 32 * 1024 * 1024;
+static const size_t MAX_OUTPUT_BUFFER_SIZE = 1 * 1024 * 1024;
 
 
 
