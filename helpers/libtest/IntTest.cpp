@@ -160,6 +160,19 @@ void testInt() {
     assert((x < bad) == false);
     assert((bad < x) == false);
 
+    // 7. Conversions to other numeric types (e.g. size_t, unsigned int, long)
+    Int num(42);
+    size_t s1 = static_cast<size_t>(num);
+    size_t s2 = num;
+    unsigned int u = num;
+    long l = num;
+    unsigned long ul = num;
+    assert(s1 == 42);
+    assert(s2 == 42);
+    assert(u == 42);
+    assert(l == 42);
+    assert(ul == 42);
+
     print("--- All Int Tests Passed Successfully ---");
 }
 

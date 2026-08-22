@@ -24,8 +24,11 @@ struct NAME {                                                                   
     /* implemented in Wire due to include order */                               \
     Wire toStr() const;                                                          \
                                                                                  \
-    /* implicit conversion to INNER */                                           \
+    /* implicit conversion to INNER and numeric types */                         \
     operator INNER() const { return val; }                                       \
+    operator unsigned int() const { return static_cast<unsigned int>(val); }     \
+    operator long() const { return static_cast<long>(val); }                     \
+    operator unsigned long() const { return static_cast<unsigned long>(val); }   \
                                                                                  \
     /* arithmetic: returns NAME, propagates _ok */                               \
     NAME operator+(const NAME& rhs) const {                                      \
