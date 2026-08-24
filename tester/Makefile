@@ -1,3 +1,4 @@
+SHELL := /bin/bash
 NAME = testrunner
 CONCURRENCY_NAME = concurrency_tester
 CXX = c++
@@ -34,8 +35,129 @@ ENV_PASSWORD := $(PASSWORD)
 PORT := $(if $(ENV_PORT),$(ENV_PORT),6667)
 PASSWORD := $(if $(ENV_PASSWORD),$(ENV_PASSWORD),1234)
 
-# make run [port] [pass] OR make run [pass] OR make run = run all scenarios
+# make run [/folder] OR make run [port] [pass] [/folder] OR make run [pass] [/folder]
+# make run DIR=<folder> OR make run FOLDER=<folder>
 run: $(NAME)
+	@set -- $(filter-out $@,$(MAKECMDGOALS)); \
+	port=""; pass=""; targets=(); nums=(); \
+	for arg in "$$@"; do \
+		clean_arg="$${arg#/}"; clean_arg="$${clean_arg%/}"; \
+		if [[ "$$arg" == /* ]] || [[ "$$arg" == */ ]] || [ -d "$$arg" ] || [ -d "scenarios/$$arg" ] || [ -d "scenarios/$$clean_arg" ] || [ -n "$$(find scenarios -mindepth 1 -maxdepth 2 -type d \( -iname "$$clean_arg" -o -name "$$clean_arg" \) 2>/dev/null)" ]; then \
+			targets+=("$$arg"); \
+		elif [[ "$$arg" =~ ^[0-9]+$$ ]]; then \
+			nums+=("$$arg"); \
+		else \
+			targets+=("$$arg"); \
+		fi; \
+	done; \
+	if [ $${#nums[@]} -ge 2 ]; then \
+		port="$${nums[0]}"; \
+		pass="$${nums[1]}"; \
+		if [ $${#nums[@]} -gt 2 ]; then \
+			for (( i=2; i<$${#nums[@]}; i++ )); do \
+				targets+=("$${nums[$$i]}"); \
+			done; \
+		fi; \
+	elif [ $${#nums[@]} -eq 1 ]; then \
+		if [ $${#targets[@]} -gt 0 ] && [ "$${nums[0]}" -le 99 ] 2>/dev/null; then \
+			targets+=("$${nums[0]}"); \
+		else \
+			pass="$${nums[0]}"; \
+		fi; \
+	fi; \
+	cmd=("./run_scenarios"); \
+	if [ -n "$(DIR)$(FOLDER)" ]; then cmd+=(--dir "$(if $(DIR),$(DIR),$(FOLDER))"); fi; \
+	if [ -n "$$port" ]; then cmd+=(--port "$$port"); fi; \
+	if [ -n "$$pass" ]; then cmd+=(--password "$$pass"); fi; \
+	if [ $${#targets[@]} -gt 0 ]; then cmd+=("$${targets[@]}"); fi; \
+	"$${cmd[@]}"
+
+# make case [testcase|/folder] OR make case [pass] [case|/folder] OR make case [port] [pass] [case|/folder]
+case: $(NAME)
+	@set -- $(filter-out $@,$(MAKECMDGOALS)); \
+	if [ $$# -eq 0 ] && [ -z "$(DIR)$(FOLDER)" ]; then \
+		echo "Usage: make case <testcase|/folder>  OR  make case <pass> <testcase|/folder>  OR  make case <port> <pass> <testcase|/folder>"; \
+		exit 1; \
+	fi; \
+	port=""; pass=""; targets=(); nums=(); \
+	for arg in "$$@"; do \
+		clean_arg="$${arg#/}"; clean_arg="$${clean_arg%/}"; \
+		if [[ "$$arg" == /* ]] || [[ "$$arg" == */ ]] || [ -d "$$arg" ] || [ -d "scenarios/$$arg" ] || [ -d "scenarios/$$clean_arg" ] || [ -n "$$(find scenarios -mindepth 1 -maxdepth 2 -type d \( -iname "$$clean_arg" -o -name "$$clean_arg" \) 2>/dev/null)" ]; then \
+			targets+=("$$arg"); \
+		elif [[ "$$arg" =~ ^[0-9]+$$ ]]; then \
+			nums+=("$$arg"); \
+		else \
+			targets+=("$$arg"); \
+		fi; \
+	done; \
+	if [ $${#nums[@]} -ge 2 ]; then \
+		port="$${nums[0]}"; \
+		pass="$${nums[1]}"; \
+		if [ $${#nums[@]} -gt 2 ]; then \
+			for (( i=2; i<$${#nums[@]}; i++ )); do \
+				targets+=("$${nums[$$i]}"); \
+			done; \
+		fi; \
+	elif [ $${#nums[@]} -eq 1 ]; then \
+		if [ $${#targets[@]} -gt 0 ] && [ "$${nums[0]}" -le 99 ] 2>/dev/null; then \
+			targets+=("$${nums[0]}"); \
+		elif [ $${#targets[@]} -gt 0 ]; then \
+			pass="$${nums[0]}"; \
+		else \
+			targets+=("$${nums[0]}"); \
+		fi; \
+	fi; \
+	cmd=("./run_scenarios"); \
+	if [ -n "$(DIR)$(FOLDER)" ]; then cmd+=(--dir "$(if $(DIR),$(DIR),$(FOLDER))"); fi; \
+	if [ -n "$$port" ]; then cmd+=(--port "$$port"); fi; \
+	if [ -n "$$pass" ]; then cmd+=(--password "$$pass"); fi; \
+	if [ $${#targets[@]} -gt 0 ]; then cmd+=("$${targets[@]}"); fi; \
+	"$${cmd[@]}"
+
+# make caseverbose [testcase|/folder] OR make caseverbose [pass] [case|/folder] OR make caseverbose [port] [pass] [case|/folder]
+caseverbose: $(NAME)
+	@set -- $(filter-out $@,$(MAKECMDGOALS)); \
+	port=""; pass=""; targets=(); nums=(); \
+	for arg in "$$@"; do \
+		clean_arg="$${arg#/}"; clean_arg="$${clean_arg%/}"; \
+		if [[ "$$arg" == /* ]] || [[ "$$arg" == */ ]] || [ -d "$$arg" ] || [ -d "scenarios/$$arg" ] || [ -d "scenarios/$$clean_arg" ] || [ -n "$$(find scenarios -mindepth 1 -maxdepth 2 -type d \( -iname "$$clean_arg" -o -name "$$clean_arg" \) 2>/dev/null)" ]; then \
+			targets+=("$$arg"); \
+		elif [[ "$$arg" =~ ^[0-9]+$$ ]]; then \
+			nums+=("$$arg"); \
+		else \
+			targets+=("$$arg"); \
+		fi; \
+	done; \
+	if [ $${#nums[@]} -ge 2 ]; then \
+		port="$${nums[0]}"; \
+		pass="$${nums[1]}"; \
+		if [ $${#nums[@]} -gt 2 ]; then \
+			for (( i=2; i<$${#nums[@]}; i++ )); do \
+				targets+=("$${nums[$$i]}"); \
+			done; \
+		fi; \
+	elif [ $${#nums[@]} -eq 1 ]; then \
+		if [ $${#targets[@]} -gt 0 ] && [ "$${nums[0]}" -le 99 ] 2>/dev/null; then \
+			targets+=("$${nums[0]}"); \
+		else \
+			pass="$${nums[0]}"; \
+		fi; \
+	fi; \
+	cmd=("./run_scenarios"); \
+	if [ -n "$(DIR)$(FOLDER)" ]; then cmd+=(--dir "$(if $(DIR),$(DIR),$(FOLDER))"); fi; \
+	if [ -n "$$port" ]; then cmd+=(--port "$$port"); fi; \
+	if [ -n "$$pass" ]; then cmd+=(--password "$$pass"); fi; \
+	if [ $${#targets[@]} -gt 0 ]; then cmd+=("$${targets[@]}"); fi; \
+	VERBOSE=1 "$${cmd[@]}"
+
+# Alias for make caseverbose
+runv: caseverbose
+
+# make full [port] [pass] OR make full [pass] OR make full = run all 3 test suites (run, memory, lifecycle)
+full: $(NAME)
+	@printf "\n\033[1;35m======================================================================\033[0m\n"
+	@printf "\033[1;35m             TEST SUITE 1/3: SCENARIO INTEGRATION TESTS (run)         \033[0m\n"
+	@printf "\033[1;35m======================================================================\033[0m\n\n"
 	@set -- $(filter-out $@,$(MAKECMDGOALS)); \
 	if [ $$# -ge 2 ]; then \
 		./run_scenarios --port "$$1" --password "$$2"; \
@@ -44,37 +166,15 @@ run: $(NAME)
 	else \
 		./run_scenarios; \
 	fi
+	@printf "\n\033[1;35m======================================================================\033[0m\n"
+	@printf "\033[1;35m             TEST SUITE 2/3: MEMORY & DOS STRESS TESTS (memory)       \033[0m\n"
+	@printf "\033[1;35m======================================================================\033[0m\n\n"
+	@python3 ./test_memory_dos.py
+	@printf "\n\033[1;35m======================================================================\033[0m\n"
+	@printf "\033[1;35m             TEST SUITE 3/3: SERVER LIFECYCLE TESTS (lifecycle)       \033[0m\n"
+	@printf "\033[1;35m======================================================================\033[0m\n\n"
+	@./test_server_lifecycle.sh
 
-# make case [testcase] OR make case [pass] [testcase] OR make case [port] [pass] [testcase]
-case: $(NAME)
-	@set -- $(filter-out $@,$(MAKECMDGOALS)); \
-	if [ $$# -eq 1 ]; then \
-		./run_scenarios "$$1"; \
-	elif [ $$# -eq 2 ]; then \
-		./run_scenarios --port $(PORT) --password "$$1" "$$2"; \
-	elif [ $$# -ge 3 ]; then \
-		./run_scenarios --port "$$1" --password "$$2" "$$3"; \
-	else \
-		echo "Usage: make case <testcase>  OR  make case <pass> <testcase>  OR  make case <port> <pass> <testcase>"; \
-		exit 1; \
-	fi
-
-# make caseverbose [testcase] OR make caseverbose [pass] [testcase] OR make caseverbose [port] [pass] [testcase]
-caseverbose: $(NAME)
-	@set -- $(filter-out $@,$(MAKECMDGOALS)); \
-	if [ $$# -eq 1 ]; then \
-		VERBOSE=1 ./run_scenarios "$$1"; \
-	elif [ $$# -eq 2 ]; then \
-		VERBOSE=1 ./run_scenarios --port $(PORT) --password "$$1" "$$2"; \
-	elif [ $$# -ge 3 ]; then \
-		VERBOSE=1 ./run_scenarios --port "$$1" --password "$$2" "$$3"; \
-	else \
-		echo "Usage: make caseverbose <testcase>  OR  make caseverbose <pass> <testcase>  OR  make caseverbose <port> <pass> <testcase>"; \
-		exit 1; \
-	fi
-
-# Alias for make caseverbose
-runv: caseverbose
 
 lifecycle:
 	@./test_server_lifecycle.sh
@@ -104,15 +204,16 @@ help:
 	@echo ""
 	@echo "  make                                - Compile testrunner and concurrency_tester"
 	@echo "  make run                            - Run all scenarios"
-	@echo "  make run <password>                 - Run all scenarios with custom password (port: .env or 6667)"
-	@echo "  make run <port> <password>          - Run all scenarios with custom port and password"
-	@echo "  make case <testcase>                - Run single test scenario"
+	@echo "  make run <folder>                   - Run scenarios in specified folder (e.g. make run commands)"
+	@echo "  make run DIR=<folder>               - Run scenarios in specified folder"
+	@echo "  make run <password> [folder]        - Run scenarios with custom password (port: .env or 6667)"
+	@echo "  make run <port> <password> [folder] - Run scenarios with custom port and password"
+	@echo "  make runv [folder/testcase]         - Run scenarios in verbose mode"
+	@echo "  make case <testcase|folder>         - Run single test scenario or folder"
 	@echo "  make case <password> <testcase>     - Run single test scenario with custom password"
 	@echo "  make case <port> <password> <case>  - Run single test scenario with custom port and password"
-	@echo "  make caseverbose <testcase>         - Run single test scenario in verbose mode"
-	@echo "  make caseverbose <pass> <testcase>  - Run single test scenario with custom password in verbose mode"
-	@echo "  make caseverbose <p> <pass> <case>  - Run single test scenario with custom port & pass in verbose mode"
-	@echo "  make runv <testcase>                - Alias for make caseverbose"
+	@echo "  make caseverbose <testcase|folder>  - Run single test scenario or folder in verbose mode"
+	@echo "  make full                           - Run all 3 test suites (run, memory, lifecycle)"
 	@echo "  make concurrency                    - Run concurrency and thread-safety tests"
 	@echo "  make lifecycle                      - Run server lifecycle and reboot tests"
 	@echo "  make memory                         - Run memory / leak / stress tests"
@@ -127,4 +228,4 @@ help:
 %:
 	@:
 
-.PHONY: all clean fclean re run runv case caseverbose lifecycle concurrency memory env help
+.PHONY: all clean fclean re run full runv case caseverbose lifecycle concurrency memory env help

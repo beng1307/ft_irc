@@ -1,3 +1,4 @@
+SHELL := /bin/bash
 MAKEFLAGS += -j
 
 COMPILE = c++ -g -Wall -Wextra -Werror -std=c++98 -fPIE
@@ -52,46 +53,120 @@ run: all
 		./ircserv $(PORT) $(PASSWORD); \
 	fi
 
-# make test [port] [password] OR make test [password] = run all scenarios (uses .env or default if omitted)
+# make test [/folder] OR make test [port] [pass] [/folder] OR make test [pass] [/folder]
+# make test DIR=<folder> OR make test FOLDER=<folder>
 test: all
 	@set -- $(filter-out $@,$(MAKECMDGOALS)); \
-	if [ $$# -ge 2 ]; then \
-		SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_scenarios --port "$$1" --password "$$2"; \
-	elif [ $$# -eq 1 ]; then \
-		SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_scenarios --port $(PORT) --password "$$1"; \
-	else \
-		SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_scenarios; \
-	fi
+	port=""; pass=""; targets=(); nums=(); \
+	for arg in "$$@"; do \
+		clean_arg="$${arg#/}"; clean_arg="$${clean_arg%/}"; \
+		if [[ "$$arg" == /* ]] || [[ "$$arg" == */ ]] || [ -d "$$arg" ] || [ -d "tester/scenarios/$$arg" ] || [ -d "tester/scenarios/$$clean_arg" ] || [ -n "$$(find tester/scenarios -mindepth 1 -maxdepth 2 -type d \( -iname "$$clean_arg" -o -name "$$clean_arg" \) 2>/dev/null)" ]; then \
+			targets+=("$$arg"); \
+		elif [[ "$$arg" =~ ^[0-9]+$$ ]]; then \
+			nums+=("$$arg"); \
+		else \
+			targets+=("$$arg"); \
+		fi; \
+	done; \
+	if [ $${#nums[@]} -ge 2 ]; then \
+		port="$${nums[0]}"; \
+		pass="$${nums[1]}"; \
+		if [ $${#nums[@]} -gt 2 ]; then \
+			for (( i=2; i<$${#nums[@]}; i++ )); do \
+				targets+=("$${nums[$$i]}"); \
+			done; \
+		fi; \
+	elif [ $${#nums[@]} -eq 1 ]; then \
+		if [ $${#targets[@]} -gt 0 ] && [ "$${nums[0]}" -le 99 ] 2>/dev/null; then \
+			targets+=("$${nums[0]}"); \
+		else \
+			pass="$${nums[0]}"; \
+		fi; \
+	fi; \
+	cmd=(SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_scenarios); \
+	if [ -n "$(DIR)$(FOLDER)" ]; then cmd+=(--dir "$(if $(DIR),$(DIR),$(FOLDER))"); fi; \
+	if [ -n "$$port" ]; then cmd+=(--port "$$port"); fi; \
+	if [ -n "$$pass" ]; then cmd+=(--password "$$pass"); fi; \
+	if [ $${#targets[@]} -gt 0 ]; then cmd+=("$${targets[@]}"); fi; \
+	env "$${cmd[@]}"
 
-# make case <case> OR make case <password> <case> OR make case <port> <password> <case> = run scenario
+# make case [testcase|/folder] OR make case [pass] [case|/folder] OR make case [port] [pass] [case|/folder]
 case: all
 	@set -- $(filter-out $@,$(MAKECMDGOALS)); \
-	if [ $$# -eq 1 ]; then \
-		SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_scenarios "$$1"; \
-	elif [ $$# -eq 2 ]; then \
-		SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_scenarios --port $(PORT) --password "$$1" "$$2"; \
-	elif [ $$# -ge 3 ]; then \
-		P="$$1"; PW="$$2"; shift 2; \
-		SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_scenarios --port "$$P" --password "$$PW" "$$@"; \
-	else \
-		echo "Usage: make case <case>  OR  make case <password> <case>  OR  make case <port> <password> <case>"; \
+	if [ $$# -eq 0 ] && [ -z "$(DIR)$(FOLDER)" ]; then \
+		echo "Usage: make case <case|/folder>  OR  make case <password> <case|/folder>  OR  make case <port> <password> <case|/folder>"; \
 		exit 1; \
-	fi
+	fi; \
+	port=""; pass=""; targets=(); nums=(); \
+	for arg in "$$@"; do \
+		clean_arg="$${arg#/}"; clean_arg="$${clean_arg%/}"; \
+		if [[ "$$arg" == /* ]] || [[ "$$arg" == */ ]] || [ -d "$$arg" ] || [ -d "tester/scenarios/$$arg" ] || [ -d "tester/scenarios/$$clean_arg" ] || [ -n "$$(find tester/scenarios -mindepth 1 -maxdepth 2 -type d \( -iname "$$clean_arg" -o -name "$$clean_arg" \) 2>/dev/null)" ]; then \
+			targets+=("$$arg"); \
+		elif [[ "$$arg" =~ ^[0-9]+$$ ]]; then \
+			nums+=("$$arg"); \
+		else \
+			targets+=("$$arg"); \
+		fi; \
+	done; \
+	if [ $${#nums[@]} -ge 2 ]; then \
+		port="$${nums[0]}"; \
+		pass="$${nums[1]}"; \
+		if [ $${#nums[@]} -gt 2 ]; then \
+			for (( i=2; i<$${#nums[@]}; i++ )); do \
+				targets+=("$${nums[$$i]}"); \
+			done; \
+		fi; \
+	elif [ $${#nums[@]} -eq 1 ]; then \
+		if [ $${#targets[@]} -gt 0 ] && [ "$${nums[0]}" -le 99 ] 2>/dev/null; then \
+			targets+=("$${nums[0]}"); \
+		elif [ $${#targets[@]} -gt 0 ]; then \
+			pass="$${nums[0]}"; \
+		else \
+			targets+=("$${nums[0]}"); \
+		fi; \
+	fi; \
+	cmd=(SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_scenarios); \
+	if [ -n "$(DIR)$(FOLDER)" ]; then cmd+=(--dir "$(if $(DIR),$(DIR),$(FOLDER))"); fi; \
+	if [ -n "$$port" ]; then cmd+=(--port "$$port"); fi; \
+	if [ -n "$$pass" ]; then cmd+=(--password "$$pass"); fi; \
+	if [ $${#targets[@]} -gt 0 ]; then cmd+=("$${targets[@]}"); fi; \
+	env "$${cmd[@]}"
 
-# make caseverbose <case> OR make caseverbose <password> <case> OR make caseverbose <port> <password> <case> = run scenario in verbose mode
+# make caseverbose [testcase|/folder] OR make caseverbose [pass] [case|/folder] OR make caseverbose [port] [pass] [case|/folder]
 caseverbose: all
 	@set -- $(filter-out $@,$(MAKECMDGOALS)); \
-	if [ $$# -eq 1 ]; then \
-		VERBOSE=1 SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_scenarios "$$1"; \
-	elif [ $$# -eq 2 ]; then \
-		VERBOSE=1 SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_scenarios --port $(PORT) --password "$$1" "$$2"; \
-	elif [ $$# -ge 3 ]; then \
-		P="$$1"; PW="$$2"; shift 2; \
-		VERBOSE=1 SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_scenarios --port "$$P" --password "$$PW" "$$@"; \
-	else \
-		echo "Usage: make caseverbose <case>  OR  make caseverbose <password> <case>  OR  make caseverbose <port> <password> <case>"; \
-		exit 1; \
-	fi
+	port=""; pass=""; targets=(); nums=(); \
+	for arg in "$$@"; do \
+		clean_arg="$${arg#/}"; clean_arg="$${clean_arg%/}"; \
+		if [[ "$$arg" == /* ]] || [[ "$$arg" == */ ]] || [ -d "$$arg" ] || [ -d "tester/scenarios/$$arg" ] || [ -d "tester/scenarios/$$clean_arg" ] || [ -n "$$(find tester/scenarios -mindepth 1 -maxdepth 2 -type d \( -iname "$$clean_arg" -o -name "$$clean_arg" \) 2>/dev/null)" ]; then \
+			targets+=("$$arg"); \
+		elif [[ "$$arg" =~ ^[0-9]+$$ ]]; then \
+			nums+=("$$arg"); \
+		else \
+			targets+=("$$arg"); \
+		fi; \
+	done; \
+	if [ $${#nums[@]} -ge 2 ]; then \
+		port="$${nums[0]}"; \
+		pass="$${nums[1]}"; \
+		if [ $${#nums[@]} -gt 2 ]; then \
+			for (( i=2; i<$${#nums[@]}; i++ )); do \
+				targets+=("$${nums[$$i]}"); \
+			done; \
+		fi; \
+	elif [ $${#nums[@]} -eq 1 ]; then \
+		if [ $${#targets[@]} -gt 0 ] && [ "$${nums[0]}" -le 99 ] 2>/dev/null; then \
+			targets+=("$${nums[0]}"); \
+		else \
+			pass="$${nums[0]}"; \
+		fi; \
+	fi; \
+	cmd=(SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_scenarios); \
+	if [ -n "$(DIR)$(FOLDER)" ]; then cmd+=(--dir "$(if $(DIR),$(DIR),$(FOLDER))"); fi; \
+	if [ -n "$$port" ]; then cmd+=(--port "$$port"); fi; \
+	if [ -n "$$pass" ]; then cmd+=(--password "$$pass"); fi; \
+	if [ $${#targets[@]} -gt 0 ]; then cmd+=("$${targets[@]}"); fi; \
+	VERBOSE=1 env "$${cmd[@]}"
 
 # make env [port] [password] = edits / saves .env (or removes .env if no args)
 env:

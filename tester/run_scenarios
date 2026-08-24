@@ -59,13 +59,95 @@ add_spec_by_num() {
     return 1
 }
 
+TARGET_DIRS=()
 VERBOSE="${VERBOSE:-0}"
 RAW_ARGS=()
+
+add_specs_from_dir() {
+    local target="$1"
+    local matched=0
+    local search_dirs=()
+
+    # 1. Exact existing path (relative to pwd or absolute)
+    if [ -d "$target" ]; then
+        search_dirs+=("$(cd "$target" && pwd)")
+    fi
+
+    # Strip leading/trailing slashes for relative scenarios lookup (e.g. "/commands" or "commands/")
+    local clean_target="${target#/}"
+    clean_target="${clean_target%/}"
+
+    if [ -n "$clean_target" ]; then
+        # 2. Path relative to SCENARIOS_DIR
+        if [ -d "${SCENARIOS_DIR}/${clean_target}" ]; then
+            search_dirs+=("${SCENARIOS_DIR}/${clean_target}")
+        elif [ -d "${clean_target}" ]; then
+            search_dirs+=("$(cd "${clean_target}" && pwd)")
+        else
+            # 3. Case-insensitive or name match inside SCENARIOS_DIR
+            while IFS= read -r d; do
+                if [ -d "$d" ]; then
+                    search_dirs+=("$d")
+                fi
+            done < <(find "$SCENARIOS_DIR" -type d \( -iname "$clean_target" -o -name "$clean_target" \) | sort)
+        fi
+    fi
+
+    for d in "${search_dirs[@]}"; do
+        while IFS= read -r f; do
+            if [ -f "$f" ]; then
+                if [[ ! " ${SPECS[*]} " =~ " ${f} " ]]; then
+                    SPECS+=("$f")
+                    matched=1
+                fi
+            fi
+        done < <(find "$d" -type f -name '*.spec' | sort)
+    done
+
+    [ $matched -eq 1 ] && return 0
+    return 1
+}
+
+show_help() {
+    echo "Usage: $0 [options] [/folder|folder|scenario...]"
+    echo ""
+    echo "Options:"
+    echo "  -d, --dir, --folder <dir>  Run all scenarios in the specified folder"
+    echo "  -p, --password <pass>      IRC server password (default: 1234 or .env)"
+    echo "  --port <port>              IRC server port (default: 6667 or .env)"
+    echo "  -v, --verbose              Show full testrunner output for each scenario"
+    echo "  -h, --help                 Show this help message"
+    echo ""
+    echo "Examples:"
+    echo "  $0                         # Run all scenarios"
+    echo "  $0 /commands               # Run scenarios in 'commands' folder"
+    echo "  $0 commands                # Run scenarios in 'commands' folder"
+    echo "  $0 /channels/modes         # Run scenarios in 'channels/modes' folder"
+    echo "  $0 --dir registration      # Run scenarios in 'registration' folder"
+    echo "  $0 01                      # Run scenario starting with 01"
+    echo "  $0 NICK                    # Run scenarios matching 'NICK'"
+    exit 0
+}
 
 while [ $# -gt 0 ]; do
     case "$1" in
         --v|-v|--verbose)
             VERBOSE=1
+            shift
+            ;;
+        -h|--help)
+            show_help
+            ;;
+        -d|--dir|--folder)
+            if [ -n "${2:-}" ]; then
+                TARGET_DIRS+=("$2")
+                shift 2
+            else
+                shift
+            fi
+            ;;
+        --dir=*|--folder=*)
+            TARGET_DIRS+=("${1#*=}")
             shift
             ;;
         -p|--password)
@@ -77,6 +159,11 @@ while [ $# -gt 0 ]; do
                 shift
             fi
             ;;
+        -p=*|--password=*)
+            PASSWORD="${1#*=}"
+            PASS_SRC="arguments"
+            shift
+            ;;
         --port)
             if [ -n "${2:-}" ]; then
                 PORT="$2"
@@ -86,6 +173,11 @@ while [ $# -gt 0 ]; do
                 shift
             fi
             ;;
+        --port=*)
+            PORT="${1#*=}"
+            PORT_SRC="arguments"
+            shift
+            ;;
         *)
             RAW_ARGS+=("$1")
             shift
@@ -93,35 +185,57 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-if [ ${#RAW_ARGS[@]} -eq 0 ]; then
-    # Without args: run all specs
+# 1. Add specs from explicitly specified target directories (--dir / --folder)
+for tdir in "${TARGET_DIRS[@]}"; do
+    if ! add_specs_from_dir "$tdir"; then
+        echo -e "${RED}Warning: No .spec files found in directory '${tdir}'.${NC}"
+    fi
+done
+
+# 2. Process positional arguments (folders, test numbers, filenames, or patterns)
+if [ ${#RAW_ARGS[@]} -gt 0 ]; then
+    for arg in "${RAW_ARGS[@]}"; do
+        # Exact .spec file path
+        if [ -f "$arg" ] && [[ "$arg" == *.spec ]]; then
+            abs_f="$(cd "$(dirname "$arg")" && pwd)/$(basename "$arg")"
+            if [[ ! " ${SPECS[*]} " =~ " ${abs_f} " ]]; then
+                SPECS+=("$abs_f")
+            fi
+        # Directory name or path
+        elif add_specs_from_dir "$arg"; then
+            :
+        # Number prefix match (e.g. "01", "1")
+        elif add_spec_by_num "$arg"; then
+            :
+        # Multi-digit sequence (e.g. "12" -> 01 and 02) if not a 4-5 digit port
+        elif [[ "$arg" =~ ^[0-9]+$ ]] && [ ${#arg} -gt 1 ] && ! [[ "$arg" =~ ^[0-9]{4,5}$ ]]; then
+            for (( i=0; i<${#arg}; i++ )); do
+                digit="${arg:$i:1}"
+                add_spec_by_num "$digit"
+            done
+        else
+            # Substring / pattern glob search in SCENARIOS_DIR
+            matched_spec=0
+            while IFS= read -r f; do
+                if [ -f "$f" ]; then
+                    if [[ ! " ${SPECS[*]} " =~ " ${f} " ]]; then
+                        SPECS+=("$f")
+                        matched_spec=1
+                    fi
+                fi
+            done < <(find "$SCENARIOS_DIR" -type f -name "*${arg}*.spec" | sort)
+            if [ $matched_spec -eq 0 ]; then
+                echo -e "${RED}Warning: No matching scenario or directory found for '${arg}'.${NC}"
+            fi
+        fi
+    done
+elif [ ${#TARGET_DIRS[@]} -eq 0 ]; then
+    # Without args and without target dirs: run all specs
     while IFS= read -r f; do
         if [ -f "$f" ]; then
             SPECS+=("$f")
         fi
     done < <(find "$SCENARIOS_DIR" -type f -name '*.spec' | sort)
-else
-    # Process specified numbers / arguments
-    for arg in "${RAW_ARGS[@]}"; do
-        if ! add_spec_by_num "$arg"; then
-            # If argument like '13' didn't match a scenario 13, split digits (e.g. '1' and '3')
-            if [[ "$arg" =~ ^[0-9]+$ ]] && [ ${#arg} -gt 1 ]; then
-                for (( i=0; i<${#arg}; i++ )); do
-                    digit="${arg:$i:1}"
-                    add_spec_by_num "$digit"
-                done
-            else
-                # Fallback: substring / filename glob search
-                while IFS= read -r f; do
-                    if [ -f "$f" ]; then
-                        if [[ ! " ${SPECS[*]} " =~ " ${f} " ]]; then
-                            SPECS+=("$f")
-                        fi
-                    fi
-                done < <(find "$SCENARIOS_DIR" -type f -name "*${arg}*.spec" | sort)
-            fi
-        fi
-    done
 fi
 
 if [ ${#SPECS[@]} -eq 0 ]; then
