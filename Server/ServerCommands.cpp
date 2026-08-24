@@ -25,8 +25,6 @@ void	Server::let_client_join_channel(const Wire &channel_name, Client &client, c
 	}
 	else
 	{
-
-
 		//It gets checked if the client has the right to join.
 
 		if (channel.has_member(client_fd))
