@@ -243,7 +243,7 @@ void	Server::handle_privmsg_command(Client &client, const Wire &line,
 	else if (arguments.size() > 1)
 		message = arguments[1];
 
-	if (message.empty())
+	if (!line.contains(" :") && message.empty())
 	{
 		send_status(client, "412", ":No text to send");
 		return ;

@@ -6,7 +6,7 @@
 Wire	make_msg(const Client &client, const Wire &cmd, const Wire &target, const Wire &param)
 {
 	Wire msg(":", client.get_nickname(), "!", client.get_username(), "@localhost ", cmd, " ", target);
-	if (!param.empty() || cmd == "TOPIC") // case TOPIC can use empty string to clear Topic
+	if (!param.empty() || cmd == "TOPIC" || cmd == "PRIVMSG" || cmd == "NOTICE" || cmd == "KICK")
 		msg += " :" + param;
 	return msg;
 }
