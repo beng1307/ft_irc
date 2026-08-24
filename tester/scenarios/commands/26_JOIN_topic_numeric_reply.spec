@@ -29,3 +29,5 @@ C2 SEND JOIN #topicchan
 C2 EXPECT 332 Bob #topicchan :Welcome to our official channel
 C2 EXPECT 353 Bob = #topicchan :*
 C2 EXPECT 366 Bob #topicchan :End of /NAMES list
+
+#TODO: Check if it's mandatory

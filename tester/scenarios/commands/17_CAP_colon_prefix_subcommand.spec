@@ -6,3 +6,5 @@ CLIENTS C1
 
 C1 SEND CAP :LS
 C1 EXPECT :localhost CAP * LS :
+
+#TODO: Behaviour maybe has to be changed on parser. Not directly on CAP.
