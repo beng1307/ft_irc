@@ -20,4 +20,3 @@ C1 SEND_RAW PRIVMSG Bob :\x1b]52;c;c3RlYWw=\x07InjectedText\r\n
 
 # Secure server must strip the escape sequence, relaying only safe printable payload
 C2 WAIT_RECV :Alice!* PRIVMSG Bob :InjectedText
-

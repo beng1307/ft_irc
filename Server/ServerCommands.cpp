@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <cstring>
+#include <algorithm>
 #include <sys/socket.h>
 #include <unistd.h>
 #include "../helpers/print.hpp"
@@ -129,6 +130,16 @@ void	Server::handle_user_command(Client &client, const Vector<Wire> &arguments)
 		send_status(client, "462", ":You may not reregister");
 		return ;
 	}
+	if (!is_valid_nickname(arguments[0]))
+	{
+		send_status(client, "432", arguments[0] + " :Erroneous nickname");
+		return ;
+	}
+	if (arguments.size() < 4)
+	{
+		send_status(client, "461", "USER :Not enough parameters");
+		return ;
+	}
 	client.set_username(arguments[0]);
 	try_register_client(client);
 }
@@ -148,10 +159,7 @@ void	Server::handle_nick_command(Client &client, const Vector<Wire> &arguments)
 		send_status(client, "432", arguments[0] + " :Erroneous nickname");
 		return ;
 	}
-	Client &existing_client = get_client(arguments[0]);
-	if (existing_client
-		&& existing_client.get_socket() != client.get_socket()
-		&& (existing_client.get_register_status() || existing_client.get_pass_ok()))
+	if (is_nickname_in_use(arguments[0], client.get_socket()))
 	{
 		send_status(client, "433", arguments[0] + " :Nickname is already in use");
 		return ;
@@ -327,6 +335,7 @@ void Server::handle_line(Client &client, const size_t &position)
 	line = client.get_buffer().substr(0, position);
 	// erase delimiter before checking if empty
 	client.get_buffer().erase(0, position + 2);
+	line.erase(std::remove(line.begin(), line.end(), '\r'), line.end());
 	if (line.empty())
 		return ;
 

@@ -29,3 +29,11 @@ C1 EXPECT 525 * #testchan :*
 
 # Verify Bob did not receive a broken unquoted multi-word MODE message
 C2 EXPECT_NONE 200ms
+
+C1 SEND QUIT :bye
+C2 SEND QUIT :bye
+C1 EXPECT ERROR :*
+C2 EXPECT ERROR :*
+
+
+

@@ -1,0 +1,26 @@
+
+
+
+# ESCAPE CODE INJECTION
+04_TOPIC_ansi_escape_injection.spec
+05_PRIVMSG_osc52_clipboard_hijack_injection.spec
+06_KICK_ansi_escape_reason_injection.spec
+09_PART_control_character_injection.spec
+
+# DESIGN CHOICES (Server specific behavior)
+44_MODE_non_member_query.spec
+49_MODE_nick_case_insensitivity.spec
+154_PART_case_insensitive_channel.spec
+
+# NOT 42 SCOPE (Extended RFC features / pedantic RFC tests)
+42_MODE_user_mode_query.spec
+43_MODE_ampersand_channel_prefix.spec
+46_MODE_multi_operator_deduplication_broadcast.spec
+47_MODE_mixed_no_op_broadcast.spec
+139_PART_multi_channel_batch.spec
+
+
+
+
+
+

@@ -3,9 +3,9 @@
 CLIENTS C1
 
 C1 SEND PASS 1234
-C1 SEND NICK PassAlice211
+C1 SEND NICK PAlice211
 C1 SEND USER alice211 0 * :Alice Smith
-C1 EXPECT 001 PassAlice211 :*
+C1 EXPECT 001 PAlice211 :*
 
 C1 SEND PASS 1234
-C1 EXPECT 462 PassAlice211 :You may not reregister
+C1 EXPECT 462 PAlice211 :You may not reregister

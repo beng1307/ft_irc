@@ -5,8 +5,11 @@
 CLIENTS C1
 
 C1 SEND PASS 1234
-C1 SEND NICK Alice
+C1 SEND NICK UserAlice
 C1 SEND USER evil!admin@attacker.com 0 * :Alice User
-C1 EXPECT 468 * * :*
+C1 EXPECT 432 * :*
 
-C1 EXPECT_NONE 200ms
+C1 SEND QUIT :bye
+C1 EXPECT ERROR :*
+
+

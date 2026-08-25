@@ -138,7 +138,7 @@ static Wire decode_raw_escapes(const Wire& input) {
 static Wire apply_password_substitution(const Wire& input, const Wire& custom_pwd) {
     if (custom_pwd.empty()) return input;
 
-    if (input.toUpper().contains("PASS")) {
+    if (input.toUpper().find("PASS") == 0 || input.toUpper().find("PASS ") != Wire::npos) {
         Wire w(input);
         return w.replaceAll("1234", custom_pwd);
     }

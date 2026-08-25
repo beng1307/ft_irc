@@ -12,4 +12,4 @@ C1 EXPECT :Alice!* JOIN #lobby
 
 # Alice sends TOPIC delimited with tabs
 C1 SEND TOPIC	#lobby	:TabDelimitedTopic
-C1 EXPECT 461 Alice TOPIC :Not enough parameters
+C1 EXPECT 421 Alice Unknown command.

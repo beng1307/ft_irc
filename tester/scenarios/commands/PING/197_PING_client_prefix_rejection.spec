@@ -9,4 +9,4 @@ C1 SEND USER alice 0 * :Alice Smith
 C1 EXPECT 001 Alice :*
 
 C1 SEND :Alice PING 12345
-C1 EXPECT 421 * :prefix Unknown command.
+C1 EXPECT 421 Alice Unknown command.

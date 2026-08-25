@@ -102,6 +102,17 @@ Vector<Wire>	Server::split_arguments(const Wire &line)
 	return arguments.ok();
 }
 
+static bool	match_claimed_nickname(const Client &c, const Wire &nick)
+{
+	return (c.get_nickname() == nick && (c.get_register_status() || c.get_pass_ok()));
+}
+
+//Checks if a nickname is already in use by another authenticated or registered client.
+bool	Server::is_nickname_in_use(const Wire &nickname, int exclude_fd) const
+{
+	return (clients.subtract(exclude_fd).fetch(match_claimed_nickname, nickname));
+}
+
 //Registers the client once the password, nickname, and username are valid
 //and sends welcome message.
 void	Server::try_register_client(Client &client)
@@ -112,6 +123,14 @@ void	Server::try_register_client(Client &client)
 		return ;
 	if (client.get_nickname().empty() || client.get_username().empty())
 		return ;
+
+	if (is_nickname_in_use(client.get_nickname(), client.get_socket()))
+	{
+		Wire contested_nick = client.get_nickname();
+		client.set_nickname("");
+		send_status(client, "433", contested_nick + " :Nickname is already in use");
+		return ;
+	}
 
 	client.set_register_status(true);
 	print("Client ", client.get_nickname(), " registered successfully!");

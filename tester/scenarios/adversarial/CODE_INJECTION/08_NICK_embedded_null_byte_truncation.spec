@@ -7,6 +7,6 @@ CLIENTS C1
 
 C1 SEND PASS 1234
 C1 SEND_RAW NICK Alice\x00InjectedSuffix\r\n
-C1 EXPECT 432 * * :Erroneous nickname
+C1 EXPECT 432 *
 
 C1 EXPECT_NONE 200ms

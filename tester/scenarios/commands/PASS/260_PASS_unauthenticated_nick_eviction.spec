@@ -4,11 +4,11 @@
 CLIENTS C1, C2
 
 # C1 attempts to squat on nickname without password
-C1 SEND NICK PassVictim
+C1 SEND NICK Victim
 C1 SEND USER unauth 0 * :Unauthenticated
 
 # C2 authenticates with correct password and claims nickname
 C2 SEND PASS 1234
-C2 SEND NICK PassVictim
-C2 SEND USER passvictim 0 * :Legit User
-C2 EXPECT 001 PassVictim :*
+C2 SEND NICK Victim
+C2 SEND USER victim 0 * :Legit User
+C2 EXPECT 001 Victim :*

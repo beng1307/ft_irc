@@ -112,6 +112,7 @@ class Server
 		void try_register_client(Client &client);
 		bool is_positive_number(const Wire &value);
 		bool is_valid_nickname(const Wire &nickname);
+		bool is_nickname_in_use(const Wire &nickname, int exclude_fd = -1) const;
 		void handle_kick(Client &client, const Vector<Wire> &arguments);
 		void handle_invite(Client &client, const Vector<Wire> &arguments);
 		void handle_topic(Client &client, const Vector<Wire> &arguments);

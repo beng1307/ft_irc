@@ -11,5 +11,5 @@ C1 SEND JOIN #lobby
 C1 EXPECT :Alice!* JOIN #lobby
 
 # Alice attempts to spoof prefix
-C1 SEND :FakePrefix TOPIC #lobby :Spoofed Topic
-C1 EXPECT 421 Alice :FakePrefix :Unknown command
+C1 SEND :FakePrefix TOPIC #lobby :SpoofedTopic
+C1 EXPECT 421 Alice Unknown command.

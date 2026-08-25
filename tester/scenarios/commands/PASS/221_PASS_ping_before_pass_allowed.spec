@@ -6,6 +6,6 @@ C1 SEND PING localhost
 C1 EXPECT :localhost PONG localhost :localhost
 
 C1 SEND PASS 1234
-C1 SEND NICK PassAlice221
+C1 SEND NICK PAlice221
 C1 SEND USER alice221 0 * :Alice Smith
-C1 EXPECT 001 PassAlice221 :*
+C1 EXPECT 001 PAlice221 :*

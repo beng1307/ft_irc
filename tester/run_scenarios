@@ -36,8 +36,86 @@ if [ -n "$ENV_FILE" ]; then
     [ -n "${PASSWORD:-}" ] && PASS_SRC=".env"
 fi
 
+# Load .testignore if present
+IGNORE_PATTERNS=()
+IGNORE_FILES=()
+[ -f "${SCRIPT_DIR}/.testignore" ] && IGNORE_FILES+=("${SCRIPT_DIR}/.testignore")
+if [ -f "${SCRIPT_DIR}/../.testignore" ]; then
+    abs_parent="$(cd "${SCRIPT_DIR}/.." && pwd)/.testignore"
+    abs_curr="$(cd "${SCRIPT_DIR}" && pwd)/.testignore"
+    if [ "$abs_parent" != "$abs_curr" ]; then
+        IGNORE_FILES+=("${SCRIPT_DIR}/../.testignore")
+    fi
+fi
+
+for ifile in "${IGNORE_FILES[@]}"; do
+    while IFS= read -r line || [ -n "$line" ]; do
+        # Strip comments (#, //, ;)
+        line="${line%%#*}"
+        line="${line%%//*}"
+        line="${line%%;*}"
+        # Trim leading and trailing whitespace
+        line="${line#"${line%%[![:space:]]*}"}"
+        line="${line%"${line##*[![:space:]]}"}"
+        if [ -n "$line" ]; then
+            IGNORE_PATTERNS+=("$line")
+        fi
+    done < "$ifile"
+done
+
 SERVER_PID=""
 SCENARIOS_DIR="${SCRIPT_DIR}/scenarios"
+
+is_spec_ignored() {
+    local s="$1"
+    [ ${#IGNORE_PATTERNS[@]} -eq 0 ] && return 1
+
+    local rel_scenarios="${s#${SCENARIOS_DIR}/}"
+    local rel_tester="${s#${SCRIPT_DIR}/}"
+    local filename
+    filename="$(basename "$s")"
+    local basename="${filename%.spec}"
+
+    for pat in "${IGNORE_PATTERNS[@]}"; do
+        local clean_pat="${pat#./}"
+        clean_pat="${clean_pat#/}"
+        clean_pat="${clean_pat%/}"
+
+        # 1. Exact or glob match on basename, filename, relative paths, or absolute path
+        # shellcheck disable=SC2053
+        if [[ "$basename" == $pat ]] || [[ "$filename" == $pat ]] || \
+           [[ "$rel_scenarios" == $pat ]] || [[ "$rel_tester" == $pat ]] || \
+           [[ "$s" == $pat ]]; then
+            return 0
+        fi
+
+        # 2. Match with cleaned pattern
+        # shellcheck disable=SC2053
+        if [[ "$basename" == $clean_pat ]] || [[ "$filename" == $clean_pat ]] || \
+           [[ "$rel_scenarios" == $clean_pat ]] || [[ "$rel_tester" == $clean_pat ]]; then
+            return 0
+        fi
+
+        # 3. Match with .spec appended
+        if [[ "$filename" == "${clean_pat}.spec" ]] || \
+           [[ "$rel_scenarios" == "${clean_pat}.spec" ]] || \
+           [[ "$rel_tester" == "${clean_pat}.spec" ]]; then
+            return 0
+        fi
+
+        # 4. Directory or path segment match
+        if [[ "$rel_scenarios" == ${clean_pat}/* ]] || [[ "$rel_tester" == ${clean_pat}/* ]] || \
+           [[ "$rel_scenarios" == */${clean_pat}/* ]] || [[ "$rel_scenarios" == */${clean_pat} ]]; then
+            return 0
+        fi
+
+        # 5. Prefix match for spec base / filename (e.g. "04_TOPIC")
+        if [[ "$basename" == ${clean_pat}* ]] || [[ "$filename" == ${clean_pat}* ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
 
 SPECS=()
 
@@ -238,9 +316,27 @@ elif [ ${#TARGET_DIRS[@]} -eq 0 ]; then
     done < <(find "$SCENARIOS_DIR" -type f -name '*.spec' | sort)
 fi
 
+if [ ${#IGNORE_PATTERNS[@]} -gt 0 ]; then
+    FILTERED_SPECS=()
+    IGNORED_COUNT=0
+    for s in "${SPECS[@]}"; do
+        if is_spec_ignored "$s"; then
+            IGNORED_COUNT=$((IGNORED_COUNT + 1))
+        else
+            FILTERED_SPECS+=("$s")
+        fi
+    done
+    SPECS=("${FILTERED_SPECS[@]}")
+fi
+
 if [ ${#SPECS[@]} -eq 0 ]; then
-    echo "No matching test spec files found to execute."
-    exit 1
+    if [ ${IGNORED_COUNT:-0} -gt 0 ]; then
+        echo "All matching test scenarios were ignored via .testignore (${IGNORED_COUNT} ignored)."
+        exit 0
+    else
+        echo "No matching test spec files found to execute."
+        exit 1
+    fi
 fi
 
 format_folder_title() {

@@ -257,6 +257,16 @@ bool	Server::apply_mode_key(Client &client, Channel &channel, char sign,
 			return (false);
 		}
 		const Wire &key = arguments[param_index++];
+		if (channel.has_key())
+		{
+			send_status(client, "467", channel.get_name() + " :Channel key already set");
+			return (false);
+		}
+		if (key.is_empty() || key.containsOneOf(" \t\r\n"))
+		{
+			send_status(client, "525", channel.get_name() + " :Key is not well-formed");
+			return (false);
+		}
 		bool changed = channel.set_key(key);
 		append_mode_change(applied_modes, sign, 'k');
 		applied_params += " " + key;
@@ -313,8 +323,6 @@ bool	Server::apply_mode_limit(Client &client, Channel &channel, char sign,
 		if (param_index >= arguments.size() || !is_positive_number(arguments[param_index]))
 		{
 			send_status(client, "461", "MODE :Not enough parameters");
-			if (param_index < arguments.size())
-				param_index++;
 			return (false);
 		}
 		const Wire &limit_str = arguments[param_index++];
@@ -417,6 +425,11 @@ void	Server::handle_mode(Client &client, const Vector<Wire> &arguments)
 		}
 		else if (mode == 'l')
 		{
+			if (sign == '+' && (param_index >= arguments.size() || !is_positive_number(arguments[param_index])))
+			{
+				send_status(client, "461", "MODE :Not enough parameters");
+				break ;
+			}
 			state_changed = apply_mode_limit(client, channel, sign, arguments, param_index, applied_modes, applied_params) || state_changed;
 		}
 		else
