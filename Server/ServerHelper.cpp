@@ -8,8 +8,11 @@ bool	Server::is_positive_number(const Wire &value)
 	return (value.toInt() > 0 && value.toInt().toStr() == value);
 }
 
-//Checks if the nickname is valid: non-empty, contains only letters (a-z, A-Z), digits (0-9), and underscore (_)
-bool	Server::is_valid_nickname(const Wire &nickname) { return  nickname.hasOnlyAlphaNum("_") ;}
+//Checks if the nickname is valid: non-empty, at most 9 characters, and only letters, digits, or underscore.
+bool	Server::is_valid_nickname(const Wire &nickname)
+{
+	return (nickname.size() <= 9 && nickname.hasOnlyAlphaNum("_"));
+}
 
 
 //Creates a new filedescriptor and adds it to the fds.
@@ -74,6 +77,15 @@ Vector<Wire>	Server::split_arguments(const Wire &line)
 		size_t next_space = line.find(' ', position);
 		if (line[position] == ':')
 		{
+			//This if fixes the message on part. (PART #lobby :Goodbye)
+			if (position + 1 < line.size()
+				&& (line[position + 1] == '#' || line[position + 1] == '&')
+				&& next_space != Wire::npos)
+			{
+				arguments.add(line.substr(position + 1, next_space - position - 1));
+				position = next_space;
+				continue;
+			}
 			arguments.add(line.substr(position + 1));
 			break;
 		}

@@ -1,0 +1,4 @@
+C1 SYS Connected to 127.0.0.1:6667
+C1 SEND PASS 1234
+C1 SEND NICK 404Bot
+C1 ERROR EXPECT assertion failed for pattern: "432 * 404Bot :Erroneous nickname" [Queue (0 lines): <empty>]

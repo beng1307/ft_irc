@@ -29,15 +29,15 @@ C2 EXPECT 001 AdminUser :*
 
 # C1 now registers with valid credentials and distinct nickname
 C1 SEND PASS 1234
-C1 SEND NICK AliceUnauth
+C1 SEND NICK AliceAuth
 C1 SEND USER alice 0 * :Alice Unauth
-C1 EXPECT 001 AliceUnauth :*
+C1 EXPECT 001 AliceAuth :*
 
 # ADV-MEM-05: Double registration attempts after successful authentication -> 462
 C1 SEND PASS 1234
-C1 EXPECT 462 AliceUnauth :*
+C1 EXPECT 462 AliceAuth :*
 C1 SEND USER alice2 0 * :Alice Two
-C1 EXPECT 462 AliceUnauth :*
+C1 EXPECT 462 AliceAuth :*
 
 C1 EXPECT_CONNECTED
 C2 EXPECT_CONNECTED

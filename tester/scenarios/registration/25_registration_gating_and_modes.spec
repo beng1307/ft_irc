@@ -30,7 +30,7 @@ C1 EXPECT_CONNECTED
 
 # Register C2 standardly to ensure server state is intact
 C2 SEND PASS 1234
-C2 SEND NICK BobStandard
+C2 SEND NICK BobStd
 C2 SEND USER bob 0 * :Bob Standard
-C2 EXPECT 001 BobStandard :*
+C2 EXPECT 001 BobStd :*
 C2 EXPECT_CONNECTED

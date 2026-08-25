@@ -46,7 +46,7 @@ C3 SEND JOIN #channel
 C3 EXPECT :Charlie!charlie@* JOIN #channel
 
 # C1 changes nick in channel
-C1 SEND NICK FinalAlice
+C1 SEND NICK FinalAli
 C1 EXPECT_CONNECTED
 
 # Test 7: Nick taken immediately after release

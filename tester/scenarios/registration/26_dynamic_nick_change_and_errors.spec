@@ -5,11 +5,11 @@ CLIENTS C1, C2
 C1 SEND PASS 1234
 C1 SEND NICK "123 digit"
 C1 EXPECT 432 * :*
-C1 SEND NICK #channelnick
+C1 SEND NICK #chanNick
 C1 EXPECT 432 * :*
-C1 SEND NICK AliceValid
+C1 SEND NICK AliceVal
 C1 SEND USER alice 0 * :Alice Valid
-C1 EXPECT 001 AliceValid :*
+C1 EXPECT 001 AliceVal :*
 
 # Register C2
 C2 SEND PASS 1234
@@ -19,19 +19,19 @@ C2 EXPECT 001 BobValid :*
 
 # Join shared channel to test broadcast propagation
 C1 SEND JOIN #rename
-C1 EXPECT :AliceValid!* JOIN #rename
+C1 EXPECT :AliceVal!* JOIN #rename
 C2 SEND JOIN #rename
 C2 WAIT_RECV :BobValid!* JOIN #rename
 C1 WAIT_RECV :BobValid!* JOIN #rename
 
 # AUTH-10: C1 attempts dynamic rename to C2's active nick -> 433 ERR_NICKNAMEINUSE
 C1 SEND NICK BobValid
-C1 EXPECT 433 AliceValid BobValid :*
+C1 EXPECT 433 AliceVal BobValid :*
 
-# AUTH-09: C1 performs valid dynamic rename -> broadcasts :AliceValid!* NICK :AliceNew
+# AUTH-09: C1 performs valid dynamic rename -> broadcasts :AliceVal!* NICK :AliceNew
 C1 SEND NICK AliceNew
-C1 EXPECT :AliceValid!* NICK :AliceNew
-C2 WAIT_RECV :AliceValid!* NICK :AliceNew
+C1 EXPECT :AliceVal!* NICK :AliceNew
+C2 WAIT_RECV :AliceVal!* NICK :AliceNew
 
 # Verify subsequent messaging uses the updated nickname
 C2 SEND PRIVMSG AliceNew :Hey renamed Alice
