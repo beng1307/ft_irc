@@ -38,4 +38,5 @@ C3 EXPECT :Alice!* KICK #lobby Bob :Bad behavior in channel
 
 # Bob is now no longer on channel, cannot PRIVMSG #lobby
 C2 SEND PRIVMSG #lobby :Am I still here?
-C2 EXPECT 442 Bob #lobby :You're not on that channel
+C2 EXPECT 404 Bob #lobby :Cannot send to channel
+

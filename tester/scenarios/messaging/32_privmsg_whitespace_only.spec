@@ -13,12 +13,12 @@ C2 SEND NICK Bob
 C2 SEND USER bob 0 * :Bob
 C2 EXPECT 001 Bob :*
 
-# Message with only spaces after colon
-C1 SEND PRIVMSG Bob :   
+# Message with only spaces after colon (use SEND_RAW so test runner trim does not strip trailing spaces)
+C1 SEND_RAW PRIVMSG Bob :   \r\n
 C2 WAIT_RECV :Alice!* PRIVMSG Bob :   
 
 # Message with only a single space
-C1 SEND PRIVMSG Bob : 
+C1 SEND_RAW PRIVMSG Bob : \r\n
 C2 WAIT_RECV :Alice!* PRIVMSG Bob : 
 
 C1 EXPECT_CONNECTED

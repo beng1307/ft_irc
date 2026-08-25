@@ -23,7 +23,7 @@ C2 SEND JOIN #channel
 C1 WAIT_RECV :Bob!* JOIN #channel
 
 # C1 sends pipelined PART and PRIVMSG
-C1 SEND PART #channel\r\nPRIVMSG #channel :I should not be able to talk
+C1 SEND_RAW PART #channel\r\nPRIVMSG #channel :I should not be able to talk\r\n
 C2 WAIT_RECV :Alice!* PART #channel
-C1 EXPECT 442 Alice #channel :*
+C1 EXPECT 404 Alice #channel :*
 C2 NO_RECV :Alice!* PRIVMSG #channel :I should not be able to talk

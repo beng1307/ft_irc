@@ -22,5 +22,5 @@ C2 SEND JOIN #chan
 C1 WAIT_RECV :Bob!* JOIN #chan
 
 # C1 sends whitespace payload
-C1 SEND PRIVMSG #chan :   
+C1 SEND_RAW PRIVMSG #chan :   \r\n
 C2 WAIT_RECV :Alice!* PRIVMSG #chan :   

@@ -26,4 +26,5 @@ C2 EXPECT :Alice!* KICK #lobby Bob :banned from talking
 
 # Bob attempts to send PRIVMSG to #lobby
 C2 SEND PRIVMSG #lobby :Can anyone hear me?
-C2 EXPECT 442 Bob #lobby :You're not on that channel
+C2 EXPECT 404 Bob #lobby :Cannot send to channel
+

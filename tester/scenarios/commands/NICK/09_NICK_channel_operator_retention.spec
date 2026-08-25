@@ -12,9 +12,9 @@ C1 EXPECT 001 Alice09 :*
 C1 SEND JOIN #ops09
 C1 EXPECT :Alice09!* JOIN #ops09
 
-# C1 changes nickname to SuperAlice09
-C1 SEND NICK SuperAlice09
-C1 WAIT_RECV :Alice09!* NICK :SuperAlice09
+# C1 changes nickname to Super09
+C1 SEND NICK Super09
+C1 WAIT_RECV :Alice09!* NICK :Super09
 
 # C2 registers as Bob09 and joins #ops09
 C2 SEND PASS 1234
@@ -26,5 +26,6 @@ C1 WAIT_RECV :Bob09!* JOIN #ops09
 
 # C1 kicks Bob from channel using operator privilege
 C1 SEND KICK #ops09 Bob09 :Operator privilege maintained
-C2 WAIT_RECV :SuperAlice09!* KICK #ops09 Bob09 :Operator privilege maintained
+C2 WAIT_RECV :Super09!* KICK #ops09 Bob09 :Operator privilege maintained
 C2 EXPECT_CONNECTED
+

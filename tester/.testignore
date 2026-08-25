@@ -6,21 +6,72 @@
 05_PRIVMSG_osc52_clipboard_hijack_injection.spec
 06_KICK_ansi_escape_reason_injection.spec
 09_PART_control_character_injection.spec
+286_USER_ansi_escape_injection.spec
 
 # DESIGN CHOICES (Server specific behavior)
+03_NICK_case_sensitivity_collision.spec
+04_NICK_case_sensitivity_privmsg.spec
+05_NICK_rfc_special_characters.spec
+06_NICK_numeric_first_char_rejection.spec
 44_MODE_non_member_query.spec
 49_MODE_nick_case_insensitivity.spec
 154_PART_case_insensitive_channel.spec
+131_TOPIC_case_insensitive_channel.spec
+60_INVITE_case_insensitive_channel.spec
+61_INVITE_case_insensitive_nick.spec
+82_KICK_case_insensitive_channel.spec
+83_KICK_case_insensitive_target_nick.spec
+100_PRIVMSG_case_insensitive_nick.spec
+99_PRIVMSG_case_insensitive_channel.spec
+27_JOIN_case_insensitivity.spec
+
+# Server unconditionally requires channel operator rights for all INVITEs (42 subject specifies INVITE under operator commands)
+55_INVITE_non_op_on_regular_channel.spec
+
+
+# Colon prefix on first parameter treats whole line as trailing parameter, rejecting invalid username via 432
+169_USER_colon_prefix_username.spec
+
+
+# Server strips all \r in lines, normalizing \r\r\n and accepting valid PASS rather than rejecting with 464
+263_PASS_double_cr_line_delimiters.spec
 
 # NOT 42 SCOPE (Extended RFC features / pedantic RFC tests)
-42_MODE_user_mode_query.spec
-43_MODE_ampersand_channel_prefix.spec
-46_MODE_multi_operator_deduplication_broadcast.spec
+25_NICK_reserved_server_names.spec
 47_MODE_mixed_no_op_broadcast.spec
+42_MODE_user_mode_query.spec
+
+# MULTI TARGET COMMANDS
+46_MODE_multi_operator_deduplication_broadcast.spec
 139_PART_multi_channel_batch.spec
+89_KICK_multi_target_batch.spec
+102_PRIVMSG_multi_target_dispatch.spec
+23_JOIN_multi_channel.spec
 
 
 
 
+# We return bad username not missing args
+283_USER_empty_colon_username.spec
 
 
+# Obscure old command /JOIN 0 should disconnect from all channels.
+24_JOIN_zero_leave_all.spec
+
+
+# CAP is an IRCv3 capability negotiation extension outside the mandatory RFC 1459/2812 scope for 42 School, used only as a minimal client compatibility shim.
+11_CAP_case_insensitivity.spec
+12_CAP_req_nak_response.spec
+13_CAP_hold_registration_until_end.spec
+14_CAP_registered_client_nick_target.spec
+15_CAP_missing_subcommand_error.spec
+16_CAP_invalid_subcommand_error.spec
+17_CAP_colon_prefix_subcommand.spec
+18_CAP_list_subcommand.spec
+19_CAP_clear_subcommand.spec
+20_CAP_end_case_insensitivity.spec
+21_CAP_req_multiple_nak.spec
+
+
+# TECHNICALLY GOOD BEHAVIOR BUT NOT FEATURE POLISHED
+34_JOIN_rejoin_already_member.spec

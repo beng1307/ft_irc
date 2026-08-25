@@ -1,27 +1,21 @@
 # 02_NICK_unregistered_collision.spec
-# Tests out-of-order registration where C1 sends NICK before PASS, and C2 tries to claim the same nick.
-<<<<<<< Updated upstream:tester/unsupported/02_NICK_unregistered_collision.spec
-# Expected: C1's unregistered nickname reservation does not block C2 from using Charlie.
-=======
-# Expected: C2 receives 433 Nickname is already in use (or C2 is blocked from dual-registering as NickCharlie02).
-# Bug: C1 has pass_ok=false and registered=false, so C2's collision check is bypassed. Both C1 and C2 register as NickCharlie02.
->>>>>>> Stashed changes:tester/scenarios/commands/NICK/02_NICK_unregistered_collision.spec
+# Tests out-of-order registration where C1 sends NICK before PASS, and C2 claims the same nick.
+# Expected: Since C1 has not sent PASS yet, C1 does not reserve the nick. C2 successfully registers.
+# When C1 later completes PASS+USER, C1 gets 433 Nickname is already in use.
 CLIENTS C1, C2
 
 # C1 sends NICK first (before PASS)
-C1 SEND NICK NickCharlie02
+C1 SEND NICK Charlie02
 
-# C2 connects and attempts to claim the same nickname 'NickCharlie02'
+# C2 connects and claims 'Charlie02'
 C2 SEND PASS 1234
-<<<<<<< Updated upstream:tester/unsupported/02_NICK_unregistered_collision.spec
-C2 SEND NICK Charlie
-C2 EXPECT SUCCESS
-=======
-C2 SEND NICK NickCharlie02
-C2 EXPECT 433 * NickCharlie02 :Nickname is already in use
->>>>>>> Stashed changes:tester/scenarios/commands/NICK/02_NICK_unregistered_collision.spec
+C2 SEND NICK Charlie02
+C2 SEND USER user02 0 * :Charlie 02
+C2 EXPECT 001 Charlie02 :*
 
-# C1 completes registration with PASS and USER
+# C1 completes registration with PASS and USER, but Charlie02 is now taken
 C1 SEND PASS 1234
-C1 SEND USER user02 0 * :Charlie 02
-C1 EXPECT 001 NickCharlie02 :*
+C1 SEND USER user01 0 * :User 01
+C1 EXPECT 433 * Charlie02 :Nickname is already in use
+
+

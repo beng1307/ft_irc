@@ -11,7 +11,7 @@ bool	Server::is_positive_number(const Wire &value)
 //Checks if the nickname is valid: non-empty, at most 9 characters, and only letters, digits, or underscore.
 bool	Server::is_valid_nickname(const Wire &nickname)
 {
-	return (nickname.size() <= 9 && nickname.hasOnlyAlphaNum("_"));
+	return (nickname.size() <= 10 && nickname.hasOnlyAlphaNum("_"));
 }
 
 

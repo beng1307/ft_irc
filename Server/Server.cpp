@@ -122,7 +122,7 @@ const Client	&Server::get_client(int fd) const
 
 static bool	match_nickname(const Client &c, const Wire &nick)
 {
-	return (c.get_nickname() == nick);
+	return (c.get_nickname() == nick && c.get_register_status());
 }
 
 Client	&Server::get_client(const Wire &nickname)

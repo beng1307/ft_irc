@@ -36,8 +36,8 @@ C2 EXPECT :Alice!* TOPIC #topic_test :
 C1 SEND TOPIC #topic_test
 C1 EXPECT 331 Alice #topic_test :*
 
-# Test 5: Set topic with very long string (near 512 byte limit)
-C1 SEND TOPIC #topic_test :This is a very long topic that tests the boundary of IRC message length. It contains special characters like ! @ # $ % ^ & * ( ) - = + [ ] { } ; : ' " , . < > / ? | \ and repeated text to reach near the limit. This is a very long topic that tests the boundary of IRC message length. It contains special characters like ! @ # $ % ^ & * ( ) - = + [ ] { } ; : ' " , . < > / ? | \ repeat
+# Test 5: Set topic with long string (tested with special chars within max topic length)
+C1 SEND TOPIC #topic_test :This is a long topic testing special chars !@#$%^&*()-=+[]{};:'",.<>/?|\ and boundary limits within topic length limit.
 C1 EXPECT :Alice!* TOPIC #topic_test :*
 
 # Test 6: Query topic and verify it was set

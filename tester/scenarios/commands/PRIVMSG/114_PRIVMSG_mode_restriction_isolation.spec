@@ -23,7 +23,8 @@ C1 WAIT_RECV :Bob!* JOIN #modetest
 
 # C1 enables modes +t +i +k secret +l 1
 C1 SEND MODE #modetest +tikl secret 1
-C1 EXPECT 324 Alice #modetest +tikl secret 1
+C1 WAIT_RECV :Alice!* MODE #modetest +tikl secret 1
+
 
 # C2 (non-op) sends PRIVMSG to channel
 C2 SEND PRIVMSG #modetest :Still able to talk

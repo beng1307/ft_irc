@@ -33,9 +33,11 @@ C1 EXPECT 403 Alice #nonexistent :No such channel
 C1 SEND JOIN #privmsgroom
 C1 EXPECT :Alice!* JOIN #privmsgroom
 
-# 442: Bob is not in #privmsgroom
+# 404: Bob is not in #privmsgroom
 C2 SEND PRIVMSG #privmsgroom :Hello from outside
-C2 EXPECT 442 Bob #privmsgroom :You're not on that channel
+C2 EXPECT 404 Bob #privmsgroom :Cannot send to channel
+
+
 
 # Bob joins
 C2 SEND JOIN #privmsgroom

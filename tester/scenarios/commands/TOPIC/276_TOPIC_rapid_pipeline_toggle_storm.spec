@@ -19,7 +19,7 @@ C2 EXPECT :Bob!* JOIN #stream
 C1 WAIT_RECV :Bob!* JOIN #stream
 
 # Pipelined burst of topic updates
-C1 SEND TOPIC #stream :Phase 1\r\nTOPIC #stream :Phase 2\r\nTOPIC #stream :Phase 3\r\nTOPIC #stream :Final Phase
+C1 SEND_RAW TOPIC #stream :Phase 1\r\nTOPIC #stream :Phase 2\r\nTOPIC #stream :Phase 3\r\nTOPIC #stream :Final Phase\r\n
 C1 EXPECT :Alice!* TOPIC #stream :Phase 1
 C1 EXPECT :Alice!* TOPIC #stream :Phase 2
 C1 EXPECT :Alice!* TOPIC #stream :Phase 3

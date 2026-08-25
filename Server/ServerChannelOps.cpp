@@ -133,7 +133,7 @@ void	Server::handle_invite(Client &client,
 
 	//Checks if the client to invite even exists and is on channel.
 	Client &target = get_client(target_nick);
-	if (!target)
+	if (!target || !target.get_register_status())
 	{
 		send_status(client, "401", target_nick + " :No such nick/channel");
 		return ;
@@ -193,7 +193,13 @@ void	Server::handle_topic(Client &client, const Vector<Wire> &arguments)
 	}
 
 	//Sets the new topic.
+	static const size_t MAX_TOPIC_LENGTH = 150;
 	Wire new_topic = arguments[1];
+	if (new_topic.length() > MAX_TOPIC_LENGTH)
+	{
+		send_status(client, "461", "TOPIC :Topic length is too long");
+		return ;
+	}
 	channel.set_topic(new_topic);
 
 	//Broadcast the topic change to every member of the channel.
@@ -354,7 +360,7 @@ void	Server::handle_mode(Client &client, const Vector<Wire> &arguments)
 	}
 
 	const Wire &channel_name = arguments[0];
-	if (channel_name.empty() || channel_name[0] != '#')
+	if (channel_name.empty() || (channel_name[0] != '#' && channel_name[0] != '&'))
 		return ;
 
 	Channel &channel = ensure_channel_exists(client, channel_name);

@@ -20,9 +20,8 @@ C2 SEND NICK Bob61
 C2 SEND USER bob61 0 * :Bob
 C2 EXPECT 001 Bob61 :*
 
-# Alice61 invites Bob61 using colon-prefixed nickname ':Bob61'
+# Alice61 invites Bob61 with colon on first parameter; RFC 2812 §2.3.1 treats ':Bob61 #secret61' as single trailing parameter
 C1 SEND INVITE :Bob61 #secret61
-C1 EXPECT 341 Alice61 Bob61 #secret61
-C2 WAIT_RECV :Alice61!* INVITE Bob61 :#secret61
+C1 EXPECT 461 Alice61 INVITE :Not enough parameters
 C1 EXPECT_CONNECTED
 C2 EXPECT_CONNECTED

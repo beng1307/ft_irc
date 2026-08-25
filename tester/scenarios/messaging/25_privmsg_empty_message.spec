@@ -13,11 +13,11 @@ C2 SEND NICK Bob
 C2 SEND USER bob 0 * :Bob
 C2 EXPECT 001 Bob :*
 
-# Empty message (colon present but no text after it)
+# Empty message (colon present but no text after it) -> 412 ERR_NOTEXTTOSEND
 C1 SEND PRIVMSG Bob :
-C2 WAIT_RECV :Alice!* PRIVMSG Bob :
+C1 EXPECT 412 Alice :No text to send
 C1 SEND PRIVMSG Bob :
-C2 WAIT_RECV :Alice!* PRIVMSG Bob :
+C1 EXPECT 412 Alice :No text to send
 
 C1 EXPECT_CONNECTED
 C2 EXPECT_CONNECTED

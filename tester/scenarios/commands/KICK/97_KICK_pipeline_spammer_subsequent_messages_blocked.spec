@@ -42,9 +42,10 @@ C3 EXPECT :Alice!* KICK #lobby Bob :Spamming prohibited
 
 # Spammer sends subsequent messages in pipeline
 C2 SEND PRIVMSG #lobby :Spam 2
-C2 EXPECT 442 Bob #lobby :You're not on that channel
+C2 EXPECT 404 Bob #lobby :Cannot send to channel
 C2 SEND PRIVMSG #lobby :Spam 3
-C2 EXPECT 442 Bob #lobby :You're not on that channel
+C2 EXPECT 404 Bob #lobby :Cannot send to channel
+
 
 # Ensure listener Charlie received NO further spam
 C3 EXPECT_CONNECTED

@@ -13,7 +13,8 @@ C1 SEND NICK
 C1 EXPECT 431 * :No nickname given
 
 # Client can still successfully set nickname and register
-C1 SEND NICK NickAlice10
+C1 SEND NICK Alice10
 C1 SEND USER user10 0 * :Alice 10
-C1 EXPECT 001 NickAlice10 :*
+C1 EXPECT 001 Alice10 :*
 C1 EXPECT_CONNECTED
+

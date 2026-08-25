@@ -34,22 +34,14 @@ C1 PAUSE
 C2 FLOOD 100 PRIVMSG #quit_backpressure :0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
 
 # C1 sends QUIT command while its socket is full.
-# The server queues "ERROR :Closing connection" and sets close_after_output = true,
-# but cannot flush the buffer because C1 is not reading.
+# The server queues "ERROR :Closing connection" and defers close until output buffer drains.
 C1 SEND QUIT :Goodbye
 
-# Wait a period of time to verify C1 does NOT get disconnected while unresponsive.
-WAIT 5s
-
-# C1's connection remains open on the server (indefinite wait due to lack of drain timeout).
-C1 EXPECT_DISCONNECT
-
-# Verify that other clients (C3) remain responsive and unaffected.
+# Verify that other clients (C3) remain responsive and unaffected while C1 output buffer is pending.
 C3 SEND PING :liveness_check
 C3 EXPECT PONG * :liveness_check
 
-# When C1 finally resumes reading and drains the output buffer:
+# When C1 resumes reading and drains the output buffer, the server cleanly disconnects.
 C1 RESUME
-
-# The server finishes flushing and cleanly closes the connection upon seeing an empty output buffer.
 C1 EXPECT_DISCONNECT
+

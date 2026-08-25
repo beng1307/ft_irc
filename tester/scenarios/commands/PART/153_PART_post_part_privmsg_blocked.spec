@@ -25,4 +25,5 @@ C2 EXPECT :Alice!* PART #lobby :Bye
 
 # Alice tries to send PRIVMSG to #lobby
 C1 SEND PRIVMSG #lobby :Can you hear me?
-C1 EXPECT 442 Alice #lobby :You're not on that channel
+C1 EXPECT 404 Alice #lobby :Cannot send to channel
+

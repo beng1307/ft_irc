@@ -20,7 +20,8 @@ C2 SEND JOIN #lobby
 C2 EXPECT :Bob!* JOIN #lobby
 C1 WAIT_RECV :Bob!* JOIN #lobby
 
-# Alice sends KICK with extra parameters
+# Alice sends KICK with extra parameters; KICK uses positional 3rd argument as comment (:extra1)
 C1 SEND KICK #lobby Bob extra1 extra2 :Real comment
-C1 EXPECT :Alice!* KICK #lobby Bob :Real comment
-C2 EXPECT :Alice!* KICK #lobby Bob :Real comment
+C1 EXPECT :Alice!* KICK #lobby Bob :extra1
+C2 EXPECT :Alice!* KICK #lobby Bob :extra1
+

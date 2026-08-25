@@ -12,12 +12,7 @@ C1 EXPECT 001 [Bot05]^1 :*
 
 # C2 registers with pipe and hyphen
 C2 SEND PASS 1234
-<<<<<<< Updated upstream:tester/unsupported/05_NICK_rfc_special_characters.spec
 C2 SEND NICK alice|-
 C2 SEND USER alice 0 * :Alice
 C2 EXPECT 001 alice|- :*
-=======
-C2 SEND NICK alice05|away-home
-C2 SEND USER user05 0 * :Alice 05
-C2 EXPECT 001 alice05|away-home :*
->>>>>>> Stashed changes:tester/scenarios/commands/NICK/05_NICK_rfc_special_characters.spec
+

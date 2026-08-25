@@ -58,7 +58,7 @@ void	Server::send_message_to_channel(Client &sender, const Wire &channel_name, c
 
 	if (!channel.has_member(sender.get_socket()))
 	{
-		send_status(sender, "442", channel_name + " :You're not on that channel");
+		send_status(sender, "404", channel_name + " :Cannot send to channel");
 		return ;
 	}
 
@@ -73,7 +73,7 @@ void	Server::send_message_to_user(Client &sender, const Wire &nickname, const Wi
 {
 	Client &target = get_client(nickname);
 
-	if (!target)
+	if (!target || !target.get_register_status())
 	{
 		send_status(sender, "401", nickname + " :No such nick/channel");
 		return ;

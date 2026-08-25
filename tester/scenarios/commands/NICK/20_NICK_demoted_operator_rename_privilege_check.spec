@@ -27,10 +27,11 @@ C2 WAIT_RECV :Alice20!* MODE #test20 +o Bob20
 C2 SEND MODE #test20 -o Alice20
 C1 WAIT_RECV :Bob20!* MODE #test20 -o Alice20
 
-# Alice renames to SuperAlice20
-C1 SEND NICK SuperAlice20
-C2 WAIT_RECV :Alice20!* NICK :SuperAlice20
+# Alice renames to Super20
+C1 SEND NICK Super20
+C2 WAIT_RECV :Alice20!* NICK :Super20
 
-# SuperAlice attempts to kick Bob -> MUST FAIL with 482 You're not channel operator
+# Super20 attempts to kick Bob -> MUST FAIL with 482 You're not channel operator
 C1 SEND KICK #test20 Bob20 :Sneaky kick
-C1 EXPECT 482 SuperAlice20 #test20 :You're not channel operator
+C1 EXPECT 482 Super20 #test20 :You're not channel operator
+

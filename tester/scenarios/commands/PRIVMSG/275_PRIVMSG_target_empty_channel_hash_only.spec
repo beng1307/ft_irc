@@ -15,4 +15,4 @@ C1 EXPECT 403 Alice # :No such channel
 
 # C1 sends PRIVMSG to solitary '&'
 C1 SEND PRIVMSG & :Hello empty ampersand
-C1 EXPECT 401 Alice & :No such nick/channel
+C1 EXPECT 403 Alice & :No such channel

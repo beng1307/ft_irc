@@ -22,7 +22,7 @@ C2 WAIT_RECV :Alice!* KICK #kick Bob :removed
 C1 WAIT_RECV :Alice!* KICK #kick Bob :removed
 
 C2 SEND PRIVMSG #kick :still here
-C2 EXPECT 442 Bob #kick :You're not on that channel
+C2 EXPECT 404 Bob #kick :Cannot send to channel
 
 C2 SEND JOIN #kick
 C2 WAIT_RECV :Bob!* JOIN #kick

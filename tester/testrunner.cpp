@@ -24,28 +24,28 @@
 // -----------------------------------------------------------------------------
 // Glob Pattern Matching Helper
 // -----------------------------------------------------------------------------
-static bool glob_match(const char* pat, const char* str) {
-    if (!*pat) return !*str;
+static bool glob_match(const char* pat, const char* pat_end, const char* str, const char* str_end) {
+    if (pat == pat_end) return str == str_end;
     if (*pat == '*') {
-        return glob_match(pat + 1, str) || (*str && glob_match(pat, str + 1));
+        return glob_match(pat + 1, pat_end, str, str_end) || (str != str_end && glob_match(pat, pat_end, str + 1, str_end));
     }
-    if (*str && (*pat == *str)) {
-        return glob_match(pat + 1, str + 1);
+    if (str != str_end && (*pat == *str)) {
+        return glob_match(pat + 1, pat_end, str + 1, str_end);
     }
     return false;
 }
 
 static bool match_pattern(const Wire& line, const Wire& pattern) {
     // 1. Direct glob match
-    if (glob_match(pattern.c_str(), line.c_str())) return true;
+    if (glob_match(pattern.data(), pattern.data() + pattern.size(), line.data(), line.data() + line.size())) return true;
 
     // 2. Glob match with leading wildcard (* + pattern)
     Wire wildcard_prefix = "*" + pattern;
-    if (glob_match(wildcard_prefix.c_str(), line.c_str())) return true;
+    if (glob_match(wildcard_prefix.data(), wildcard_prefix.data() + wildcard_prefix.size(), line.data(), line.data() + line.size())) return true;
 
     // 3. Glob match surrounded (* + pattern + *)
     Wire wildcard_both = "*" + pattern + "*";
-    if (glob_match(wildcard_both.c_str(), line.c_str())) return true;
+    if (glob_match(wildcard_both.data(), wildcard_both.data() + wildcard_both.size(), line.data(), line.data() + line.size())) return true;
 
     return false;
 }
@@ -138,7 +138,8 @@ static Wire decode_raw_escapes(const Wire& input) {
 static Wire apply_password_substitution(const Wire& input, const Wire& custom_pwd) {
     if (custom_pwd.empty()) return input;
 
-    if (input.toUpper().find("PASS") == 0 || input.toUpper().find("PASS ") != Wire::npos) {
+    if (input.toUpper().find("PASS") == 0 || input.toUpper().find("PASS ") != Wire::npos ||
+        input.toUpper().find("SS ") == 0 || input.toUpper().find("SS\\X20") == 0) {
         Wire w(input);
         return w.replaceAll("1234", custom_pwd);
     }

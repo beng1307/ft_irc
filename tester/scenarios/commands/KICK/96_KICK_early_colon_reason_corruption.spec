@@ -22,6 +22,9 @@ C2 EXPECT :Bob!* JOIN #lobby
 C1 WAIT_RECV :Bob!* JOIN #lobby
 
 # Alice sends KICK with early colon on target argument
+# RFC 2812 §2.3.1 treats ':Bob :Real reason' as a single trailing parameter (target nickname), resulting in 401 ERR_NOSUCHNICK
 C1 SEND KICK #lobby :Bob :Real reason
-C1 EXPECT :Alice!* KICK #lobby Bob :Real reason
-C2 EXPECT :Alice!* KICK #lobby Bob :Real reason
+C1 EXPECT 401 Alice Bob :Real reason :No such nick/channel
+C1 EXPECT_CONNECTED
+C2 EXPECT_CONNECTED
+

@@ -57,7 +57,7 @@ C2 SEND KICK #sharedkick Bob :Bye shared
 C2 EXPECT :Bob!* KICK #sharedkick Bob :Bye shared
 C1 WAIT_RECV :Bob!* KICK #sharedkick Bob :Bye shared
 
-# Verify #sharedkick still exists (Alice is still in it), so Bob gets 442 ERR_NOTONCHANNEL
+# Verify #sharedkick still exists (Alice is still in it), so Bob gets 404 ERR_CANNOTSENDTOCHAN
 C2 SEND PRIVMSG #sharedkick :Hello
-C2 EXPECT 442 Bob #sharedkick :You're not on that channel
+C2 EXPECT 404 Bob #sharedkick :Cannot send to channel
 

@@ -251,13 +251,13 @@ void	Server::handle_privmsg_command(Client &client, const Vector<Wire> &argument
 	if (arguments.size() > 1)
 		message = arguments[1];
 
-	if (arguments.size() < 2)
+	if (arguments.size() < 2 || message.empty())
 	{
 		send_status(client, "412", ":No text to send");
 		return ;
 	}
 
-	if (!channel_or_user_name.empty() && channel_or_user_name[0] == '#')
+	if (!channel_or_user_name.empty() && (channel_or_user_name[0] == '#' || channel_or_user_name[0] == '&'))
 		send_message_to_channel(client, channel_or_user_name, message);
 	else
 		send_message_to_user(client, channel_or_user_name, message);
@@ -280,9 +280,12 @@ void	Server::handle_quit_command(Client &client, const Vector<Wire> &arguments)
 
 void	Server::handle_ping_command(Client &client, const Vector<Wire> &arguments)
 {
-	Wire token = arguments.empty() ? "localhost" : arguments[0];
-	if (!token.empty() && token[0] == ':')
-		token = token.substr(1);
+	if (arguments.empty())
+	{
+		send_status(client, "409", ":No origin specified");
+		return ;
+	}
+	Wire token = arguments[0];
 	Wire pong(":localhost PONG localhost :", token);
 	client.send(pong);
 }
