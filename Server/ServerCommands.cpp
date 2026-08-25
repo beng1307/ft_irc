@@ -216,12 +216,18 @@ void	Server::handle_cap_command(Client &client, const Vector<Wire> &arguments)
 {
 	if (arguments.size() > 0)
 	{
-		if (arguments[0] == "LS")
+		if (arguments[0].toUpper() == "LS")
 		{
 			Wire cap_response = ":localhost CAP * LS :";
 			client.send(cap_response);
 		}
-		else if (arguments[0] == "END") {}
+		else if (arguments[0].toUpper() == "REQ")
+		{
+			Wire requested_caps = arguments.size() > 1 ? arguments[1] : Wire();
+			Wire cap_response(":localhost CAP * NAK :", requested_caps);
+			client.send(cap_response);
+		}
+		else if (arguments[0].toUpper() == "END") {}
 	}
 }
 
