@@ -198,8 +198,7 @@ void	Server::handle_join_command(Client &client, const Vector<Wire> &arguments)
 }
 
 //Parts the given client from the channel.
-void	Server::handle_part_command(Client &client, const Wire &line,
-		const Vector<Wire> &arguments)
+void	Server::handle_part_command(Client &client, const Vector<Wire> &arguments)
 {
 	if (arguments.empty())
 	{
@@ -207,8 +206,8 @@ void	Server::handle_part_command(Client &client, const Wire &line,
 		return ;
 	}
 	Wire reason;
-	if (line.contains(" :"))
-		reason = line.strAfter(" :");
+	if (arguments.size() > 1)
+		reason = arguments[1];
 	part_client_from_channel(client, arguments[0], reason);
 }
 
@@ -226,8 +225,7 @@ void	Server::handle_cap_command(Client &client, const Vector<Wire> &arguments)
 	}
 }
 
-void	Server::handle_privmsg_command(Client &client, const Wire &line,
-		const Vector<Wire> &arguments)
+void	Server::handle_privmsg_command(Client &client, const Vector<Wire> &arguments)
 {
 	if (arguments.empty())
 	{
@@ -238,12 +236,10 @@ void	Server::handle_privmsg_command(Client &client, const Wire &line,
 	Wire	message;
 	Wire	channel_or_user_name = arguments[0];
 
-	if (line.contains(" :"))
-		message = line.strAfter(" :");
-	else if (arguments.size() > 1)
+	if (arguments.size() > 1)
 		message = arguments[1];
 
-	if (!line.contains(" :") && message.empty())
+	if (arguments.size() < 2)
 	{
 		send_status(client, "412", ":No text to send");
 		return ;
@@ -255,13 +251,10 @@ void	Server::handle_privmsg_command(Client &client, const Wire &line,
 		send_message_to_user(client, channel_or_user_name, message);
 }
 
-void	Server::handle_quit_command(Client &client, const Wire &line,
-		const Vector<Wire> &arguments)
+void	Server::handle_quit_command(Client &client, const Vector<Wire> &arguments)
 {
 	Wire reason = "Leaving server";
-	if (line.contains(" :"))
-		reason = line.strAfter(" :");
-	else if (!arguments.empty())
+	if (!arguments.empty())
 		reason = arguments[0];
 
 	get_client_audience(client.get_socket())
@@ -284,7 +277,7 @@ void	Server::handle_ping_command(Client &client, const Vector<Wire> &arguments)
 
 //Checks which command it is and uses the right function for it.
 void	Server::dispatch_command(Client &client, const Wire &command,
-		const Wire &line, const Vector<Wire> &arguments)
+		const Vector<Wire> &arguments)
 {
 	if (command == "PASS")
 		handle_pass_command(client, arguments);
@@ -297,23 +290,23 @@ void	Server::dispatch_command(Client &client, const Wire &command,
 	else if (command == "PING")
 		handle_ping_command(client, arguments);
 	else if (command == "QUIT")
-		handle_quit_command(client, line, arguments);
+		handle_quit_command(client, arguments);
 	else if (!client.get_register_status())
 		send_status(client, "451", ":You have not registered");
 	else if (command == "JOIN")
 		handle_join_command(client, arguments);
 	else if (command == "PART")
-		handle_part_command(client, line, arguments);
+		handle_part_command(client, arguments);
 	else if (command == "KICK")
-		handle_kick(client, line, arguments);
+		handle_kick(client, arguments);
 	else if (command == "INVITE")
 		handle_invite(client, arguments);
 	else if (command == "TOPIC")
-		handle_topic(client, line, arguments);
+		handle_topic(client, arguments);
 	else if (command == "MODE")
-		handle_mode(client, line, arguments);
+		handle_mode(client, arguments);
 	else if (command == "PRIVMSG")
-		handle_privmsg_command(client, line, arguments);
+		handle_privmsg_command(client, arguments);
 }
 
 
@@ -342,7 +335,7 @@ void Server::handle_line(Client &client, const size_t &position)
 	if (is_command(command))
 	{
 		Vector<Wire>	arguments = split_arguments(line);
-		dispatch_command(client, command, line, arguments);
+		dispatch_command(client, command, arguments);
 	}
 	else
 		send_status(client, "421", "Unknown command.");

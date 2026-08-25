@@ -38,7 +38,33 @@ bool	Server::is_command(const Wire &line)
 //A splitting function for the arguments.
 Vector<Wire>	Server::split_arguments(const Wire &line)
 {
-	return line.strAfter(" ").splitBy(' ').filter(is_empty);
+	Vector<Wire> arguments;
+	size_t position = line.find(' ');
+
+	while (position != Wire::npos)
+	{
+		while (position < line.size() && line[position] == ' ')
+			++position;
+		if (position >= line.size())
+			break;
+
+		size_t next_space = line.find(' ', position);
+		if (line[position] == ':')
+		{
+			arguments.add(line.substr(position + 1));
+			break;
+		}
+
+		if (next_space == Wire::npos)
+		{
+			arguments.add(line.substr(position));
+			break;
+		}
+		arguments.add(line.substr(position, next_space - position));
+		position = next_space;
+	}
+
+	return arguments.ok();
 }
 
 //Registers the client once the password, nickname, and username are valid

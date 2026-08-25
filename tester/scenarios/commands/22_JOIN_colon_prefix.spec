@@ -11,6 +11,6 @@ C1 EXPECT 001 Alice :*
 
 # Join channel using colon prefix
 C1 SEND JOIN :#chan
-C1 EXPECT :Alice!* JOIN :#chan
+C1 EXPECT :Alice!* JOIN #chan
 C1 EXPECT 353 Alice = #chan :*Alice*
 C1 EXPECT 366 Alice #chan :End of /NAMES list

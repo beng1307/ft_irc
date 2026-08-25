@@ -58,8 +58,7 @@ bool	Server::ensure_channel_operator(Client &client,
 ///////////////////////////////////////////////////////////////////////////////
 // KICK
 
-void	Server::handle_kick(Client &client, const Wire &line,
-	const Vector<Wire> &arguments)
+void	Server::handle_kick(Client &client, const Vector<Wire> &arguments)
 {
 	//First it checks if there are enough arguments.
 	if (arguments.size() < 2)
@@ -97,8 +96,8 @@ void	Server::handle_kick(Client &client, const Wire &line,
 
 	//It provides the reason and the kick message, announces it to the channel and kicks the client.
 	Wire reason = client.get_nickname();
-	if (line.contains(" :"))
-		reason = line.strAfter(" :");
+	if (arguments.size() > 2)
+		reason = arguments[2];
 
 	Wire kick_message = make_msg(client, "KICK", channel_name + " " + target_nick, reason);
 	channel.broadcast(kick_message);
@@ -157,8 +156,7 @@ void	Server::handle_invite(Client &client,
 ///////////////////////////////////////////////////////////////////////////////
 // TOPIC
 
-void	Server::handle_topic(Client &client, const Wire &line,
-	const Vector<Wire> &arguments)
+void	Server::handle_topic(Client &client, const Vector<Wire> &arguments)
 {
 	//First it checks if there are enough arguments.
 	if (arguments.size() < 1)
@@ -177,7 +175,7 @@ void	Server::handle_topic(Client &client, const Wire &line,
 	if (!ensure_channel_member(client, channel))
 		return ;
 
-	if (!line.contains(" :"))
+	if (arguments.size() < 2)
 	{
 		//Gets the topic of the channel, if it's missing, the client gets messaged else it sends him the topic.
 		Wire error_code = channel.get_topic().empty() ? "331" : "332";
@@ -195,7 +193,7 @@ void	Server::handle_topic(Client &client, const Wire &line,
 	}
 
 	//Sets the new topic.
-	Wire new_topic = line.strAfter(" :");
+	Wire new_topic = arguments[1];
 	channel.set_topic(new_topic);
 
 	//Broadcast the topic change to every member of the channel.
@@ -211,7 +209,6 @@ static size_t	count_required_mode_parameters(const Wire &mode_string)
 {
 	char sign = 0;
 	size_t count = 0;
-
 	for (size_t i = 0; i < mode_string.size(); ++i)
 	{
 		char c = mode_string[i];
@@ -340,10 +337,8 @@ bool	Server::apply_mode_limit(Client &client, Channel &channel, char sign,
 ///////////////////////////////////////////////////////////////////////////////
 // MODE
 
-void	Server::handle_mode(Client &client, const Wire &line,
-	const Vector<Wire> &arguments)
+void	Server::handle_mode(Client &client, const Vector<Wire> &arguments)
 {
-	(void)line;
 	if (arguments.empty())
 	{
 		send_status(client, "461", "MODE :Not enough parameters");
