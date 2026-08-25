@@ -130,6 +130,7 @@ class Server
 		void send_message_to_user(Client &sender, const Wire &nickname, const Wire &message);
 		void send_status(Client &client, const Wire &code, const Wire &message);
 		void send_channel_names_reply(Client &client, const Wire &channel_name);
+		void send_channel_topic_reply(Client &client, const Wire &channel_name);
 		Vector<Wire> split_arguments(const Wire &line);
 		Set<int> get_client_audience(int client_fd) const;
 

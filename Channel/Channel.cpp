@@ -118,7 +118,6 @@ bool	Channel::has_member(int client_fd) const
 void	Channel::remove_client_from_channel(int client_fd)
 {
 	remove_invited(client_fd);
-	remove_operator(client_fd);
 	remove_member(client_fd);
 	if (empty() && server)
 		server->remove_channel(name);
@@ -140,6 +139,13 @@ void	Channel::remove_invited(int client_fd)
 void	Channel::remove_member(int client_fd)
 {
 	member_fds.erase(client_fd);
+	remove_operator(client_fd);
+}
+
+void	Channel::promote_first_member_if_no_operators()
+{
+	if (operator_fds.empty() && !member_fds.empty())
+		add_operator(*member_fds.begin());
 }
 
 bool	Channel::add_operator(int client_fd)

@@ -77,6 +77,7 @@ class	Channel
 		void				remove_invited(int client_fd);
 		bool				remove_operator(int client_fd);
 		void				remove_member(int client_fd);
+		void				promote_first_member_if_no_operators();
 		bool				add_operator(int client_fd);
 		bool				is_operator(int client_fd) const;
 		void				add_invited(int client_fd);

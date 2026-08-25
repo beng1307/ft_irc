@@ -86,17 +86,33 @@ void	Server::send_message_to_user(Client &sender, const Wire &nickname, const Wi
 
 
 
-static Wire	collect_channel_member_names(Wire names, int member_fd, const ClientMap &clients, const Channel &channel)
+static Wire	append_channel_member_name(Wire names, int member_fd, const ClientMap &clients)
 {
 	Client member = clients.fetch(member_fd);
 	if (member)
 	{
 		if (!names.empty())
 			names += " ";
-		if (channel.is_operator(member_fd))
-			names += "@";
 		names += member.get_nickname();
 	}
+	return names;
+}
+
+static Wire	collect_channel_operator_names(Wire names, int member_fd, const ClientMap &clients, const Channel &channel)
+{
+	if (channel.is_operator(member_fd))
+	{
+		if (!names.empty())
+			names += " ";
+		names += "@" + clients.fetch(member_fd).get_nickname();
+	}
+	return names;
+}
+
+static Wire	collect_channel_regular_member_names(Wire names, int member_fd, const ClientMap &clients, const Channel &channel)
+{
+	if (!channel.is_operator(member_fd))
+		return append_channel_member_name(names, member_fd, clients);
 	return names;
 }
 
@@ -111,10 +127,20 @@ void	Server::send_channel_names_reply(Client &client, const Wire &channel_name)
 	Channel &channel = get_channel(channel_name);
 	if (!channel)
 		return ;
-	Wire names = channel.get_member_fds().reduce(collect_channel_member_names, get_clients(), channel);
+	Wire names = channel.get_member_fds().reduce(collect_channel_operator_names, get_clients(), channel);
+	names = channel.get_member_fds().reduce(collect_channel_regular_member_names, names, get_clients(), channel);
 
 	send_status(client, "353", "= " + channel_name + " :" + names);
 	send_status(client, "366", channel_name + " :End of /NAMES list");
+}
+
+void	Server::send_channel_topic_reply(Client &client, const Wire &channel_name)
+{
+	Channel &joined_channel = get_channel(channel_name);
+	if (joined_channel.get_topic().empty())
+		send_status(client, "331", channel_name + " :No topic is set");
+	else
+		send_status(client, "332", channel_name + " :" + joined_channel.get_topic());
 }
 
 static Set<int>	collect_members_of_mutual_channels(Set<int> recipients, const Wire, const Channel &current, int client_fd)

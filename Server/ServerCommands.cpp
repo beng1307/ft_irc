@@ -60,9 +60,8 @@ void	Server::let_client_join_channel(const Wire &channel_name, Client &client, c
 		channel.broadcast(client, "JOIN");
 		print("Client joined channel ", channel_name, "!");
 	}
-
-	// Sends mandatory IRC numeric replies 353 RPL_NAMREPLY (member list with '@' for ops)
-	// and 366 RPL_ENDOFNAMES back to the client upon joining the channel.
+	
+	send_channel_topic_reply(client, channel_name);
 	send_channel_names_reply(client, channel_name);
 }
 
@@ -174,6 +173,27 @@ void	Server::handle_nick_command(Client &client, const Vector<Wire> &arguments)
 }
 
 
+static bool	is_invalid_channel_character(char character)
+{
+	return (static_cast<unsigned char>(character) <= ' '
+		|| character == ',' || character == ':');
+}
+
+static bool	is_valid_channel_name(const Wire &channel_name)
+{
+	if (channel_name.empty() || channel_name.size() > 50)
+		return (false);
+	if (channel_name[0] != '#' && channel_name[0] != '&')
+		return (false);
+
+	for (size_t i = 0; i < channel_name.size(); ++i)
+	{
+		if (is_invalid_channel_character(channel_name[i]))
+			return (false);
+	}
+	return (true);
+}
+
 //Handles the join command.
 //If there is a key, it will gets set. And used for joining.
 void	Server::handle_join_command(Client &client, const Vector<Wire> &arguments)
@@ -185,7 +205,7 @@ void	Server::handle_join_command(Client &client, const Vector<Wire> &arguments)
 	}
 
 	const Wire &chan = arguments[0];
-	if (chan.empty() || (chan[0] != '#' && chan[0] != '&'))
+	if (!is_valid_channel_name(chan))
 	{
 		send_status(client, "403", chan + " :No such channel");
 		return ;
