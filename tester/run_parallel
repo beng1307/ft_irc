@@ -120,6 +120,21 @@ is_port_listening() {
     fi
 }
 
+DEFAULT_PORT="6667"
+DEFAULT_PASS="1234"
+
+# Source .env if present
+if [ -f "${REPO_DIR}/.env" ]; then
+    # shellcheck disable=SC1090
+    . "${REPO_DIR}/.env"
+elif [ -f "${SCRIPT_DIR}/.env" ]; then
+    # shellcheck disable=SC1090
+    . "${SCRIPT_DIR}/.env"
+fi
+
+DEFAULT_PORT="${PORT:-$DEFAULT_PORT}"
+DEFAULT_PASS="${PASSWORD:-$DEFAULT_PASS}"
+
 echo -e "\n${BOLD}${CYAN}======================================================================${NC}"
 if [ "$MODE" = "single" ]; then
     echo -e "${BOLD}${CYAN}   RUNNING PARALLEL SUITES ON A SINGLE SERVER INSTANCE (${#FOLDERS[@]} SUITES) ${NC}"
@@ -129,37 +144,43 @@ fi
 echo -e "${BOLD}${CYAN}======================================================================${NC}\n"
 
 SHARED_PORT=""
+SHARED_PASS="$DEFAULT_PASS"
+
 if [ "$MODE" = "single" ]; then
-    SHARED_PORT=$(get_free_port)
-    SHARED_PASS="1234"
-
-    # Build server if needed
-    if [ ! -x "$SERVER_BIN" ]; then
-        echo -e "${CYAN}Building server binary at ${REPO_DIR}...${NC}"
-        make -C "$REPO_DIR" >/dev/null || { echo -e "${RED}Failed to build server${NC}"; exit 1; }
-    fi
-
-    # Start single shared server
-    "$SERVER_BIN" "$SHARED_PORT" "$SHARED_PASS" >/dev/null 2>&1 &
-    SHARED_SERVER_PID=$!
-
-    started=0
-    for (( i=0; i<30; i++ )); do
-        if is_port_listening "$SHARED_PORT"; then
-            started=1
-            break
-        fi
-        if ! kill -0 "$SHARED_SERVER_PID" 2>/dev/null; then
-            break
-        fi
-        sleep 0.1
-    done
-
-    if [ "$started" -eq 1 ]; then
-        echo -e "${GREEN}Started shared IRC server (PID: ${SHARED_SERVER_PID}) on port ${SHARED_PORT}${NC}\n"
+    if is_port_listening "$DEFAULT_PORT"; then
+        SHARED_PORT="$DEFAULT_PORT"
+        echo -e "${GREEN}Using existing IRC server at 127.0.0.1:${SHARED_PORT}${NC}\n"
     else
-        echo -e "${RED}Error: Failed to start shared IRC server on port ${SHARED_PORT}${NC}\n"
-        exit 1
+        SHARED_PORT=$(get_free_port)
+
+        # Build server if needed
+        if [ ! -x "$SERVER_BIN" ]; then
+            echo -e "${CYAN}Building server binary at ${REPO_DIR}...${NC}"
+            make -C "$REPO_DIR" >/dev/null || { echo -e "${RED}Failed to build server${NC}"; exit 1; }
+        fi
+
+        # Start single shared server
+        "$SERVER_BIN" "$SHARED_PORT" "$SHARED_PASS" >/dev/null 2>&1 &
+        SHARED_SERVER_PID=$!
+
+        started=0
+        for (( i=0; i<30; i++ )); do
+            if is_port_listening "$SHARED_PORT"; then
+                started=1
+                break
+            fi
+            if ! kill -0 "$SHARED_SERVER_PID" 2>/dev/null; then
+                break
+            fi
+            sleep 0.1
+        done
+
+        if [ "$started" -eq 1 ]; then
+            echo -e "${GREEN}Started shared IRC server (PID: ${SHARED_SERVER_PID}) on port ${SHARED_PORT}${NC}\n"
+        else
+            echo -e "${RED}Error: Failed to start shared IRC server on port ${SHARED_PORT}${NC}\n"
+            exit 1
+        fi
     fi
 fi
 
@@ -184,11 +205,15 @@ for idx in "${!FOLDERS[@]}"; do
     
     # Launch ./run_scenarios targeting this folder / subfolder
     (
+        extra_flags=()
+        if [ "$MODE" = "single" ]; then
+            extra_flags+=(--password "$SHARED_PASS")
+        fi
         if [ "$INCREMENTAL" -eq 1 ]; then
-            "${SCRIPT_DIR}/run_scenarios" --port "$port" --dir "${SCENARIOS_DIR}/${folder}" 2>&1 | tee "$log_file" | grep --line-buffered -E '✅|❌|tester/logs/|Error:'
+            "${SCRIPT_DIR}/run_scenarios" --port "$port" "${extra_flags[@]}" --dir "${SCENARIOS_DIR}/${folder}" 2>&1 | tee "$log_file" | grep --line-buffered -E '✅|❌|tester/logs/|Error:'
             echo "${PIPESTATUS[0]}" > "${TMP_DIR}/${safe_name}.exit"
         else
-            "${SCRIPT_DIR}/run_scenarios" --port "$port" --dir "${SCENARIOS_DIR}/${folder}" > "$log_file" 2>&1
+            "${SCRIPT_DIR}/run_scenarios" --port "$port" "${extra_flags[@]}" --dir "${SCENARIOS_DIR}/${folder}" > "$log_file" 2>&1
             echo $? > "${TMP_DIR}/${safe_name}.exit"
         fi
     ) &
