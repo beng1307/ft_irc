@@ -1,0 +1,11 @@
+# 193_PING_outbound_line_length_overflow.spec
+# Tests long PING payload handling (near 512-byte IRC message limit)
+CLIENTS C1
+
+C1 SEND PASS 1234
+C1 SEND NICK Alice
+C1 SEND USER alice 0 * :Alice Smith
+C1 EXPECT 001 Alice :*
+
+C1 SEND PING :abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789
+C1 EXPECT :localhost PONG localhost :abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789
