@@ -444,5 +444,39 @@ Server:  (If public, UserA rejoins as normal member)
 | **5** | **No multi-channel or multi-user batch kicks** | `ServerChannelOps.cpp:64-74` | **Low** | Batch kicks like `KICK #c u1,u2` fail with `401 u1,u2 :No such nick/channel`. |
 | **6** | **Permanent Opless Channel on Self-Kick** | `ServerChannelOps.cpp:105` | **Low (RFC Standard)** | If the only operator kicks themselves while other members remain, channel permanently loses operator management. |
 | **7** | **Premature reason extraction on `" :"`** | `ServerChannelOps.cpp:100-101` | **Low** | Slicing reason using `line.strAfter(" :")` can split on earlier parameters if they contain `" :"`. |
+| **8** | **Colon prefix on channel parameter (`:#chan`)** | `ServerChannelOps.cpp:72, 76` | **Low** | `KICK :#chan user` fails with `403 :#chan :No such channel`. |
+
+---
+
+## 6. Automated Regression & Vulnerability Test Suite (`tester/scenarios/commands/`)
+
+The following test scenario files have been created to verify RFC compliance and capture edge cases / vulnerabilities:
+
+| Spec File | Test Focus & Verification | Expected Behavior | Buggy Behavior (Fails Test) |
+| :--- | :--- | :--- | :--- |
+| `60_KICK_not_registered_error.spec` | Registration gate | `451 :You have not registered` | Command executed prematurely |
+| `61_KICK_missing_params.spec` | Parameter count validation (< 2 args) | `461 KICK :Not enough parameters` | Undefined behavior / crash |
+| `62_KICK_nonexistent_channel.spec` | Nonexistent channel lookup | `403 <chan> :No such channel` | State leak or crash |
+| `63_KICK_kicker_not_on_channel.spec` | Kicker membership requirement | `442 <chan> :You're not on that channel` | Outside kick permitted |
+| `64_KICK_kicker_not_channel_operator.spec` | Operator privilege enforcement (+o) | `482 <chan> :You're not channel operator` | Regular members can kick ops |
+| `65_KICK_target_not_found.spec` | Offline / nonexistent target lookup | `401 <target> :No such nick/channel` | Null dereference |
+| `66_KICK_target_not_on_channel.spec` | Target channel membership validation | `441 <target> <chan> :They aren't on that channel` | Target kicked without being in channel |
+| `67_KICK_success_with_colon_reason.spec` | Standard KICK with comment broadcast | Broadcast `:kicker KICK #chan target :reason` to all; target evicted | Notification dropped |
+| `68_KICK_single_word_reason_without_colon.spec` | Single-word reason without leading colon | Broadcast comment `:spammer` | **BUG**: Reason dropped, replaced with kicker nick |
+| `69_KICK_colon_prefix_on_target.spec` | Trailing colon on target argument (`:target`) | Strips colon, kicks target | **BUG**: Returns `401 :target :No such nick/channel` |
+| `70_KICK_case_insensitive_channel.spec` | Case-insensitive channel matching | `#SecretLobby` matched by `#secretlobby` | **BUG**: Returns `403 #secretlobby :No such channel` |
+| `71_KICK_case_insensitive_target_nick.spec` | Case-insensitive target nick matching | `Bob` matched by `BOB` | **BUG**: Returns `401 BOB :No such nick/channel` |
+| `72_KICK_self_kick_last_member_channel_destroyed.spec` | Sole member self-kick channel GC | Channel destroyed; new join creates fresh op | Channel leaked / zombie state |
+| `73_KICK_self_kick_opless_channel.spec` | Self-kick with remaining members | Channel becomes opless; non-ops cannot execute op commands | Privileges escalated or crash |
+| `74_KICK_op_on_op.spec` | Operator kicking another operator | Target loses op & membership; rejoin is non-op | Target retains op |
+| `75_KICK_invite_only_rejoin_blocked.spec` | Invite status cleared on kick (+i) | `473 :Cannot join channel (+i)` on rejoin | Rejoining permitted without new invite |
+| `76_KICK_user_limit_slot_freed.spec` | Capacity freed on kick (+l) | Waiting user can join immediately after kick | Channel reports full incorrectly |
+| `77_KICK_multi_target_batch.spec` | Batch comma-separated target kicks | Both targets kicked | **BUG**: Returns `401 Bob,Charlie :No such nick/channel` |
+| `78_KICK_post_kick_privmsg_rejected.spec` | Post-kick channel interaction rejection | `442 <chan> :You're not on that channel` | Target still broadcasts to channel |
+| `79_KICK_ghost_fd_reuse.spec` | Operator FD cleanup & no ghost op | Reconnected socket has no residual operator status | New client inherits operator status |
+| `80_KICK_colon_channel_prefix.spec` | Colon-prefixed channel name (`:#lobby`) | Strips colon, kicks target | **BUG**: Returns `403 :#lobby :No such channel` |
+| `81_KICK_ampersand_channel.spec` | Local channel prefix support (`&chan`) | KICK executed on local channel | Channel rejected |
+| `82_KICK_empty_reason_colon_only.spec` | Empty colon reason (`KICK #chan target :`) | Clean KICK broadcast without trailing colon or empty | Formatting corrupts IRC stream |
+| `83_KICK_names_reply_exclusion.spec` | Names list update post-kick | 353 RPL_NAMREPLY excludes kicked client | Ghost names in RPL_NAMREPLY |
 
 ---
