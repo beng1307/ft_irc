@@ -498,8 +498,13 @@ for spec in "${SPECS[@]}"; do
     output=$("$TESTRUNNER_BIN" "${RUNNER_ARGS[@]}" "$spec" 2>&1)
     status=$?
 
-    # If the test process was killed by SIGINT/SIGQUIT (130 / 131), abort the suite immediately
-    if [ $status -eq 130 ] || [ $status -eq 131 ]; then
+    # If the test process was killed by a signal (SIGINT=130, SIGQUIT=131, SIGTERM=143, etc.), abort immediately
+    if [ $status -ge 128 ]; then
+        cleanup
+    fi
+
+    # If the server process died, abort immediately instead of failing remaining tests
+    if [ -n "$SERVER_PID" ] && ! kill -0 "$SERVER_PID" 2>/dev/null; then
         cleanup
     fi
 

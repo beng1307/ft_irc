@@ -15,16 +15,16 @@ C2 SEND NICK Bob175
 C2 SEND USER bob175 0 * :Bob175
 C2 EXPECT 001 Bob175 :*
 
-C1 SEND JOIN #storm
-C1 EXPECT 353 Ali175 = #storm :@Ali175
-C1 EXPECT 366 Ali175 #storm :End of /NAMES list
+C1 SEND JOIN #storm58M
+C1 EXPECT 353 Ali175 = #storm58M :@Ali175
+C1 EXPECT 366 Ali175 #storm58M :End of /NAMES list
 
-C2 SEND JOIN #storm
-C1 WAIT_RECV :Bob175!* JOIN #storm
+C2 SEND JOIN #storm58M
+C1 WAIT_RECV :Bob175!* JOIN #storm58M
 
 # Send pipelined mode toggles
-C1 SEND_RAW MODE #storm +i\r\nMODE #storm -i\r\nMODE #storm +t\r\nMODE #storm -t\r\nMODE #storm +k keypass\r\nMODE #storm -k\r\n
+C1 SEND_RAW MODE #storm58M +i\r\nMODE #storm58M -i\r\nMODE #storm58M +t\r\nMODE #storm58M -t\r\nMODE #storm58M +k keypass\r\nMODE #storm58M -k\r\n
 
 # Verify final clean state (all toggles ended in removal)
-C1 SEND MODE #storm
-C1 EXPECT 324 Ali175 #storm +
+C1 SEND MODE #storm58M
+C1 EXPECT 324 Ali175 #storm58M +

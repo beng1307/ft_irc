@@ -35,12 +35,14 @@ ENV_PASSWORD := $(PASSWORD)
 PORT := $(if $(ENV_PORT),$(ENV_PORT),6667)
 PASSWORD := $(if $(ENV_PASSWORD),$(ENV_PASSWORD),1234)
 
-# make run parallel [single|multi] OR make run [/folder] OR make run [port] [pass] [/folder] OR make run [pass] [/folder]
+# make run parallel [single|multi] [-i] OR make run [/folder] OR make run [port] [pass] [/folder] OR make run [pass] [/folder]
 # make run DIR=<folder> OR make run FOLDER=<folder>
 run: $(NAME)
 	@set -- $(filter-out $@,$(MAKECMDGOALS)); \
 	if [ "$$1" = "parallel" ]; then \
-		./run_parallel "$$2"; \
+		inc=""; \
+		case "$(MAKEFLAGS)" in *i*) inc="-i" ;; esac; \
+		./run_parallel "$${@:2}" $$inc; \
 		exit $$?; \
 	fi; \
 	port=""; pass=""; targets=(); nums=(); \
@@ -205,7 +207,9 @@ env:
 
 parallel: $(NAME)
 	@set -- $(filter-out $@,$(MAKECMDGOALS)); \
-	./run_parallel "$$1"
+	inc=""; \
+	case "$(MAKEFLAGS)" in *i*) inc="-i" ;; esac; \
+	./run_parallel "$$@" $$inc
 
 help:
 	@echo "Usage: make [target] [args...]"

@@ -7,9 +7,9 @@ C1 SEND PASS 1234
 C1 SEND NICK Ali367
 C1 SEND USER ali367 0 * :Ali367
 C1 EXPECT 001 Ali367 :*
-C1 SEND JOIN #lobby
-C1 EXPECT :Ali367!* JOIN #lobby
+C1 SEND JOIN #lobby266T
+C1 EXPECT :Ali367!* JOIN #lobby266T
 
 # Alice sends TOPIC delimited with tabs
-C1 SEND TOPIC	#lobby	:TabDelimitedTopic
+C1 SEND TOPIC	#lobby266T	:TabDelimitedTopic
 C1 EXPECT 421 Ali367 Unknown command.

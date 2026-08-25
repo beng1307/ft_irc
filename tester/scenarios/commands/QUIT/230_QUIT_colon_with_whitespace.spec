@@ -12,12 +12,12 @@ C2 SEND NICK Bob318
 C2 SEND USER bob318 0 * :Bob318
 C2 EXPECT 001 Bob318 :*
 
-C1 SEND JOIN #lobby
-C1 EXPECT :Ali318!* JOIN #lobby
+C1 SEND JOIN #lobby230Q
+C1 EXPECT :Ali318!* JOIN #lobby230Q
 
-C2 SEND JOIN #lobby
-C2 WAIT_RECV :Bob318!* JOIN #lobby
-C1 WAIT_RECV :Bob318!* JOIN #lobby
+C2 SEND JOIN #lobby230Q
+C2 WAIT_RECV :Bob318!* JOIN #lobby230Q
+C1 WAIT_RECV :Bob318!* JOIN #lobby230Q
 
 # Alice quits with spaced reason
 C1 SEND QUIT :   spaces preserved   

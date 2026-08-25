@@ -12,12 +12,12 @@ C2 SEND NICK Bob315
 C2 SEND USER bob315 0 * :Bob315
 C2 EXPECT 001 Bob315 :*
 
-C1 SEND JOIN #lobby
-C1 EXPECT :Ali315!* JOIN #lobby
+C1 SEND JOIN #lobby227Q
+C1 EXPECT :Ali315!* JOIN #lobby227Q
 
-C2 SEND JOIN #lobby
-C2 WAIT_RECV :Bob315!* JOIN #lobby
-C1 WAIT_RECV :Bob315!* JOIN #lobby
+C2 SEND JOIN #lobby227Q
+C2 WAIT_RECV :Bob315!* JOIN #lobby227Q
+C1 WAIT_RECV :Bob315!* JOIN #lobby227Q
 
 # Alice sends QUIT with trailing spaces
 C1 SEND QUIT    

@@ -13,5 +13,5 @@ C1 SEND KICK
 C1 EXPECT 461 Ali128 KICK :Not enough parameters
 
 # 1 parameter only (channel without target nick)
-C1 SEND KICK #lobby02
+C1 SEND KICK #lobby73K
 C1 EXPECT 461 Ali128 KICK :Not enough parameters

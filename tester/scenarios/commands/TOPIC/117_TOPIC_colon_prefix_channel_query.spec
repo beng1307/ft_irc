@@ -8,9 +8,9 @@ C1 SEND PASS 1234
 C1 SEND NICK Ali345
 C1 SEND USER ali345 0 * :Ali345
 C1 EXPECT 001 Ali345 :*
-C1 SEND JOIN #lobby
-C1 EXPECT :Ali345!* JOIN #lobby
+C1 SEND JOIN #lobby117T
+C1 EXPECT :Ali345!* JOIN #lobby117T
 
 # Alice queries topic using colon-prefixed channel name
-C1 SEND TOPIC :#lobby
-C1 EXPECT 331 Ali345 #lobby :No topic is set
+C1 SEND TOPIC :#lobby117T
+C1 EXPECT 331 Ali345 #lobby117T :No topic is set

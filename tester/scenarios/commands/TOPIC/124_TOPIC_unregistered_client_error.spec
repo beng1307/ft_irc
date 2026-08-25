@@ -4,9 +4,9 @@
 CLIENTS C1
 
 # Unregistered client sends TOPIC
-C1 SEND TOPIC #lobby
+C1 SEND TOPIC #lobby124T
 C1 EXPECT 451 * :You have not registered
 
 # Unregistered client sends TOPIC with payload
-C1 SEND TOPIC #lobby :Premature topic
+C1 SEND TOPIC #lobby124T :Premature topic
 C1 EXPECT 451 * :You have not registered

@@ -12,12 +12,12 @@ C2 SEND NICK Bob316
 C2 SEND USER bob316 0 * :Bob316
 C2 EXPECT 001 Bob316 :*
 
-C1 SEND JOIN #lobby
-C1 EXPECT :Ali316!* JOIN #lobby
+C1 SEND JOIN #lobby228Q
+C1 EXPECT :Ali316!* JOIN #lobby228Q
 
-C2 SEND JOIN #lobby
-C2 WAIT_RECV :Bob316!* JOIN #lobby
-C1 WAIT_RECV :Bob316!* JOIN #lobby
+C2 SEND JOIN #lobby228Q
+C2 WAIT_RECV :Bob316!* JOIN #lobby228Q
+C1 WAIT_RECV :Bob316!* JOIN #lobby228Q
 
 # Alice quits with custom multi-word reason
 C1 SEND QUIT :Going out for lunch with colleagues

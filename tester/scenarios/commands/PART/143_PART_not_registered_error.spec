@@ -3,11 +3,11 @@
 CLIENTS C1
 
 # Unregistered client sends PART immediately
-C1 SEND PART #lobby
+C1 SEND PART #lobby143P
 C1 EXPECT 451 * :You have not registered
 
 # Client provides PASS and NICK, but still unregistered
 C1 SEND PASS 1234
 C1 SEND NICK Ali212
-C1 SEND PART #lobby
+C1 SEND PART #lobby143P
 C1 EXPECT 451 * :You have not registered

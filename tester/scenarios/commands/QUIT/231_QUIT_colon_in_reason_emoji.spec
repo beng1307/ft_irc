@@ -12,12 +12,12 @@ C2 SEND NICK Bob319
 C2 SEND USER bob319 0 * :Bob319
 C2 EXPECT 001 Bob319 :*
 
-C1 SEND JOIN #lobby
-C1 EXPECT :Ali319!* JOIN #lobby
+C1 SEND JOIN #lobby231Q
+C1 EXPECT :Ali319!* JOIN #lobby231Q
 
-C2 SEND JOIN #lobby
-C2 WAIT_RECV :Bob319!* JOIN #lobby
-C1 WAIT_RECV :Bob319!* JOIN #lobby
+C2 SEND JOIN #lobby231Q
+C2 WAIT_RECV :Bob319!* JOIN #lobby231Q
+C1 WAIT_RECV :Bob319!* JOIN #lobby231Q
 
 # Alice quits with smiley
 C1 SEND QUIT ::)

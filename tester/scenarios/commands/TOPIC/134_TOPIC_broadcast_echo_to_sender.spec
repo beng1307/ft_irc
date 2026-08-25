@@ -7,9 +7,9 @@ C1 SEND PASS 1234
 C1 SEND NICK Ali362
 C1 SEND USER ali362 0 * :Ali362
 C1 EXPECT 001 Ali362 :*
-C1 SEND JOIN #lobby
-C1 EXPECT :Ali362!* JOIN #lobby
+C1 SEND JOIN #lobby134T
+C1 EXPECT :Ali362!* JOIN #lobby134T
 
 # Alice sets topic and verifies self-echo broadcast
-C1 SEND TOPIC #lobby :Self Echo Topic
-C1 EXPECT :Ali362!* TOPIC #lobby :Self Echo Topic
+C1 SEND TOPIC #lobby134T :Self Echo Topic
+C1 EXPECT :Ali362!* TOPIC #lobby134T :Self Echo Topic

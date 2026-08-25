@@ -53,12 +53,14 @@ run: all
 		./ircserv $(PORT) $(PASSWORD); \
 	fi
 
-# make test parallel [single|multi] OR make test [/folder] OR make test [port] [pass] [/folder] OR make test [pass] [/folder]
+# make test parallel [single|multi] [-i] OR make test [/folder] OR make test [port] [pass] [/folder] OR make test [pass] [/folder]
 # make test DIR=<folder> OR make test FOLDER=<folder>
 test: all
 	@set -- $(filter-out $@,$(MAKECMDGOALS)); \
 	if [ "$$1" = "parallel" ]; then \
-		SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_parallel "$$2"; \
+		inc=""; \
+		case "$(MAKEFLAGS)" in *i*) inc="-i" ;; esac; \
+		SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_parallel "$${@:2}" $$inc; \
 		exit $$?; \
 	fi; \
 	port=""; pass=""; targets=(); nums=(); \
@@ -96,7 +98,9 @@ test: all
 
 parallel: all
 	@set -- $(filter-out $@,$(MAKECMDGOALS)); \
-	SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_parallel "$$1"
+	inc=""; \
+	case "$(MAKEFLAGS)" in *i*) inc="-i" ;; esac; \
+	SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_parallel "$$@" $$inc
 
 # make case [testcase|/folder] OR make case [pass] [case|/folder] OR make case [port] [pass] [case|/folder]
 case: all

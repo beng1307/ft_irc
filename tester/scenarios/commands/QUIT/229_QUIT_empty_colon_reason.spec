@@ -12,12 +12,12 @@ C2 SEND NICK Bob317
 C2 SEND USER bob317 0 * :Bob317
 C2 EXPECT 001 Bob317 :*
 
-C1 SEND JOIN #lobby
-C1 EXPECT :Ali317!* JOIN #lobby
+C1 SEND JOIN #lobby229Q
+C1 EXPECT :Ali317!* JOIN #lobby229Q
 
-C2 SEND JOIN #lobby
-C2 WAIT_RECV :Bob317!* JOIN #lobby
-C1 WAIT_RECV :Bob317!* JOIN #lobby
+C2 SEND JOIN #lobby229Q
+C2 WAIT_RECV :Bob317!* JOIN #lobby229Q
+C1 WAIT_RECV :Bob317!* JOIN #lobby229Q
 
 # Alice quits with empty colon reason
 C1 SEND QUIT :

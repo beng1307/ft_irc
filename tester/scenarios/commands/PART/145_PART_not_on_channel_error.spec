@@ -2,20 +2,20 @@
 # Tests ERR_NOTONCHANNEL (442) when parting an existing channel that the client has not joined
 CLIENTS C1, C2
 
-# Alice creates #lobby
+# Alice creates #lobby145P
 C1 SEND PASS 1234
 C1 SEND NICK Ali214
 C1 SEND USER ali214 0 * :Ali214
 C1 EXPECT 001 Ali214 :*
-C1 SEND JOIN #lobby
-C1 EXPECT :Ali214!* JOIN #lobby
+C1 SEND JOIN #lobby145P
+C1 EXPECT :Ali214!* JOIN #lobby145P
 
-# Bob connects but does not join #lobby
+# Bob connects but does not join #lobby145P
 C2 SEND PASS 1234
 C2 SEND NICK Bob214
 C2 SEND USER bob214 0 * :Bob214
 C2 EXPECT 001 Bob214 :*
 
-# Bob tries to PART #lobby
-C2 SEND PART #lobby
-C2 EXPECT 442 Bob214 #lobby :You're not on that channel
+# Bob tries to PART #lobby145P
+C2 SEND PART #lobby145P
+C2 EXPECT 442 Bob214 #lobby145P :You're not on that channel

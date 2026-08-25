@@ -16,6 +16,7 @@ BOLD='\033[1m'
 NC='\033[0m'
 
 MODE="multi" # default mode
+INCREMENTAL=0
 
 # Parse arguments
 for arg in "$@"; do
@@ -26,8 +27,15 @@ for arg in "$@"; do
         multi|multiple)
             MODE="multi"
             ;;
+        -i|--incremental|-incremental|--live|-live|-interactive|--interactive|i|incremental|live)
+            INCREMENTAL=1
+            ;;
         -h|--help)
-            echo "Usage: $0 [single|multi]"
+            echo "Usage: $0 [options] [single|multi]"
+            echo ""
+            echo "Options:"
+            echo "  -i, --incremental  Print each completed test in real-time as they finish"
+            echo "  -h, --help         Show this help message"
             echo ""
             echo "Modes:"
             echo "  single  Run all parallel test suites against a SINGLE shared server instance"
@@ -35,7 +43,9 @@ for arg in "$@"; do
             exit 0
             ;;
         *)
-            echo -e "${YELLOW}Warning: Unknown mode '$arg', defaulting to 'multi' (options: single, multi)${NC}"
+            if [ -n "$arg" ]; then
+                echo -e "${YELLOW}Warning: Unknown option/mode '$arg', defaulting to 'multi' (options: single, multi, -i)${NC}"
+            fi
             ;;
     esac
 done
@@ -65,7 +75,7 @@ fi
 TMP_DIR=$(mktemp -d "/tmp/irc_parallel_test.XXXXXX")
 SHARED_SERVER_PID=""
 
-cleanup() {
+cleanup_exit() {
     trap - INT TERM EXIT
     if [ -n "$SHARED_SERVER_PID" ]; then
         kill "$SHARED_SERVER_PID" 2>/dev/null || true
@@ -75,7 +85,21 @@ cleanup() {
     rm -rf "$TMP_DIR"
 }
 
-trap cleanup INT TERM EXIT
+on_interrupt() {
+    trap - INT TERM EXIT
+    echo -e "\n${YELLOW}Test run aborted by user (Ctrl+C). Cleaning up...${NC}"
+    # Kill background subshells and processes immediately
+    kill -9 $(jobs -p) 2>/dev/null || true
+    if [ -n "$SHARED_SERVER_PID" ]; then
+        kill -9 "$SHARED_SERVER_PID" 2>/dev/null || true
+        wait "$SHARED_SERVER_PID" 2>/dev/null || true
+    fi
+    rm -rf "$TMP_DIR"
+    exit 130
+}
+
+trap cleanup_exit EXIT
+trap on_interrupt INT TERM
 
 get_free_port() {
     if command -v python3 >/dev/null 2>&1; then
@@ -160,22 +184,27 @@ for idx in "${!FOLDERS[@]}"; do
     
     # Launch ./run_scenarios targeting this folder / subfolder
     (
-        "${SCRIPT_DIR}/run_scenarios" --port "$port" --dir "${SCENARIOS_DIR}/${folder}" > "$log_file" 2>&1
-        echo $? > "${TMP_DIR}/${safe_name}.exit"
+        if [ "$INCREMENTAL" -eq 1 ]; then
+            "${SCRIPT_DIR}/run_scenarios" --port "$port" --dir "${SCENARIOS_DIR}/${folder}" 2>&1 | tee "$log_file" | grep --line-buffered -E '✅|❌|tester/logs/|Error:'
+            echo "${PIPESTATUS[0]}" > "${TMP_DIR}/${safe_name}.exit"
+        else
+            "${SCRIPT_DIR}/run_scenarios" --port "$port" --dir "${SCENARIOS_DIR}/${folder}" > "$log_file" 2>&1
+            echo $? > "${TMP_DIR}/${safe_name}.exit"
+        fi
     ) &
     PIDS[$idx]=$!
 done
 
-echo -e "\n${CYAN}All ${#FOLDERS[@]} suites running concurrently in parallel (${MODE} server mode)...${NC}\n"
+if [ "$INCREMENTAL" -eq 1 ]; then
+    echo -e "\n${CYAN}Running all ${#FOLDERS[@]} suites concurrently (printing completed tests live)...${NC}\n"
+else
+    echo -e "\n${CYAN}All ${#FOLDERS[@]} suites running concurrently in parallel (${MODE} server mode)...${NC}\n"
+fi
 
 # Wait for all background runs to complete
 for pid in "${PIDS[@]}"; do
     wait "$pid" 2>/dev/null || true
 done
-
-echo -e "${BOLD}${CYAN}======================================================================${NC}"
-echo -e "${BOLD}${CYAN}                         SUITE RESULTS                                ${NC}"
-echo -e "${BOLD}${CYAN}======================================================================${NC}\n"
 
 FAILED_SUITES=0
 TOTAL_SUITES=${#FOLDERS[@]}
@@ -183,23 +212,58 @@ TOTAL_SUITES=${#FOLDERS[@]}
 for idx in "${!FOLDERS[@]}"; do
     folder="${FOLDERS[$idx]}"
     safe_name="${folder//\//__}"
-    log_file="${TMP_DIR}/${safe_name}.log"
     exit_code_file="${TMP_DIR}/${safe_name}.exit"
     exit_code=1
     [ -f "$exit_code_file" ] && exit_code=$(cat "$exit_code_file")
-
-    echo -e "${BOLD}==================== [ SUITE: ${folder} (Port: ${FOLDER_PORTS[$idx]}) ] ====================${NC}"
-    if [ -f "$log_file" ]; then
-        cat "$log_file"
-    else
-        echo -e "${RED}No output captured for ${folder}.${NC}"
-    fi
-    echo ""
-
     if [ "$exit_code" -ne 0 ]; then
         FAILED_SUITES=$((FAILED_SUITES + 1))
     fi
 done
+
+if [ "$INCREMENTAL" -ne 1 ]; then
+    echo -e "${BOLD}${CYAN}======================================================================${NC}"
+    echo -e "${BOLD}${CYAN}                         SUITE RESULTS                                ${NC}"
+    echo -e "${BOLD}${CYAN}======================================================================${NC}\n"
+
+    for idx in "${!FOLDERS[@]}"; do
+        folder="${FOLDERS[$idx]}"
+        safe_name="${folder//\//__}"
+        log_file="${TMP_DIR}/${safe_name}.log"
+
+        echo -e "${BOLD}==================== [ SUITE: ${folder} (Port: ${FOLDER_PORTS[$idx]}) ] ====================${NC}"
+        if [ -f "$log_file" ]; then
+            cat "$log_file"
+        else
+            echo -e "${RED}No output captured for ${folder}.${NC}"
+        fi
+        echo ""
+    done
+elif [ "$FAILED_SUITES" -gt 0 ]; then
+    echo -e "\n${BOLD}${RED}======================================================================${NC}"
+    echo -e "${BOLD}${RED}                         FAILED SUITES                                ${NC}"
+    echo -e "${BOLD}${RED}======================================================================${NC}\n"
+
+    for idx in "${!FOLDERS[@]}"; do
+        folder="${FOLDERS[$idx]}"
+        safe_name="${folder//\//__}"
+        log_file="${TMP_DIR}/${safe_name}.log"
+        exit_code_file="${TMP_DIR}/${safe_name}.exit"
+        exit_code=1
+        [ -f "$exit_code_file" ] && exit_code=$(cat "$exit_code_file")
+
+        if [ "$exit_code" -ne 0 ]; then
+            echo -e "${BOLD}==================== [ SUITE: ${folder} (Port: ${FOLDER_PORTS[$idx]}) ] ====================${NC}"
+            if [ -f "$log_file" ]; then
+                cat "$log_file"
+            else
+                echo -e "${RED}No output captured for ${folder}.${NC}"
+            fi
+            echo ""
+        fi
+    done
+else
+    echo ""
+fi
 
 echo -e "${BOLD}======================================================================${NC}"
 if [ $FAILED_SUITES -eq 0 ]; then

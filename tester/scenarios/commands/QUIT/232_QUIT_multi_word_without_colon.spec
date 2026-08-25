@@ -12,12 +12,12 @@ C2 SEND NICK Bob320
 C2 SEND USER bob320 0 * :Bob320
 C2 EXPECT 001 Bob320 :*
 
-C1 SEND JOIN #lobby
-C1 EXPECT :Ali320!* JOIN #lobby
+C1 SEND JOIN #lobby232Q
+C1 EXPECT :Ali320!* JOIN #lobby232Q
 
-C2 SEND JOIN #lobby
-C2 WAIT_RECV :Bob320!* JOIN #lobby
-C1 WAIT_RECV :Bob320!* JOIN #lobby
+C2 SEND JOIN #lobby232Q
+C2 WAIT_RECV :Bob320!* JOIN #lobby232Q
+C1 WAIT_RECV :Bob320!* JOIN #lobby232Q
 
 # Alice quits without colon on multi-word input
 C1 SEND QUIT Goodbye everyone!

@@ -64,8 +64,10 @@ void Server::disconnect_client(int client_fd) {
   Vector<Wire> empty_channels;
   for (ChannelMap::iterator it = get_channels().begin(); it != get_channels().end(); ++it) {
 	it->second.remove_invited(client_fd);
-    it->second.remove_member(client_fd);
-    it->second.promote_first_member_if_no_operators();
+    if (it->second.has_member(client_fd)) {
+      it->second.remove_member(client_fd);
+      it->second.promote_first_member_if_no_operators();
+    }
     if (it->second.empty())
       empty_channels.push_back(it->first);
   }
