@@ -107,6 +107,8 @@ class Server
 		void handle_ping_command(Client &client, const Vector<Wire> &arguments);
 		void handle_quit_command(Client &client, const Vector<Wire> &arguments);
 		bool is_command(const Wire &line);
+		bool is_valid_channel_name(const Wire &channel_name);
+
 		void try_register_client(Client &client);
 		bool is_positive_number(const Wire &value);
 		bool is_valid_nickname(const Wire &nickname);

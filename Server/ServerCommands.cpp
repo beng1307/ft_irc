@@ -172,28 +172,6 @@ void	Server::handle_nick_command(Client &client, const Vector<Wire> &arguments)
 	try_register_client(client);
 }
 
-
-static bool	is_invalid_channel_character(char character)
-{
-	return (static_cast<unsigned char>(character) <= ' '
-		|| character == ',' || character == ':');
-}
-
-static bool	is_valid_channel_name(const Wire &channel_name)
-{
-	if (channel_name.empty() || channel_name.size() > 50)
-		return (false);
-	if (channel_name[0] != '#' && channel_name[0] != '&')
-		return (false);
-
-	for (size_t i = 0; i < channel_name.size(); ++i)
-	{
-		if (is_invalid_channel_character(channel_name[i]))
-			return (false);
-	}
-	return (true);
-}
-
 //Handles the join command.
 //If there is a key, it will gets set. And used for joining.
 void	Server::handle_join_command(Client &client, const Vector<Wire> &arguments)

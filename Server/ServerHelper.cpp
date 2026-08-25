@@ -35,6 +35,29 @@ bool	Server::is_command(const Wire &line)
 		|| line == "PING" || line == "QUIT");
 }
 
+//Invalid channel name characters.
+static bool	is_invalid_channel_character(char character)
+{
+	return (static_cast<unsigned char>(character) <= ' '
+		|| character == ',' || character == ':');
+}
+
+//Checks if the channel name that gets set is valid.
+bool	Server::is_valid_channel_name(const Wire &channel_name)
+{
+	if (channel_name.empty() || channel_name.size() > 50)
+		return (false);
+	if (channel_name[0] != '#' && channel_name[0] != '&')
+		return (false);
+
+	for (size_t i = 0; i < channel_name.size(); ++i)
+	{
+		if (is_invalid_channel_character(channel_name[i]))
+			return (false);
+	}
+	return (true);
+}
+
 //A splitting function for the arguments.
 Vector<Wire>	Server::split_arguments(const Wire &line)
 {
