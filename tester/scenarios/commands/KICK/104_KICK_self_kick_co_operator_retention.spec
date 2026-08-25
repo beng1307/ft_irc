@@ -4,45 +4,45 @@ CLIENTS C1, C2, C3
 
 # Alice registers and creates #lobby
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali125
+C1 SEND USER ali125 0 * :Ali125
+C1 EXPECT 001 Ali125 :*
 C1 SEND JOIN #lobby
-C1 EXPECT :Alice!* JOIN #lobby
+C1 EXPECT :Ali125!* JOIN #lobby
 
 # Bob registers and joins #lobby
 C2 SEND PASS 1234
-C2 SEND NICK Bob
-C2 SEND USER bob 0 * :Bob
-C2 EXPECT 001 Bob :*
+C2 SEND NICK Bob125
+C2 SEND USER bob125 0 * :Bob125
+C2 EXPECT 001 Bob125 :*
 C2 SEND JOIN #lobby
-C2 EXPECT :Bob!* JOIN #lobby
-C1 WAIT_RECV :Bob!* JOIN #lobby
+C2 EXPECT :Bob125!* JOIN #lobby
+C1 WAIT_RECV :Bob125!* JOIN #lobby
 
 # Charlie registers
 C3 SEND PASS 1234
-C3 SEND NICK Charlie
-C3 SEND USER charlie 0 * :Charlie
-C3 EXPECT 001 Charlie :*
+C3 SEND NICK Cha125
+C3 SEND USER cha125 0 * :Cha125
+C3 EXPECT 001 Cha125 :*
 
 # Alice makes Bob an operator (+o)
-C1 SEND MODE #lobby +o Bob
-C1 EXPECT :Alice!* MODE #lobby +o Bob
-C2 EXPECT :Alice!* MODE #lobby +o Bob
+C1 SEND MODE #lobby +o Bob125
+C1 EXPECT :Ali125!* MODE #lobby +o Bob125
+C2 EXPECT :Ali125!* MODE #lobby +o Bob125
 
 # Alice self-kicks out of #lobby
-C1 SEND KICK #lobby Alice :Stepping down
-C1 EXPECT :Alice!* KICK #lobby Alice :Stepping down
-C2 EXPECT :Alice!* KICK #lobby Alice :Stepping down
+C1 SEND KICK #lobby Ali125 :Stepping down
+C1 EXPECT :Ali125!* KICK #lobby Ali125 :Stepping down
+C2 EXPECT :Ali125!* KICK #lobby Ali125 :Stepping down
 
 # Bob sets channel +i and invites Charlie
 C2 SEND MODE #lobby +i
-C2 EXPECT :Bob!* MODE #lobby +i
-C2 SEND INVITE Charlie #lobby
-C2 EXPECT 341 Bob Charlie #lobby
-C3 WAIT_RECV :Bob!* INVITE Charlie :#lobby
+C2 EXPECT :Bob125!* MODE #lobby +i
+C2 SEND INVITE Cha125 #lobby
+C2 EXPECT 341 Bob125 Cha125 #lobby
+C3 WAIT_RECV :Bob125!* INVITE Cha125 :#lobby
 
 # Charlie joins #lobby successfully
 C3 SEND JOIN #lobby
-C3 EXPECT :Charlie!* JOIN #lobby
-C2 WAIT_RECV :Charlie!* JOIN #lobby
+C3 EXPECT :Cha125!* JOIN #lobby
+C2 WAIT_RECV :Cha125!* JOIN #lobby

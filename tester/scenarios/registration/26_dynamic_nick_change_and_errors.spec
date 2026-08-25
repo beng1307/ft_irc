@@ -8,13 +8,13 @@ C1 EXPECT 432 * :*
 C1 SEND NICK #chanNick
 C1 EXPECT 432 * :*
 C1 SEND NICK AliceVal
-C1 SEND USER alice 0 * :Alice Valid
+C1 SEND USER ali454 0 * :Ali454 Valid
 C1 EXPECT 001 AliceVal :*
 
 # Register C2
 C2 SEND PASS 1234
 C2 SEND NICK BobValid
-C2 SEND USER bob 0 * :Bob Valid
+C2 SEND USER bob454 0 * :Bob454 Valid
 C2 EXPECT 001 BobValid :*
 
 # Join shared channel to test broadcast propagation
@@ -34,7 +34,7 @@ C1 EXPECT :AliceVal!* NICK :AliceNew
 C2 WAIT_RECV :AliceVal!* NICK :AliceNew
 
 # Verify subsequent messaging uses the updated nickname
-C2 SEND PRIVMSG AliceNew :Hey renamed Alice
-C1 WAIT_RECV :BobValid!* PRIVMSG AliceNew :Hey renamed Alice
+C2 SEND PRIVMSG AliceNew :Hey renamed Ali454
+C1 WAIT_RECV :BobValid!* PRIVMSG AliceNew :Hey renamed Ali454
 C1 EXPECT_CONNECTED
 C2 EXPECT_CONNECTED

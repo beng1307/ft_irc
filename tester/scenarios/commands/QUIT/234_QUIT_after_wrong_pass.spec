@@ -4,8 +4,8 @@ CLIENTS C1
 
 # C1 supplies wrong password
 C1 SEND PASS wrongpassword
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
+C1 SEND NICK Ali322
+C1 SEND USER ali322 0 * :Ali322
 
 # C1 quits
 C1 SEND QUIT :Failed auth exit

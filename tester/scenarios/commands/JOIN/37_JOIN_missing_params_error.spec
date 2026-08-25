@@ -4,14 +4,14 @@
 CLIENTS C1
 
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali120
+C1 SEND USER ali120 0 * :Ali120
+C1 EXPECT 001 Ali120 :*
 
 # Send bare JOIN with no arguments
 C1 SEND JOIN
-C1 EXPECT 461 Alice JOIN :Not enough parameters
+C1 EXPECT 461 Ali120 JOIN :Not enough parameters
 
 # Send invalid channel prefix (e.g. not starting with # or &)
 C1 SEND JOIN invalidchannel
-C1 EXPECT 403 Alice invalidchannel :No such channel
+C1 EXPECT 403 Ali120 invalidchannel :No such channel

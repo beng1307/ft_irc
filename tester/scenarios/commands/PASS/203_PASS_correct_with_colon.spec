@@ -4,5 +4,5 @@ CLIENTS C1
 
 C1 SEND PASS :1234
 C1 SEND NICK PAliceCol
-C1 SEND USER alicecol 0 * :Alice Col
+C1 SEND USER alicecol 0 * :Ali231 Col
 C1 EXPECT 001 PAliceCol :*

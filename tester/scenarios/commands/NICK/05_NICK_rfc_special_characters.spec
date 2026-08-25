@@ -12,7 +12,7 @@ C1 EXPECT 001 [Bot05]^1 :*
 
 # C2 registers with pipe and hyphen
 C2 SEND PASS 1234
-C2 SEND NICK alice|-
-C2 SEND USER alice 0 * :Alice
-C2 EXPECT 001 alice|- :*
+C2 SEND NICK ali187|-
+C2 SEND USER ali187 0 * :Ali187
+C2 EXPECT 001 ali187|- :*
 

@@ -2,26 +2,26 @@ CLIENTS C1, C2, C3
 
 # Register C1, C2, C3
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
+C1 SEND NICK Ali421
+C1 SEND USER ali421 0 * :Ali421
 C1 EXPECT 001 * :*
 
 C2 SEND PASS 1234
-C2 SEND NICK Bob
-C2 SEND USER bob 0 * :Bob
+C2 SEND NICK Bob421
+C2 SEND USER bob421 0 * :Bob421
 C2 EXPECT 001 * :*
 
 C3 SEND PASS 1234
-C3 SEND NICK Charlie
-C3 SEND USER charlie 0 * :Charlie
+C3 SEND NICK Cha421
+C3 SEND USER cha421 0 * :Cha421
 C3 EXPECT 001 * :*
 
 # C1 and C2 join #heavy_traffic
 C1 SEND JOIN #heavy_traffic
-C1 EXPECT :Alice!* JOIN #heavy_traffic
+C1 EXPECT :Ali421!* JOIN #heavy_traffic
 C2 SEND JOIN #heavy_traffic
-C2 EXPECT :Bob!* JOIN #heavy_traffic
-C1 WAIT_RECV :Bob!* JOIN #heavy_traffic
+C2 EXPECT :Bob421!* JOIN #heavy_traffic
+C1 WAIT_RECV :Bob421!* JOIN #heavy_traffic
 
 # C1 shrinks receive window to minimal and pauses reading
 C1 SET_SOCK_RCVBUF 1024

@@ -5,9 +5,9 @@
 CLIENTS C1
 
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice Smith
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali270
+C1 SEND USER ali270 0 * :Ali270 Smith
+C1 EXPECT 001 Ali270 :*
 
 C1 SEND PING ::cookie123
 C1 EXPECT :localhost PONG localhost ::cookie123

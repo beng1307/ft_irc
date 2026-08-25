@@ -4,26 +4,26 @@ CLIENTS C1, C2
 
 # Alice (Op) and Bob in #kickquit
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali331
+C1 SEND USER ali331 0 * :Ali331
+C1 EXPECT 001 Ali331 :*
 
 C2 SEND PASS 1234
-C2 SEND NICK Bob
-C2 SEND USER bob 0 * :Bob
-C2 EXPECT 001 Bob :*
+C2 SEND NICK Bob331
+C2 SEND USER bob331 0 * :Bob331
+C2 EXPECT 001 Bob331 :*
 
 C1 SEND JOIN #kickquit
-C1 EXPECT :Alice!* JOIN #kickquit
+C1 EXPECT :Ali331!* JOIN #kickquit
 
 C2 SEND JOIN #kickquit
-C2 WAIT_RECV :Bob!* JOIN #kickquit
-C1 WAIT_RECV :Bob!* JOIN #kickquit
+C2 WAIT_RECV :Bob331!* JOIN #kickquit
+C1 WAIT_RECV :Bob331!* JOIN #kickquit
 
 # Alice kicks Bob
-C1 SEND KICK #kickquit Bob :Rule violation
-C1 EXPECT :Alice!* KICK #kickquit Bob :Rule violation
-C2 WAIT_RECV :Alice!* KICK #kickquit Bob :Rule violation
+C1 SEND KICK #kickquit Bob331 :Rule violation
+C1 EXPECT :Ali331!* KICK #kickquit Bob331 :Rule violation
+C2 WAIT_RECV :Ali331!* KICK #kickquit Bob331 :Rule violation
 
 # Bob sends QUIT
 C2 SEND QUIT :Leaving after kick

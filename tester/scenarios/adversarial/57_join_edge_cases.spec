@@ -4,23 +4,23 @@
 CLIENTS C1, C2, C3
 
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali024
+C1 SEND USER ali024 0 * :Ali024
+C1 EXPECT 001 Ali024 :*
 
 C2 SEND PASS 1234
-C2 SEND NICK Bob
-C2 SEND USER bob 0 * :Bob
-C2 EXPECT 001 Bob :*
+C2 SEND NICK Bob024
+C2 SEND USER bob024 0 * :Bob024
+C2 EXPECT 001 Bob024 :*
 
 C3 SEND PASS 1234
-C3 SEND NICK Charlie
-C3 SEND USER charlie 0 * :Charlie
-C3 EXPECT 001 Charlie :*
+C3 SEND NICK Cha024
+C3 SEND USER cha024 0 * :Cha024
+C3 EXPECT 001 Cha024 :*
 
 # Test 1: JOIN with no channel
 C1 SEND JOIN
-C1 EXPECT 461 Alice JOIN :*
+C1 EXPECT 461 Ali024 JOIN :*
 
 # Test 2: JOIN multiple channels (comma-separated)
 C1 SEND JOIN #one,#two,#three
@@ -29,7 +29,7 @@ C1 EXPECT_CONNECTED
 
 # Test 3: JOIN with channel key
 C1 SEND JOIN #keyed_channel test_key
-C1 EXPECT :Alice!* JOIN #keyed_channel
+C1 EXPECT :Ali024!* JOIN #keyed_channel
 
 # Test 4: Try to join with wrong key
 C2 SEND JOIN #keyed_channel wrong_key
@@ -37,7 +37,7 @@ C2 EXPECT_CONNECTED
 
 # Test 5: Join with correct key
 C2 SEND JOIN #keyed_channel test_key
-C2 EXPECT :Bob!* JOIN #keyed_channel
+C2 EXPECT :Bob024!* JOIN #keyed_channel
 
 # Test 6: Join again (already member)
 C1 SEND JOIN #keyed_channel test_key
@@ -46,7 +46,7 @@ C1 EXPECT_CONNECTED
 
 # Test 7: JOIN channel with special characters in name
 C1 SEND JOIN #test-channel_123
-C1 EXPECT :Alice!* JOIN #test-channel_123
+C1 EXPECT :Ali024!* JOIN #test-channel_123
 
 # Test 8: JOIN with very long channel name
 C1 SEND JOIN #thisIsAVeryLongChannelNameThatMightExceedLimits1234567890
@@ -54,11 +54,11 @@ C1 EXPECT_CONNECTED
 
 # Test 9: JOIN non-existent channel (creates it)
 C3 SEND JOIN #new_channel
-C3 EXPECT :Charlie!* JOIN #new_channel
+C3 EXPECT :Cha024!* JOIN #new_channel
 
 # Test 10: Verify channel was created and C3 is operator
 C3 SEND NAMES #new_channel
-C3 EXPECT 353 Charlie = #new_channel :@Charlie
+C3 EXPECT 353 Cha024 = #new_channel :@Cha024
 
 C1 EXPECT_CONNECTED
 C2 EXPECT_CONNECTED

@@ -4,12 +4,12 @@ CLIENTS C1
 
 # Alice registers and creates #lobby
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali132
+C1 SEND USER ali132 0 * :Ali132
+C1 EXPECT 001 Ali132 :*
 C1 SEND JOIN #lobby
-C1 EXPECT :Alice!* JOIN #lobby
+C1 EXPECT :Ali132!* JOIN #lobby
 
 # Alice tries to kick a user that does not exist on the server
 C1 SEND KICK #lobby GhostUser :reason
-C1 EXPECT 401 Alice GhostUser :No such nick/channel
+C1 EXPECT 401 Ali132 GhostUser :No such nick/channel

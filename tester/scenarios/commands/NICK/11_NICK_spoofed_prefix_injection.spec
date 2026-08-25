@@ -6,18 +6,18 @@ CLIENTS C1, C2
 
 # C1 registers as Victim
 C1 SEND PASS 1234
-C1 SEND NICK Victim
-C1 SEND USER victim 0 * :Victim
-C1 EXPECT 001 Victim :*
+C1 SEND NICK Vic193
+C1 SEND USER vic193 0 * :Vic193
+C1 EXPECT 001 Vic193 :*
 
 # C2 registers as Attacker
 C2 SEND PASS 1234
-C2 SEND NICK Attacker
-C2 SEND USER attacker 0 * :Attacker
-C2 EXPECT 001 Attacker :*
+C2 SEND NICK Atk193
+C2 SEND USER atk193 0 * :Atk193
+C2 EXPECT 001 Atk193 :*
 
 # Attacker attempts to send spoofed prefix targeting Victim
-C2 SEND_RAW :Victim NICK HackedNick\r\n
+C2 SEND_RAW :Vic193 NICK HackedNick\r\n
 # Victim must remain unaffected as 'Victim'
 C1 SEND PING localhost
 C1 EXPECT :localhost PONG localhost :localhost

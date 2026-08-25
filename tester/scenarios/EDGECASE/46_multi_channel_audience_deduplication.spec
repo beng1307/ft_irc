@@ -4,37 +4,37 @@ CLIENTS C1, C2
 
 # Register Alice and Bob
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali008
+C1 SEND USER ali008 0 * :Ali008
+C1 EXPECT 001 Ali008 :*
 
 C2 SEND PASS 1234
-C2 SEND NICK Bob
-C2 SEND USER bob 0 * :Bob
-C2 EXPECT 001 Bob :*
+C2 SEND NICK Bob008
+C2 SEND USER bob008 0 * :Bob008
+C2 EXPECT 001 Bob008 :*
 
 # Both join #chanA, #chanB, and #chanC
 C1 SEND JOIN #chanA
-C1 EXPECT :Alice!* JOIN #chanA
+C1 EXPECT :Ali008!* JOIN #chanA
 C2 SEND JOIN #chanA
-C2 WAIT_RECV :Bob!* JOIN #chanA
+C2 WAIT_RECV :Bob008!* JOIN #chanA
 
 C1 SEND JOIN #chanB
-C1 EXPECT :Alice!* JOIN #chanB
+C1 EXPECT :Ali008!* JOIN #chanB
 C2 SEND JOIN #chanB
-C2 WAIT_RECV :Bob!* JOIN #chanB
+C2 WAIT_RECV :Bob008!* JOIN #chanB
 
 C1 SEND JOIN #chanC
-C1 EXPECT :Alice!* JOIN #chanC
+C1 EXPECT :Ali008!* JOIN #chanC
 C2 SEND JOIN #chanC
-C2 WAIT_RECV :Bob!* JOIN #chanC
+C2 WAIT_RECV :Bob008!* JOIN #chanC
 
 # Alice changes nick to Alicia
-C1 SEND NICK Alicia
-C1 EXPECT :Alice!* NICK :Alicia
+C1 SEND NICK Ali008
+C1 EXPECT :Ali008!* NICK :Ali008
 
 # Bob receives the NICK change notification
-C2 WAIT_RECV :Alice!* NICK :Alicia
+C2 WAIT_RECV :Ali008!* NICK :Ali008
 
 # Assert Bob has no extra duplicate NICK broadcasts in queue
 C2 EXPECT_NONE 200ms

@@ -4,9 +4,9 @@
 CLIENTS C1
 
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice Smith
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali267
+C1 SEND USER ali267 0 * :Ali267 Smith
+C1 EXPECT 001 Ali267 :*
 
 C1 SEND PING
-C1 EXPECT 409 Alice :No origin specified
+C1 EXPECT 409 Ali267 :No origin specified

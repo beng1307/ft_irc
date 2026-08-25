@@ -4,5 +4,5 @@ CLIENTS C1
 
 C1 SEND pass 1234
 C1 SEND NICK PAlice207
-C1 SEND USER alice207 0 * :Alice Smith
+C1 SEND USER ali207 0 * :Ali207 Smith
 C1 EXPECT 001 PAlice207 :*

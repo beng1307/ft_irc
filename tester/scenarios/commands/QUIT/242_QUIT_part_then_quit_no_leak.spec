@@ -4,26 +4,26 @@ CLIENTS C1, C2
 
 # Alice (C1) and Bob (C2) in #partquit
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali330
+C1 SEND USER ali330 0 * :Ali330
+C1 EXPECT 001 Ali330 :*
 
 C2 SEND PASS 1234
-C2 SEND NICK Bob
-C2 SEND USER bob 0 * :Bob
-C2 EXPECT 001 Bob :*
+C2 SEND NICK Bob330
+C2 SEND USER bob330 0 * :Bob330
+C2 EXPECT 001 Bob330 :*
 
 C1 SEND JOIN #partquit
-C1 EXPECT :Alice!* JOIN #partquit
+C1 EXPECT :Ali330!* JOIN #partquit
 
 C2 SEND JOIN #partquit
-C2 WAIT_RECV :Bob!* JOIN #partquit
-C1 WAIT_RECV :Bob!* JOIN #partquit
+C2 WAIT_RECV :Bob330!* JOIN #partquit
+C1 WAIT_RECV :Bob330!* JOIN #partquit
 
 # Bob parts #partquit, then sends QUIT
 C2 SEND PART #partquit :Parting first
-C2 EXPECT :Bob!* PART #partquit :Parting first
-C1 WAIT_RECV :Bob!* PART #partquit :Parting first
+C2 EXPECT :Bob330!* PART #partquit :Parting first
+C1 WAIT_RECV :Bob330!* PART #partquit :Parting first
 
 C2 SEND QUIT :Now quitting server
 C2 EXPECT ERROR :Closing connection

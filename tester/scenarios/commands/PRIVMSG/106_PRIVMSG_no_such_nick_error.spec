@@ -5,10 +5,10 @@ CLIENTS C1
 
 # Setup C1
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali291
+C1 SEND USER ali291 0 * :Ali291
+C1 EXPECT 001 Ali291 :*
 
 # C1 sends message to non-existent nick
 C1 SEND PRIVMSG GhostUser :Are you there?
-C1 EXPECT 401 Alice GhostUser :No such nick/channel
+C1 EXPECT 401 Ali291 GhostUser :No such nick/channel

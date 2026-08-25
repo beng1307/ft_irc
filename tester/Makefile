@@ -35,10 +35,14 @@ ENV_PASSWORD := $(PASSWORD)
 PORT := $(if $(ENV_PORT),$(ENV_PORT),6667)
 PASSWORD := $(if $(ENV_PASSWORD),$(ENV_PASSWORD),1234)
 
-# make run [/folder] OR make run [port] [pass] [/folder] OR make run [pass] [/folder]
+# make run parallel [single|multi] OR make run [/folder] OR make run [port] [pass] [/folder] OR make run [pass] [/folder]
 # make run DIR=<folder> OR make run FOLDER=<folder>
 run: $(NAME)
 	@set -- $(filter-out $@,$(MAKECMDGOALS)); \
+	if [ "$$1" = "parallel" ]; then \
+		./run_parallel "$$2"; \
+		exit $$?; \
+	fi; \
 	port=""; pass=""; targets=(); nums=(); \
 	for arg in "$$@"; do \
 		clean_arg="$${arg#/}"; clean_arg="$${clean_arg%/}"; \
@@ -199,33 +203,39 @@ env:
 		echo "Usage: make env <port> <password>  (or 'make env' to remove)"; \
 	fi
 
+parallel: $(NAME)
+	@set -- $(filter-out $@,$(MAKECMDGOALS)); \
+	./run_parallel "$$1"
+
 help:
 	@echo "Usage: make [target] [args...]"
 	@echo ""
-	@echo "  make                                - Compile testrunner and concurrency_tester"
-	@echo "  make run                            - Run all scenarios"
-	@echo "  make run <folder>                   - Run scenarios in specified folder (e.g. make run commands)"
-	@echo "  make run DIR=<folder>               - Run scenarios in specified folder"
-	@echo "  make run <password> [folder]        - Run scenarios with custom password (port: .env or 6667)"
-	@echo "  make run <port> <password> [folder] - Run scenarios with custom port and password"
-	@echo "  make runv [folder/testcase]         - Run scenarios in verbose mode"
-	@echo "  make case <testcase|folder>         - Run single test scenario or folder"
-	@echo "  make case <password> <testcase>     - Run single test scenario with custom password"
-	@echo "  make case <port> <password> <case>  - Run single test scenario with custom port and password"
-	@echo "  make caseverbose <testcase|folder>  - Run single test scenario or folder in verbose mode"
-	@echo "  make full                           - Run all 3 test suites (run, memory, lifecycle)"
-	@echo "  make concurrency                    - Run concurrency and thread-safety tests"
-	@echo "  make lifecycle                      - Run server lifecycle and reboot tests"
-	@echo "  make memory                         - Run memory / leak / stress tests"
+	@echo "  make                                        - Compile testrunner and concurrency_tester"
+	@echo "  make run                                    - Run all scenarios"
+	@echo "  make run parallel [single|multi]            - Run all scenarios in parallel (single=shared server, multi=isolated servers)"
+	@echo "  make parallel [single|multi]                - Run all scenarios in parallel (single=shared server, multi=isolated servers)"
+	@echo "  make run <folder>                           - Run scenarios in specified folder (e.g. make run commands)"
+	@echo "  make run DIR=<folder>                       - Run scenarios in specified folder"
+	@echo "  make run <password> [folder]                - Run scenarios with custom password (port: .env or 6667)"
+	@echo "  make run <port> <password> [folder]         - Run scenarios with custom port and password"
+	@echo "  make runv [folder/testcase]                 - Run scenarios in verbose mode"
+	@echo "  make case <testcase|folder>                 - Run single test scenario or folder"
+	@echo "  make case <password> <testcase>             - Run single test scenario with custom password"
+	@echo "  make case <port> <password> <case>          - Run single test scenario with custom port and password"
+	@echo "  make caseverbose <testcase|folder>          - Run single test scenario or folder in verbose mode"
+	@echo "  make full                                   - Run all 3 test suites (run, memory, lifecycle)"
+	@echo "  make concurrency                            - Run concurrency and thread-safety tests"
+	@echo "  make lifecycle                              - Run server lifecycle and reboot tests"
+	@echo "  make memory                                 - Run memory / leak / stress tests"
 	@echo ""
 	@echo "  [.env file = persist custom port/password configuration]"
 	@echo ""
-	@echo "  make env <port> <password>          - Save default port and password to .env"
-	@echo "  make env                            - Delete .env and reset to defaults"
-	@echo "  make clean / fclean / re            - Clean object files, binaries, or rebuild"
+	@echo "  make env <port> <password>                  - Save default port and password to .env"
+	@echo "  make env                                    - Delete .env and reset to defaults"
+	@echo "  make clean / fclean / re                    - Clean object files, binaries, or rebuild"
 
 # Allow passing scenario arguments to 'make run' without make complaining about missing targets
 %:
 	@:
 
-.PHONY: all clean fclean re run full runv case caseverbose lifecycle concurrency memory env help
+.PHONY: all clean fclean re run parallel full runv case caseverbose lifecycle concurrency memory env help

@@ -53,10 +53,14 @@ run: all
 		./ircserv $(PORT) $(PASSWORD); \
 	fi
 
-# make test [/folder] OR make test [port] [pass] [/folder] OR make test [pass] [/folder]
+# make test parallel [single|multi] OR make test [/folder] OR make test [port] [pass] [/folder] OR make test [pass] [/folder]
 # make test DIR=<folder> OR make test FOLDER=<folder>
 test: all
 	@set -- $(filter-out $@,$(MAKECMDGOALS)); \
+	if [ "$$1" = "parallel" ]; then \
+		SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_parallel "$$2"; \
+		exit $$?; \
+	fi; \
 	port=""; pass=""; targets=(); nums=(); \
 	for arg in "$$@"; do \
 		clean_arg="$${arg#/}"; clean_arg="$${clean_arg%/}"; \
@@ -89,6 +93,10 @@ test: all
 	if [ -n "$$pass" ]; then cmd+=(--password "$$pass"); fi; \
 	if [ $${#targets[@]} -gt 0 ]; then cmd+=("$${targets[@]}"); fi; \
 	env "$${cmd[@]}"
+
+parallel: all
+	@set -- $(filter-out $@,$(MAKECMDGOALS)); \
+	SERVER_BIN="$(CURDIR)/ircserv" ./tester/run_parallel "$$1"
 
 # make case [testcase|/folder] OR make case [pass] [case|/folder] OR make case [port] [pass] [case|/folder]
 case: all
@@ -198,30 +206,32 @@ final:
 help:
 	@echo "Usage: make [target] [args...]"
 	@echo ""
-	@echo "  make                                - Compile ircserv"
-	@echo "  make run [password]                 - Run server with custom password (port: .env or 6667)"
-	@echo "  make run <port> <password>          - Run server with custom port and password"
-	@echo "  make test [password]                - Run all tests with custom password (port: .env or 6667)"
-	@echo "  make test <port> <password>         - Run all tests with custom port and password"
-	@echo "  make case <case>                    - Run single test scenario"
-	@echo "  make case <password> <case>         - Run single scenario with custom password"
-	@echo "  make case <port> <password> <case>  - Run single scenario with custom credentials"
-	@echo "  make caseverbose <case>             - Run single test scenario in verbose mode"
-	@echo "  make caseverbose <pass> <case>      - Run single scenario with custom password in verbose mode"
-	@echo "  make caseverbose <p> <pass> <case>  - Run single scenario with custom credentials in verbose mode"
-	@echo "  make runv <case>                    - Alias for make caseverbose"
-	@echo "  make final                          - Export submission files to ../ft_irc_final"
+	@echo "  make                                        - Compile ircserv"
+	@echo "  make run [password]                         - Run server with custom password (port: .env or 6667)"
+	@echo "  make run <port> <password>                  - Run server with custom port and password"
+	@echo "  make test [password]                        - Run all tests with custom password (port: .env or 6667)"
+	@echo "  make test <port> <password>                 - Run all tests with custom port and password"
+	@echo "  make test parallel [single|multi]           - Run all tests in parallel (single=shared server, multi=isolated servers)"
+	@echo "  make parallel [single|multi]                - Run all tests in parallel (single=shared server, multi=isolated servers)"
+	@echo "  make case <case>                            - Run single test scenario"
+	@echo "  make case <password> <case>                 - Run single scenario with custom password"
+	@echo "  make case <port> <password> <case>          - Run single scenario with custom credentials"
+	@echo "  make caseverbose <case>                     - Run single test scenario in verbose mode"
+	@echo "  make caseverbose <pass> <case>              - Run single scenario with custom password in verbose mode"
+	@echo "  make caseverbose <p> <pass> <case>          - Run single scenario with custom credentials in verbose mode"
+	@echo "  make runv <case>                            - Alias for make caseverbose"
+	@echo "  make final                                  - Export submission files to ../ft_irc_final"
 	@echo ""
 	@echo "  [.env file = can persist custom port/password configuration]"
 	@echo ""
-	@echo "  make env <port> <password>          - Save default port and password to .env"
-	@echo "  make env                            - Delete .env and reset to defaults"
+	@echo "  make env <port> <password>                  - Save default port and password to .env"
+	@echo "  make env                                    - Delete .env and reset to defaults"
 	@echo ""
-	@echo "  make client [password]              - Launch irssi with custom password (port: .env or 6667)"
-	@echo "  make client <port> <password>       - Launch irssi with custom port and password"
-	@echo "  make clean / fclean / re            - Clean object files, binary, or rebuild"
+	@echo "  make client [password]                      - Launch irssi with custom password (port: .env or 6667)"
+	@echo "  make client <port> <password>               - Launch irssi with custom port and password"
+	@echo "  make clean / fclean / re                    - Clean object files, binary, or rebuild"
 
 %:
 	@:
 
-.PHONY: all clean fclean re run test case caseverbose env client help final
+.PHONY: all clean fclean re run test parallel case caseverbose env client help final

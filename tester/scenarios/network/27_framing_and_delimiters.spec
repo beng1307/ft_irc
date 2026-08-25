@@ -16,7 +16,7 @@ C1 EXPECT * 421 *
 # Send valid registration commands
 C1 SEND PASS 1234
 C1 SEND NICK AliceLF
-C1 SEND USER alice 0 * :Alice LF
+C1 SEND USER ali446 0 * :Ali446 LF
 C1 EXPECT 001 AliceLF :*
 
 # NET-06: 512-byte boundary resilience (send long 550-byte PRIVMSG payload without crashing server)
@@ -33,6 +33,6 @@ C1 EXPECT_CONNECTED
 C2 RECONNECT
 C2 SEND PASS 1234
 C2 SEND NICK BobNet
-C2 SEND USER bob 0 * :Bob Net
+C2 SEND USER bob446 0 * :Bob446 Net
 C2 EXPECT 001 BobNet :*
 C2 EXPECT_CONNECTED

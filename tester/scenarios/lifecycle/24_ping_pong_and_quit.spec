@@ -8,12 +8,12 @@ C1 EXPECT_DISCONNECT
 # Register C2 and C3
 C2 SEND PASS 1234
 C2 SEND NICK AliceLife
-C2 SEND USER alice 0 * :Alice Life
+C2 SEND USER ali425 0 * :Ali425 Life
 C2 EXPECT 001 AliceLife :*
 
 C3 SEND PASS 1234
 C3 SEND NICK BobLife
-C3 SEND USER bob 0 * :Bob Life
+C3 SEND USER bob425 0 * :Bob425 Life
 C3 EXPECT 001 BobLife :*
 
 # LIFE-01: Standard PING with single token
@@ -45,6 +45,6 @@ C3 EXPECT_CONNECTED
 C1 RECONNECT
 C1 SEND PASS 1234
 C1 SEND NICK AliceLife
-C1 SEND USER alice 0 * :Alice Reclaimed
+C1 SEND USER ali425 0 * :Ali425 Reclaimed
 C1 EXPECT 001 AliceLife :*
 C1 EXPECT_CONNECTED

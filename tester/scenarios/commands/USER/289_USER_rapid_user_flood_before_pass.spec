@@ -7,7 +7,7 @@ C1 SEND USER u2 0 * :Real 2
 C1 SEND USER u3 0 * :Real 3
 C1 SEND USER u4 0 * :Real 4
 C1 SEND USER u5 0 * :Real 5
-C1 SEND USER finaluser 0 * :Final Realname
+C1 SEND USER ufin411 0 * :Final Realname
 C1 SEND PASS 1234
 C1 SEND NICK FloodNick
 C1 EXPECT 001 FloodNick :*

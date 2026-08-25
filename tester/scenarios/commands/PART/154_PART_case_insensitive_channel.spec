@@ -5,14 +5,14 @@
 CLIENTS C1
 
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali223
+C1 SEND USER ali223 0 * :Ali223
+C1 EXPECT 001 Ali223 :*
 
 # Join lowercase #test
 C1 SEND JOIN #test
-C1 EXPECT :Alice!* JOIN #test
+C1 EXPECT :Ali223!* JOIN #test
 
 # Part uppercase #TEST
 C1 SEND PART #TEST :Leaving
-C1 EXPECT :Alice!* PART #test :Leaving
+C1 EXPECT :Ali223!* PART #test :Leaving

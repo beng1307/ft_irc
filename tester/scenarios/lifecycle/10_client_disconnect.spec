@@ -1,25 +1,25 @@
 CLIENTS C1, C2
 
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali422
+C1 SEND USER ali422 0 * :Ali422
+C1 EXPECT 001 Ali422 :*
 
 C2 SEND PASS 1234
-C2 SEND NICK Bob
-C2 SEND USER bob 0 * :Bob
-C2 EXPECT 001 Bob :*
+C2 SEND NICK Bob422
+C2 SEND USER bob422 0 * :Bob422
+C2 EXPECT 001 Bob422 :*
 
 C1 SEND JOIN #disc
-C1 EXPECT :Alice!* JOIN #disc
+C1 EXPECT :Ali422!* JOIN #disc
 C2 SEND JOIN #disc
-C2 WAIT_RECV :Bob!* JOIN #disc
-C1 WAIT_RECV :Bob!* JOIN #disc
+C2 WAIT_RECV :Bob422!* JOIN #disc
+C1 WAIT_RECV :Bob422!* JOIN #disc
 
 C1 SEND QUIT :Leaving server
 C1 EXPECT ERROR :Closing connection
 C1 EXPECT_DISCONNECT
 
-C2 WAIT_RECV :Alice!* QUIT :Leaving server
+C2 WAIT_RECV :Ali422!* QUIT :Leaving server
 C2 EXPECT_CONNECTED
-C2 SEND PRIVMSG Bob :Self echo or keep-alive test
+C2 SEND PRIVMSG Bob422 :Self echo or keep-alive test

@@ -5,26 +5,26 @@ CLIENTS C1, C2
 
 # Alice and Bob join #lobby
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali365
+C1 SEND USER ali365 0 * :Ali365
+C1 EXPECT 001 Ali365 :*
 C1 SEND JOIN #lobby
-C1 EXPECT :Alice!* JOIN #lobby
+C1 EXPECT :Ali365!* JOIN #lobby
 
 C2 SEND PASS 1234
-C2 SEND NICK Bob
-C2 SEND USER bob 0 * :Bob
-C2 EXPECT 001 Bob :*
+C2 SEND NICK Bob365
+C2 SEND USER bob365 0 * :Bob365
+C2 EXPECT 001 Bob365 :*
 C2 SEND JOIN #lobby
-C2 EXPECT :Bob!* JOIN #lobby
-C1 WAIT_RECV :Bob!* JOIN #lobby
+C2 EXPECT :Bob365!* JOIN #lobby
+C1 WAIT_RECV :Bob365!* JOIN #lobby
 
 # Alice changes nick to Alicia
-C1 SEND NICK Alicia
-C1 EXPECT :Alice!* NICK :Alicia
-C2 EXPECT :Alice!* NICK :Alicia
+C1 SEND NICK Ali365
+C1 EXPECT :Ali365!* NICK :Ali365
+C2 EXPECT :Ali365!* NICK :Ali365
 
 # Alicia sets topic
-C1 SEND TOPIC #lobby :Topic from Alicia
-C1 EXPECT :Alicia!* TOPIC #lobby :Topic from Alicia
-C2 EXPECT :Alicia!* TOPIC #lobby :Topic from Alicia
+C1 SEND TOPIC #lobby :Topic from Ali365
+C1 EXPECT :Ali365!* TOPIC #lobby :Topic from Ali365
+C2 EXPECT :Ali365!* TOPIC #lobby :Topic from Ali365

@@ -5,15 +5,15 @@
 CLIENTS C1
 
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali106
+C1 SEND USER ali106 0 * :Ali106
+C1 EXPECT 001 Ali106 :*
 
 # Batch join two channels
 C1 SEND JOIN #chan1,#chan2
 C1 EXPECT * JOIN *#chan1*
-C1 EXPECT 353 Alice = #chan1 :*Alice*
-C1 EXPECT 366 Alice #chan1 :End of /NAMES list
+C1 EXPECT 353 Ali106 = #chan1 :*Ali106*
+C1 EXPECT 366 Ali106 #chan1 :End of /NAMES list
 C1 EXPECT * JOIN *#chan2*
-C1 EXPECT 353 Alice = #chan2 :*Alice*
-C1 EXPECT 366 Alice #chan2 :End of /NAMES list
+C1 EXPECT 353 Ali106 = #chan2 :*Ali106*
+C1 EXPECT 366 Ali106 #chan2 :End of /NAMES list

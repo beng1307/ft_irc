@@ -6,8 +6,8 @@ C1 SEND PASS 1234
 C1 SEND PASS wrongpassword
 C1 EXPECT 464 * :Password incorrect
 
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice Smith
+C1 SEND NICK Ali241
+C1 SEND USER ali241 0 * :Ali241 Smith
 
 # Registration should NOT happen, commands must fail with 451
 C1 SEND JOIN #test

@@ -3,5 +3,5 @@
 # Server extracts ':attacker' as command verb and rejects with 421 ERR_UNKNOWNCOMMAND
 CLIENTS C1
 
-C1 SEND_RAW :attacker PASS 1234\r\n
+C1 SEND_RAW :atk264 PASS 1234\r\n
 C1 EXPECT 421 * Unknown command.

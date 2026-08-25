@@ -4,5 +4,5 @@
 CLIENTS C1
 
 C1 SEND PASS 1234
-C1 SEND NICK :Alice Bob
-C1 EXPECT 432 * Alice Bob :Erroneous nickname
+C1 SEND NICK :Ali198 Bob198
+C1 EXPECT 432 * Ali198 Bob198 :Erroneous nickname

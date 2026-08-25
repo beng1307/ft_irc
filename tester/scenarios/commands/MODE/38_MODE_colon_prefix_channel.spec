@@ -5,19 +5,19 @@
 CLIENTS C1
 
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali155
+C1 SEND USER ali155 0 * :Ali155
+C1 EXPECT 001 Ali155 :*
 
 # Create channel
 C1 SEND JOIN #chan
-C1 EXPECT 353 Alice = #chan :@Alice
-C1 EXPECT 366 Alice #chan :End of /NAMES list
+C1 EXPECT 353 Ali155 = #chan :@Ali155
+C1 EXPECT 366 Ali155 #chan :End of /NAMES list
 
 # Query modes using colon prefix
 C1 SEND MODE :#chan
-C1 EXPECT 324 Alice #chan +*
+C1 EXPECT 324 Ali155 #chan +*
 
 # Set mode using colon-prefixed mode string
 C1 SEND MODE #chan :+i
-C1 EXPECT :Alice!* MODE #chan +i
+C1 EXPECT :Ali155!* MODE #chan +i

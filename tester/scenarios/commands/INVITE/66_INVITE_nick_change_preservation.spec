@@ -5,28 +5,28 @@ CLIENTS C1, C2
 
 # Alice64 creates invite-only channel
 C1 SEND PASS 1234
-C1 SEND NICK Alice64
-C1 SEND USER alice64 0 * :Alice
-C1 EXPECT 001 Alice64 :*
+C1 SEND NICK Ali091
+C1 SEND USER ali091 0 * :Ali091
+C1 EXPECT 001 Ali091 :*
 C1 SEND JOIN #priv64
-C1 EXPECT :Alice64!* JOIN #priv64
+C1 EXPECT :Ali091!* JOIN #priv64
 C1 SEND MODE #priv64 +i
-C1 EXPECT :Alice64!* MODE #priv64 +i
+C1 EXPECT :Ali091!* MODE #priv64 +i
 
 # Bob64 registers
 C2 SEND PASS 1234
-C2 SEND NICK Bob64
-C2 SEND USER bob64 0 * :Bob
-C2 EXPECT 001 Bob64 :*
+C2 SEND NICK Bob091
+C2 SEND USER bob091 0 * :Bob091
+C2 EXPECT 001 Bob091 :*
 
 # Alice64 invites Bob64
-C1 SEND INVITE Bob64 #priv64
-C1 EXPECT 341 Alice64 Bob64 #priv64
-C2 WAIT_RECV :Alice64!* INVITE Bob64 :#priv64
+C1 SEND INVITE Bob091 #priv64
+C1 EXPECT 341 Ali091 Bob091 #priv64
+C2 WAIT_RECV :Ali091!* INVITE Bob091 :#priv64
 
 # Bob64 changes nickname to Robert64 before joining
 C2 SEND NICK Robert64
-C2 WAIT_RECV :Bob64!* NICK :Robert64
+C2 WAIT_RECV :Bob091!* NICK :Robert64
 
 # Robert64 joins #priv64
 C2 SEND JOIN #priv64

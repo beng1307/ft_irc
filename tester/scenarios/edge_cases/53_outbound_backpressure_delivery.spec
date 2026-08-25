@@ -4,28 +4,28 @@ TIMEOUT 30s
 
 # Register sender, paused recipient, and independent liveness probe.
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali414
+C1 SEND USER ali414 0 * :Ali414
+C1 EXPECT 001 Ali414 :*
 
 C2 SEND PASS 1234
-C2 SEND NICK Bob
-C2 SEND USER bob 0 * :Bob
-C2 EXPECT 001 Bob :*
+C2 SEND NICK Bob414
+C2 SEND USER bob414 0 * :Bob414
+C2 EXPECT 001 Bob414 :*
 
 C3 SEND PASS 1234
-C3 SEND NICK Charlie
-C3 SEND USER charlie 0 * :Charlie
-C3 EXPECT 001 Charlie :*
+C3 SEND NICK Cha414
+C3 SEND USER cha414 0 * :Cha414
+C3 EXPECT 001 Cha414 :*
 
 # All clients share the test channel.
 C1 SEND JOIN #writequeue
-C1 EXPECT :Alice!* JOIN #writequeue
+C1 EXPECT :Ali414!* JOIN #writequeue
 C2 SEND JOIN #writequeue
-C2 EXPECT :Bob!* JOIN #writequeue
-C1 WAIT_RECV :Bob!* JOIN #writequeue
+C2 EXPECT :Bob414!* JOIN #writequeue
+C1 WAIT_RECV :Bob414!* JOIN #writequeue
 C3 SEND JOIN #writequeue
-C3 EXPECT :Charlie!* JOIN #writequeue
+C3 EXPECT :Cha414!* JOIN #writequeue
 
 # Stop receiving on C2 and reduce its advertised TCP receive window.
 C2 SET_SOCK_RCVBUF 1024

@@ -6,23 +6,23 @@ CLIENTS C1, C2
 
 # C1 registers as Alice
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali167
+C1 SEND USER ali167 0 * :Ali167
+C1 EXPECT 001 Ali167 :*
 
 # C2 registers as Bob
 C2 SEND PASS 1234
-C2 SEND NICK Bob
-C2 SEND USER bob 0 * :Bob
-C2 EXPECT 001 Bob :*
+C2 SEND NICK Bob167
+C2 SEND USER bob167 0 * :Bob167
+C2 EXPECT 001 Bob167 :*
 
 # C1 creates channel (becomes op @Alice), C2 joins (regular member)
 C1 SEND JOIN #optest
-C1 EXPECT 353 Alice = #optest :@Alice
-C1 EXPECT 366 Alice #optest :End of /NAMES list
+C1 EXPECT 353 Ali167 = #optest :@Ali167
+C1 EXPECT 366 Ali167 #optest :End of /NAMES list
 
 C2 SEND JOIN #optest
-C1 WAIT_RECV :Bob!* JOIN #optest
+C1 WAIT_RECV :Bob167!* JOIN #optest
 
 # Alice abruptly disconnects and reconnects as Charlie (inheriting the recycled socket FD)
 C1 RECONNECT
@@ -30,14 +30,14 @@ WAIT 100ms
 
 # Reconnected client registers as Charlie
 C1 SEND PASS 1234
-C1 SEND NICK Charlie
-C1 SEND USER charlie 0 * :Charlie
-C1 EXPECT 001 Charlie :*
+C1 SEND NICK Cha167
+C1 SEND USER cha167 0 * :Cha167
+C1 EXPECT 001 Cha167 :*
 
 # Charlie joins #optest
 C1 SEND JOIN #optest
-C1 EXPECT 353 Charlie = #optest :*Bob*Charlie*
+C1 EXPECT 353 Cha167 = #optest :*Bob167*Cha167*
 
 # Charlie attempts to change channel mode to +i; must be rejected with 482 Not channel operator
 C1 SEND MODE #optest +i
-C1 EXPECT 482 Charlie #optest :You're not channel operator
+C1 EXPECT 482 Cha167 #optest :You're not channel operator

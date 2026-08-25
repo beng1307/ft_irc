@@ -6,23 +6,23 @@ CLIENTS C1, C2, C3
 
 # Setup C1
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali287
+C1 SEND USER ali287 0 * :Ali287
+C1 EXPECT 001 Ali287 :*
 
 # Setup C2
 C2 SEND PASS 1234
-C2 SEND NICK Bob
-C2 SEND USER bob 0 * :Bob
-C2 EXPECT 001 Bob :*
+C2 SEND NICK Bob287
+C2 SEND USER bob287 0 * :Bob287
+C2 EXPECT 001 Bob287 :*
 
 # Setup C3
 C3 SEND PASS 1234
-C3 SEND NICK Charlie
-C3 SEND USER charlie 0 * :Charlie
-C3 EXPECT 001 Charlie :*
+C3 SEND NICK Cha287
+C3 SEND USER cha287 0 * :Cha287
+C3 EXPECT 001 Cha287 :*
 
 # C1 sends multi-target PRIVMSG
-C1 SEND PRIVMSG Bob,Charlie :Hello team
-C2 WAIT_RECV :Alice!* PRIVMSG Bob :Hello team
-C3 WAIT_RECV :Alice!* PRIVMSG Charlie :Hello team
+C1 SEND PRIVMSG Bob287,Cha287 :Hello team
+C2 WAIT_RECV :Ali287!* PRIVMSG Bob287 :Hello team
+C3 WAIT_RECV :Ali287!* PRIVMSG Cha287 :Hello team

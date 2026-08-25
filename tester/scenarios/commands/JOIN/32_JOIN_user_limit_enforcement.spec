@@ -8,40 +8,40 @@ CLIENTS C1, C2, C3
 
 # C1 registers as Alice
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali115
+C1 SEND USER ali115 0 * :Ali115
+C1 EXPECT 001 Ali115 :*
 
 # C2 registers as Bob
 C2 SEND PASS 1234
-C2 SEND NICK Bob
-C2 SEND USER bob 0 * :Bob
-C2 EXPECT 001 Bob :*
+C2 SEND NICK Bob115
+C2 SEND USER bob115 0 * :Bob115
+C2 EXPECT 001 Bob115 :*
 
 # C3 registers as Charlie
 C3 SEND PASS 1234
-C3 SEND NICK Charlie
-C3 SEND USER charlie 0 * :Charlie
-C3 EXPECT 001 Charlie :*
+C3 SEND NICK Cha115
+C3 SEND USER cha115 0 * :Cha115
+C3 EXPECT 001 Cha115 :*
 
 # Alice creates #limited and sets limit +l 2
 C1 SEND JOIN #limited
 C1 SEND MODE #limited +l 2
-C1 EXPECT :Alice!* MODE #limited +l 2
+C1 EXPECT :Ali115!* MODE #limited +l 2
 
 # Bob joins (channel now has 2 members: Alice, Bob)
 C2 SEND JOIN #limited
-C1 WAIT_RECV :Bob!* JOIN #limited
+C1 WAIT_RECV :Bob115!* JOIN #limited
 
 # Charlie attempts to join full channel (limit = 2) -> 471
 C3 SEND JOIN #limited
-C3 EXPECT 471 Charlie #limited :Cannot join channel (+l)
+C3 EXPECT 471 Cha115 #limited :Cannot join channel (+l)
 
 # Bob parts the channel (channel now has 1 member)
 C2 SEND PART #limited :Leaving
-C1 WAIT_RECV :Bob!* PART #limited*
+C1 WAIT_RECV :Bob115!* PART #limited*
 
 # Charlie attempts to join again -> succeeds
 C3 SEND JOIN #limited
-C3 EXPECT :Charlie!* JOIN #limited
-C1 WAIT_RECV :Charlie!* JOIN #limited
+C3 EXPECT :Cha115!* JOIN #limited
+C1 WAIT_RECV :Cha115!* JOIN #limited

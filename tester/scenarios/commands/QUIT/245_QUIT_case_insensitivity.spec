@@ -3,26 +3,26 @@
 CLIENTS C1, C2
 
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali333
+C1 SEND USER ali333 0 * :Ali333
+C1 EXPECT 001 Ali333 :*
 
 C2 SEND PASS 1234
-C2 SEND NICK Bob
-C2 SEND USER bob 0 * :Bob
-C2 EXPECT 001 Bob :*
+C2 SEND NICK Bob333
+C2 SEND USER bob333 0 * :Bob333
+C2 EXPECT 001 Bob333 :*
 
 C1 SEND JOIN #mixed
-C1 EXPECT :Alice!* JOIN #mixed
+C1 EXPECT :Ali333!* JOIN #mixed
 C2 SEND JOIN #mixed
-C2 WAIT_RECV :Bob!* JOIN #mixed
-C1 WAIT_RECV :Bob!* JOIN #mixed
+C2 WAIT_RECV :Bob333!* JOIN #mixed
+C1 WAIT_RECV :Bob333!* JOIN #mixed
 
 # Bob sends lowercase 'quit'
 C2 SEND quit :Lowercase quit
 C2 EXPECT ERROR :Closing connection
 C2 EXPECT_DISCONNECT
-C1 WAIT_RECV :Bob!* QUIT :Lowercase quit
+C1 WAIT_RECV :Bob333!* QUIT :Lowercase quit
 
 # Alice sends mixed-case 'QuiT'
 C1 SEND QuiT :Mixed case quit

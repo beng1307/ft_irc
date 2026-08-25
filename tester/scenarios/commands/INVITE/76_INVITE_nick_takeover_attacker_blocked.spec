@@ -7,44 +7,44 @@ CLIENTS C1, C2, C3
 
 # Alice creates invite-only channel
 C1 SEND PASS 1234
-C1 SEND NICK Alice76
-C1 SEND USER alice76 0 * :Alice
-C1 EXPECT 001 Alice76 :*
+C1 SEND NICK Ali076
+C1 SEND USER ali076 0 * :Ali101
+C1 EXPECT 001 Ali076 :*
 C1 SEND JOIN #vault76
-C1 EXPECT :Alice76!* JOIN #vault76
+C1 EXPECT :Ali076!* JOIN #vault76
 C1 SEND MODE #vault76 +i
-C1 EXPECT :Alice76!* MODE #vault76 +i
+C1 EXPECT :Ali076!* MODE #vault76 +i
 
-# Bob registers as Bob76
+# Bob registers as Bob076
 C2 SEND PASS 1234
-C2 SEND NICK Bob76
-C2 SEND USER bob76 0 * :Bob
-C2 EXPECT 001 Bob76 :*
+C2 SEND NICK Bob101
+C2 SEND USER bob101 0 * :Bob101
+C2 EXPECT 001 Bob101 :*
 
-# Alice invites Bob76
-C1 SEND INVITE Bob76 #vault76
-C1 EXPECT 341 Alice76 Bob76 #vault76
-C2 WAIT_RECV :Alice76!* INVITE Bob76 :#vault76
+# Alice invites Bob076
+C1 SEND INVITE Bob101 #vault76
+C1 EXPECT 341 Ali076 Bob101 #vault76
+C2 WAIT_RECV :Ali076!* INVITE Bob101 :#vault76
 
-# Bob changes nickname to Bobby76 before joining
-C2 SEND NICK Bobby76
-C2 WAIT_RECV :Bob76!* NICK :Bobby76
+# Bob changes nickname to Bby076 before joining
+C2 SEND NICK Bby076
+C2 WAIT_RECV :Bob101!* NICK :Bby076
 
-# Mallory registers and immediately claims the vacated nickname 'Bob76'
+# Mallory registers and immediately claims the vacated nickname 'Bob076'
 C3 SEND PASS 1234
-C3 SEND NICK Bob76
-C3 SEND USER mallory76 0 * :Mallory
-C3 EXPECT 001 Bob76 :*
+C3 SEND NICK Bob101
+C3 SEND USER mal076 0 * :Mal101
+C3 EXPECT 001 Bob101 :*
 
 # Mallory tries to join #vault76 by impersonating the invited nickname
 C3 SEND JOIN #vault76
 # Mallory must be rejected!
-C3 EXPECT 473 Bob76 #vault76 :Cannot join channel (+i)
+C3 EXPECT 473 Bob101 #vault76 :Cannot join channel (+i)
 
-# The legitimate recipient (Bobby76) joins successfully
+# The legitimate recipient (Bby076) joins successfully
 C2 SEND JOIN #vault76
-C2 WAIT_RECV :Bobby76!* JOIN #vault76
-C1 WAIT_RECV :Bobby76!* JOIN #vault76
+C2 WAIT_RECV :Bby076!* JOIN #vault76
+C1 WAIT_RECV :Bby076!* JOIN #vault76
 C1 EXPECT_CONNECTED
 C2 EXPECT_CONNECTED
 C3 EXPECT_CONNECTED

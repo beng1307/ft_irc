@@ -5,14 +5,14 @@ CLIENTS C1
 
 # Setup C1
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali307
+C1 SEND USER ali307 0 * :Ali307
+C1 EXPECT 001 Ali307 :*
 
 # C1 sends PRIVMSG to solitary '#'
 C1 SEND PRIVMSG # :Hello empty hash
-C1 EXPECT 403 Alice # :No such channel
+C1 EXPECT 403 Ali307 # :No such channel
 
 # C1 sends PRIVMSG to solitary '&'
 C1 SEND PRIVMSG & :Hello empty ampersand
-C1 EXPECT 403 Alice & :No such channel
+C1 EXPECT 403 Ali307 & :No such channel

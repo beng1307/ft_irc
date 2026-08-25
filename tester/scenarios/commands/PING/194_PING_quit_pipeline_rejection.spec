@@ -5,9 +5,9 @@
 CLIENTS C1
 
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice Smith
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali280
+C1 SEND USER ali280 0 * :Ali280 Smith
+C1 EXPECT 001 Ali280 :*
 
 C1 SEND_RAW QUIT :Leaving\r\nPING afterquit\r\n
 C1 EXPECT ERROR :Closing connection

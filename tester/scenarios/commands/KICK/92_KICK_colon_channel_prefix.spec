@@ -6,22 +6,22 @@ CLIENTS C1, C2
 
 # Alice registers and creates #lobby
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali147
+C1 SEND USER ali147 0 * :Ali147
+C1 EXPECT 001 Ali147 :*
 C1 SEND JOIN #lobby
-C1 EXPECT :Alice!* JOIN #lobby
+C1 EXPECT :Ali147!* JOIN #lobby
 
 # Bob registers and joins #lobby
 C2 SEND PASS 1234
-C2 SEND NICK Bob
-C2 SEND USER bob 0 * :Bob
-C2 EXPECT 001 Bob :*
+C2 SEND NICK Bob147
+C2 SEND USER bob147 0 * :Bob147
+C2 EXPECT 001 Bob147 :*
 C2 SEND JOIN #lobby
-C2 EXPECT :Bob!* JOIN #lobby
-C1 WAIT_RECV :Bob!* JOIN #lobby
+C2 EXPECT :Bob147!* JOIN #lobby
+C1 WAIT_RECV :Bob147!* JOIN #lobby
 
 # Alice kicks Bob with colon-prefixed channel name
-C1 SEND KICK :#lobby Bob :colon test
-C1 EXPECT :Alice!* KICK #lobby Bob :colon test
-C2 EXPECT :Alice!* KICK #lobby Bob :colon test
+C1 SEND KICK :#lobby Bob147 :colon test
+C1 EXPECT :Ali147!* KICK #lobby Bob147 :colon test
+C2 EXPECT :Ali147!* KICK #lobby Bob147 :colon test

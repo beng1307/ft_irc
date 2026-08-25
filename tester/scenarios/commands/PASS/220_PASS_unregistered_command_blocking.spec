@@ -5,7 +5,7 @@ CLIENTS C1
 C1 SEND JOIN #secret
 C1 EXPECT 451 * :You have not registered
 
-C1 SEND PRIVMSG Alice :hello
+C1 SEND PRIVMSG Ali248 :hello
 C1 EXPECT 451 * :You have not registered
 
 C1 SEND MODE #secret
@@ -14,10 +14,10 @@ C1 EXPECT 451 * :You have not registered
 C1 SEND TOPIC #secret
 C1 EXPECT 451 * :You have not registered
 
-C1 SEND INVITE Bob #secret
+C1 SEND INVITE Bob248 #secret
 C1 EXPECT 451 * :You have not registered
 
-C1 SEND KICK #secret Bob
+C1 SEND KICK #secret Bob248
 C1 EXPECT 451 * :You have not registered
 
 C1 SEND PART #secret

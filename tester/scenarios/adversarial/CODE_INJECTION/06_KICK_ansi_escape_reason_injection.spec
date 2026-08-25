@@ -6,24 +6,24 @@ CLIENTS C1, C2
 
 # Setup operator Alice
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice User
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali033
+C1 SEND USER ali033 0 * :Ali033 Usr033
+C1 EXPECT 001 Ali033 :*
 
 C1 SEND JOIN #kickzone
-C1 WAIT_RECV :Alice!* JOIN #kickzone
+C1 WAIT_RECV :Ali033!* JOIN #kickzone
 
 # Setup member Bob
 C2 SEND PASS 1234
-C2 SEND NICK Bob
-C2 SEND USER bob 0 * :Bob User
-C2 EXPECT 001 Bob :*
+C2 SEND NICK Bob033
+C2 SEND USER bob033 0 * :Bob033 Usr033
+C2 EXPECT 001 Bob033 :*
 
 C2 SEND JOIN #kickzone
-C2 WAIT_RECV :Bob!* JOIN #kickzone
+C2 WAIT_RECV :Bob033!* JOIN #kickzone
 
 # Alice kicks Bob with an ANSI clear-screen / conceal sequence in reason
-C1 SEND_RAW KICK #kickzone Bob :\x1b[2J\x1b[HReasonClean\r\n
+C1 SEND_RAW KICK #kickzone Bob033 :\x1b[2J\x1b[HReasonClean\r\n
 
 # Secure server must strip the escape codes so Bob receives the clean string
-C2 WAIT_RECV :Alice!* KICK #kickzone Bob :ReasonClean
+C2 WAIT_RECV :Ali033!* KICK #kickzone Bob033 :ReasonClean

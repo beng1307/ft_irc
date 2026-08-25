@@ -10,6 +10,6 @@ C1 EXPECT_DISCONNECT
 
 # C2 connects without sending PASS; must not inherit authentication
 C2 SEND NICK PassGhost
-C2 SEND USER passghost 0 * :Ghost User
+C2 SEND USER passghost 0 * :Ghost Usr260
 C2 SEND JOIN #test
 C2 EXPECT 451 * :You have not registered

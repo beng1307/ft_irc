@@ -3,11 +3,11 @@
 CLIENTS C1
 
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali342
+C1 SEND USER ali342 0 * :Ali342
+C1 EXPECT 001 Ali342 :*
 
 # Adversary tries to send client-prefixed command
-C1 SEND :Bob QUIT :Spoofed exit
-C1 EXPECT 421 Alice Unknown command.
+C1 SEND :Bob342 QUIT :Spoofed exit
+C1 EXPECT 421 Ali342 Unknown command.
 C1 EXPECT_CONNECTED

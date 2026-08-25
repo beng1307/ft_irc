@@ -4,6 +4,6 @@
 CLIENTS C1
 
 # Unregistered client attempts INVITE
-C1 SEND INVITE Bob #chan
+C1 SEND INVITE Bob076 #chan
 C1 EXPECT 451 * :You have not registered
 C1 EXPECT_CONNECTED

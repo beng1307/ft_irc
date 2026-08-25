@@ -5,6 +5,6 @@
 CLIENTS C1
 
 C1 SEND PASS 1234
-C1 SEND NICK Alice
+C1 SEND NICK Ali405
 C1 SEND USER : 0 * :Real
-C1 EXPECT 461 Alice USER :Not enough parameters
+C1 EXPECT 461 Ali405 USER :Not enough parameters

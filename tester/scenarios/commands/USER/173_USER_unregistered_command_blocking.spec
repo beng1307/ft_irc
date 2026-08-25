@@ -2,7 +2,7 @@
 # Tests that a client who has only sent USER is blocked from operational commands (JOIN, PRIVMSG, etc.)
 CLIENTS C1
 
-C1 SEND USER alice 0 * :Alice Smith
+C1 SEND USER ali395 0 * :Ali395 Smith
 
 C1 SEND JOIN #chan
 C1 EXPECT 451 * :You have not registered

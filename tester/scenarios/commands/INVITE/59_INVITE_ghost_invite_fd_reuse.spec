@@ -6,24 +6,24 @@ CLIENTS C1, C2
 
 # Alice57 registers and creates invite-only (+i) channel
 C1 SEND PASS 1234
-C1 SEND NICK Alice57
-C1 SEND USER alice57 0 * :Alice
-C1 EXPECT 001 Alice57 :*
+C1 SEND NICK Ali084
+C1 SEND USER ali084 0 * :Ali084
+C1 EXPECT 001 Ali084 :*
 C1 SEND JOIN #privchan57
-C1 EXPECT :Alice57!* JOIN #privchan57
+C1 EXPECT :Ali084!* JOIN #privchan57
 C1 SEND MODE #privchan57 +i
-C1 EXPECT :Alice57!* MODE #privchan57 +i
+C1 EXPECT :Ali084!* MODE #privchan57 +i
 
 # Bob57 connects and registers
 C2 SEND PASS 1234
-C2 SEND NICK Bob57
-C2 SEND USER bob57 0 * :Bob
-C2 EXPECT 001 Bob57 :*
+C2 SEND NICK Bob084
+C2 SEND USER bob084 0 * :Bob084
+C2 EXPECT 001 Bob084 :*
 
 # Alice57 invites Bob57 to #privchan57
-C1 SEND INVITE Bob57 #privchan57
-C1 EXPECT 341 Alice57 Bob57 #privchan57
-C2 WAIT_RECV :Alice57!* INVITE Bob57 :#privchan57
+C1 SEND INVITE Bob084 #privchan57
+C1 EXPECT 341 Ali084 Bob084 #privchan57
+C2 WAIT_RECV :Ali084!* INVITE Bob084 :#privchan57
 
 # Bob57 disconnects without joining and reconnects as Charlie57 (inheriting recycled socket FD)
 C2 RECONNECT
@@ -31,13 +31,13 @@ WAIT 100ms
 
 # Charlie57 authenticates on recycled socket FD
 C2 SEND PASS 1234
-C2 SEND NICK Charlie57
-C2 SEND USER charlie57 0 * :Charlie
-C2 EXPECT 001 Charlie57 :*
+C2 SEND NICK Cha084
+C2 SEND USER cha084 0 * :Cha084
+C2 EXPECT 001 Cha084 :*
 
 # Charlie57 attempts to join #privchan57 without an invitation
 C2 SEND JOIN #privchan57
 # Must be rejected with 473 Cannot join channel (+i)
-C2 EXPECT 473 Charlie57 #privchan57 :Cannot join channel (+i)
+C2 EXPECT 473 Cha084 #privchan57 :Cannot join channel (+i)
 C1 EXPECT_CONNECTED
 C2 EXPECT_CONNECTED

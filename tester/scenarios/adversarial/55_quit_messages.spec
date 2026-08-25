@@ -4,38 +4,38 @@
 CLIENTS C1, C2, C3
 
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali022
+C1 SEND USER ali022 0 * :Ali022
+C1 EXPECT 001 Ali022 :*
 
 C2 SEND PASS 1234
-C2 SEND NICK Bob
-C2 SEND USER bob 0 * :Bob
-C2 EXPECT 001 Bob :*
+C2 SEND NICK Bob022
+C2 SEND USER bob022 0 * :Bob022
+C2 EXPECT 001 Bob022 :*
 
 C3 SEND PASS 1234
-C3 SEND NICK Charlie
-C3 SEND USER charlie 0 * :Charlie
-C3 EXPECT 001 Charlie :*
+C3 SEND NICK Cha022
+C3 SEND USER cha022 0 * :Cha022
+C3 EXPECT 001 Cha022 :*
 
 # All join channel
 C1 SEND JOIN #channel
-C1 EXPECT :Alice!* JOIN #channel
+C1 EXPECT :Ali022!* JOIN #channel
 C2 SEND JOIN #channel
-C2 EXPECT :Bob!* JOIN #channel
+C2 EXPECT :Bob022!* JOIN #channel
 C3 SEND JOIN #channel
-C3 EXPECT :Charlie!* JOIN #channel
+C3 EXPECT :Cha022!* JOIN #channel
 
 # Test 1: QUIT with no message
 C3 SEND QUIT
 C3 EXPECT_DISCONNECTED
-C1 EXPECT :Charlie!* QUIT :*
-C2 EXPECT :Charlie!* QUIT :*
+C1 EXPECT :Cha022!* QUIT :*
+C2 EXPECT :Cha022!* QUIT :*
 
 # Test 2: QUIT with message
 C2 SEND QUIT :Leaving now
 C2 EXPECT_DISCONNECTED
-C1 EXPECT :Bob!* QUIT :Leaving now
+C1 EXPECT :Bob022!* QUIT :Leaving now
 
 # Test 3: QUIT with empty message
 C1 SEND QUIT :

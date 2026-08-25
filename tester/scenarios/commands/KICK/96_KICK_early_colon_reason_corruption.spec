@@ -6,25 +6,25 @@ CLIENTS C1, C2
 
 # Alice registers and creates #lobby
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali151
+C1 SEND USER ali151 0 * :Ali151
+C1 EXPECT 001 Ali151 :*
 C1 SEND JOIN #lobby
-C1 EXPECT :Alice!* JOIN #lobby
+C1 EXPECT :Ali151!* JOIN #lobby
 
 # Bob registers and joins #lobby
 C2 SEND PASS 1234
-C2 SEND NICK Bob
-C2 SEND USER bob 0 * :Bob
-C2 EXPECT 001 Bob :*
+C2 SEND NICK Bob151
+C2 SEND USER bob151 0 * :Bob151
+C2 EXPECT 001 Bob151 :*
 C2 SEND JOIN #lobby
-C2 EXPECT :Bob!* JOIN #lobby
-C1 WAIT_RECV :Bob!* JOIN #lobby
+C2 EXPECT :Bob151!* JOIN #lobby
+C1 WAIT_RECV :Bob151!* JOIN #lobby
 
 # Alice sends KICK with early colon on target argument
 # RFC 2812 §2.3.1 treats ':Bob :Real reason' as a single trailing parameter (target nickname), resulting in 401 ERR_NOSUCHNICK
-C1 SEND KICK #lobby :Bob :Real reason
-C1 EXPECT 401 Alice Bob :Real reason :No such nick/channel
+C1 SEND KICK #lobby :Bob151 :Real reason
+C1 EXPECT 401 Ali151 Bob151 :Real reason :No such nick/channel
 C1 EXPECT_CONNECTED
 C2 EXPECT_CONNECTED
 

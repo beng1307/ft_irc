@@ -4,14 +4,14 @@ CLIENTS C1
 
 # Register Alice
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali128
+C1 SEND USER ali128 0 * :Ali128
+C1 EXPECT 001 Ali128 :*
 
 # 0 parameters
 C1 SEND KICK
-C1 EXPECT 461 Alice KICK :Not enough parameters
+C1 EXPECT 461 Ali128 KICK :Not enough parameters
 
 # 1 parameter only (channel without target nick)
-C1 SEND KICK #lobby
-C1 EXPECT 461 Alice KICK :Not enough parameters
+C1 SEND KICK #lobby02
+C1 EXPECT 461 Ali128 KICK :Not enough parameters

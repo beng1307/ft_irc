@@ -5,26 +5,26 @@ TIMEOUT 10s
 
 # Register C1 (the backpressured quitting client), C2 (traffic generator), and C3 (liveness probe).
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali415
+C1 SEND USER ali415 0 * :Ali415
+C1 EXPECT 001 Ali415 :*
 
 C2 SEND PASS 1234
-C2 SEND NICK Bob
-C2 SEND USER bob 0 * :Bob
-C2 EXPECT 001 Bob :*
+C2 SEND NICK Bob415
+C2 SEND USER bob415 0 * :Bob415
+C2 EXPECT 001 Bob415 :*
 
 C3 SEND PASS 1234
-C3 SEND NICK Charlie
-C3 SEND USER charlie 0 * :Charlie
-C3 EXPECT 001 Charlie :*
+C3 SEND NICK Cha415
+C3 SEND USER cha415 0 * :Cha415
+C3 EXPECT 001 Cha415 :*
 
 # C1 and C2 join a channel together.
 C1 SEND JOIN #quit_backpressure
-C1 EXPECT :Alice!* JOIN #quit_backpressure
+C1 EXPECT :Ali415!* JOIN #quit_backpressure
 C2 SEND JOIN #quit_backpressure
-C2 EXPECT :Bob!* JOIN #quit_backpressure
-C1 WAIT_RECV :Bob!* JOIN #quit_backpressure
+C2 EXPECT :Bob415!* JOIN #quit_backpressure
+C1 WAIT_RECV :Bob415!* JOIN #quit_backpressure
 
 # C1 shrinks receive window to minimum and pauses reading (simulating frozen/unresponsive client).
 C1 SET_SOCK_RCVBUF 1024

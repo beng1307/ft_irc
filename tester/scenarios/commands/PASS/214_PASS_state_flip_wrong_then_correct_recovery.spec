@@ -7,5 +7,5 @@ C1 EXPECT 464 * :Password incorrect
 
 C1 SEND PASS 1234
 C1 SEND NICK PAlice214
-C1 SEND USER alice214 0 * :Alice Smith
+C1 SEND USER ali242 0 * :Ali242 Smith
 C1 EXPECT 001 PAlice214 :*

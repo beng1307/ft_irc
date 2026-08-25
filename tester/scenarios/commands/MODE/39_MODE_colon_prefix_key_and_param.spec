@@ -5,24 +5,24 @@
 CLIENTS C1, C2
 
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali156
+C1 SEND USER ali156 0 * :Ali156
+C1 EXPECT 001 Ali156 :*
 
 C2 SEND PASS 1234
-C2 SEND NICK Bob
-C2 SEND USER bob 0 * :Bob
-C2 EXPECT 001 Bob :*
+C2 SEND NICK Bob156
+C2 SEND USER bob156 0 * :Bob156
+C2 EXPECT 001 Bob156 :*
 
 C1 SEND JOIN #chan
-C1 EXPECT 353 Alice = #chan :@Alice
-C1 EXPECT 366 Alice #chan :End of /NAMES list
+C1 EXPECT 353 Ali156 = #chan :@Ali156
+C1 EXPECT 366 Ali156 #chan :End of /NAMES list
 
 # Set key with leading colon parameter
 C1 SEND MODE #chan +k :secret123
-C1 EXPECT :Alice!* MODE #chan +k secret123
+C1 EXPECT :Ali156!* MODE #chan +k secret123
 
 # Bob joins using key without colon
 C2 SEND JOIN #chan secret123
-C2 EXPECT 353 Bob = #chan :*Bob*
-C2 EXPECT 366 Bob #chan :End of /NAMES list
+C2 EXPECT 353 Bob156 = #chan :*Bob156*
+C2 EXPECT 366 Bob156 #chan :End of /NAMES list

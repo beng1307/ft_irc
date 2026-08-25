@@ -5,12 +5,12 @@
 CLIENTS C1
 
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali344
+C1 SEND USER ali344 0 * :Ali344
+C1 EXPECT 001 Ali344 :*
 C1 SEND JOIN #testchan
-C1 EXPECT :Alice!* JOIN #testchan
+C1 EXPECT :Ali344!* JOIN #testchan
 
 # Alice sends topic without colon
 C1 SEND TOPIC #testchan WordOne WordTwo
-C1 EXPECT :Alice!* TOPIC #testchan :*
+C1 EXPECT :Ali344!* TOPIC #testchan :*

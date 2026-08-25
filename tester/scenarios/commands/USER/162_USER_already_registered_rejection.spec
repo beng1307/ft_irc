@@ -3,10 +3,10 @@
 CLIENTS C1
 
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice Wonderland
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali384
+C1 SEND USER ali384 0 * :Ali384 Wonderland
+C1 EXPECT 001 Ali384 :*
 
 # Attempt to re-issue USER command
-C1 SEND USER bob 0 * :Bob Builder
-C1 EXPECT 462 Alice :You may not reregister
+C1 SEND USER bob384 0 * :Bob384 Builder
+C1 EXPECT 462 Ali384 :You may not reregister

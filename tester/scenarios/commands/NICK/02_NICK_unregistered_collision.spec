@@ -5,17 +5,17 @@
 CLIENTS C1, C2
 
 # C1 sends NICK first (before PASS)
-C1 SEND NICK Charlie02
+C1 SEND NICK Cha184
 
 # C2 connects and claims 'Charlie02'
 C2 SEND PASS 1234
-C2 SEND NICK Charlie02
-C2 SEND USER user02 0 * :Charlie 02
-C2 EXPECT 001 Charlie02 :*
+C2 SEND NICK Cha184
+C2 SEND USER u184 0 * :Cha184 02
+C2 EXPECT 001 Cha184 :*
 
 # C1 completes registration with PASS and USER, but Charlie02 is now taken
 C1 SEND PASS 1234
-C1 SEND USER user01 0 * :User 01
-C1 EXPECT 433 * Charlie02 :Nickname is already in use
+C1 SEND USER u184 0 * :Usr184 01
+C1 EXPECT 433 * Cha184 :Nickname is already in use
 
 

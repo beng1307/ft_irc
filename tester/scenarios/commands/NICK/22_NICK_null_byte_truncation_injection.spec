@@ -4,5 +4,5 @@
 CLIENTS C1
 
 C1 SEND PASS 1234
-C1 SEND_RAW NICK Alice\x00Hacker22\r\n
+C1 SEND_RAW NICK Ali204\x00Hacker22\r\n
 C1 EXPECT 432 * * :Erroneous nickname

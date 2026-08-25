@@ -2,7 +2,7 @@
 # Registration permutation: USER -> NICK -> PASS
 CLIENTS C1
 
-C1 SEND USER alice216 0 * :Alice Smith
+C1 SEND USER ali244 0 * :Ali244 Smith
 C1 SEND NICK PAlice216
 C1 SEND PASS 1234
 C1 EXPECT 001 PAlice216 :*

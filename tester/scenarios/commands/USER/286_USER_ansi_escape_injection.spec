@@ -6,6 +6,6 @@
 CLIENTS C1
 
 C1 SEND PASS 1234
-C1 SEND NICK Alice
+C1 SEND NICK Ali408
 C1 SEND USER \x1b[31;1mRoot\x1b[0m 0 * :Real
 C1 EXPECT 432 * :Erroneous username

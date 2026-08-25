@@ -5,17 +5,17 @@ CLIENTS C1, C2
 
 # Setup C1 (Attacker)
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali304
+C1 SEND USER ali304 0 * :Ali304
+C1 EXPECT 001 Ali304 :*
 
 # Setup C2 (Target)
 C2 SEND PASS 1234
-C2 SEND NICK Bob
-C2 SEND USER bob 0 * :Bob
-C2 EXPECT 001 Bob :*
+C2 SEND NICK Bob304
+C2 SEND USER bob304 0 * :Bob304
+C2 EXPECT 001 Bob304 :*
 
 # Attacker attempts to forge prefix as 'admin'
-C1 SEND :admin PRIVMSG Bob :You have been banned
-C1 EXPECT 421 Alice Unknown command.
-C2 NO_RECV :admin* PRIVMSG Bob :You have been banned
+C1 SEND :admin PRIVMSG Bob304 :You have been banned
+C1 EXPECT 421 Ali304 Unknown command.
+C2 NO_RECV :admin* PRIVMSG Bob304 :You have been banned

@@ -5,33 +5,33 @@ CLIENTS C1, C2
 
 # Alice creates channel and enables +t
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali357
+C1 SEND USER ali357 0 * :Ali357
+C1 EXPECT 001 Ali357 :*
 C1 SEND JOIN #gated
-C1 EXPECT :Alice!* JOIN #gated
+C1 EXPECT :Ali357!* JOIN #gated
 C1 SEND MODE #gated +t
-C1 EXPECT :Alice!* MODE #gated +t
+C1 EXPECT :Ali357!* MODE #gated +t
 
 # Bob joins
 C2 SEND PASS 1234
-C2 SEND NICK Bob
-C2 SEND USER bob 0 * :Bob
-C2 EXPECT 001 Bob :*
+C2 SEND NICK Bob357
+C2 SEND USER bob357 0 * :Bob357
+C2 EXPECT 001 Bob357 :*
 C2 SEND JOIN #gated
-C2 EXPECT :Bob!* JOIN #gated
-C1 WAIT_RECV :Bob!* JOIN #gated
+C2 EXPECT :Bob357!* JOIN #gated
+C1 WAIT_RECV :Bob357!* JOIN #gated
 
 # Bob is initially rejected
-C2 SEND TOPIC #gated :Bob's First Attempt
-C2 EXPECT 482 Bob #gated :You're not channel operator
+C2 SEND TOPIC #gated :Bob357's First Attempt
+C2 EXPECT 482 Bob357 #gated :You're not channel operator
 
 # Alice promotes Bob to operator
-C1 SEND MODE #gated +o Bob
-C1 EXPECT :Alice!* MODE #gated +o Bob
-C2 EXPECT :Alice!* MODE #gated +o Bob
+C1 SEND MODE #gated +o Bob357
+C1 EXPECT :Ali357!* MODE #gated +o Bob357
+C2 EXPECT :Ali357!* MODE #gated +o Bob357
 
 # Bob now succeeds in setting topic
-C2 SEND TOPIC #gated :Bob's Op Topic
-C1 EXPECT :Bob!* TOPIC #gated :Bob's Op Topic
-C2 EXPECT :Bob!* TOPIC #gated :Bob's Op Topic
+C2 SEND TOPIC #gated :Bob357's Op Topic
+C1 EXPECT :Bob357!* TOPIC #gated :Bob357's Op Topic
+C2 EXPECT :Bob357!* TOPIC #gated :Bob357's Op Topic

@@ -6,30 +6,30 @@ CLIENTS C1, C2, C3
 
 # Alice53 creates public channel (no +i)
 C1 SEND PASS 1234
-C1 SEND NICK Alice53
-C1 SEND USER alice53 0 * :Alice
-C1 EXPECT 001 Alice53 :*
+C1 SEND NICK Ali080
+C1 SEND USER ali080 0 * :Ali080
+C1 EXPECT 001 Ali080 :*
 C1 SEND JOIN #pubroom53
-C1 EXPECT :Alice53!* JOIN #pubroom53
+C1 EXPECT :Ali080!* JOIN #pubroom53
 
 # Bob53 joins #pubroom53 as regular member (non-op)
 C2 SEND PASS 1234
-C2 SEND NICK Bob53
-C2 SEND USER bob53 0 * :Bob
-C2 EXPECT 001 Bob53 :*
+C2 SEND NICK Bob080
+C2 SEND USER bob080 0 * :Bob080
+C2 EXPECT 001 Bob080 :*
 C2 SEND JOIN #pubroom53
-C2 EXPECT :Bob53!* JOIN #pubroom53
+C2 EXPECT :Bob080!* JOIN #pubroom53
 
 # Charlie53 registers
 C3 SEND PASS 1234
-C3 SEND NICK Charlie53
-C3 SEND USER charlie53 0 * :Charlie
-C3 EXPECT 001 Charlie53 :*
+C3 SEND NICK Cha080
+C3 SEND USER cha080 0 * :Cha080
+C3 EXPECT 001 Cha080 :*
 
 # Bob53 (non-op on public channel) invites Charlie53
-C2 SEND INVITE Charlie53 #pubroom53
-C2 EXPECT 341 Bob53 Charlie53 #pubroom53
-C3 WAIT_RECV :Bob53!* INVITE Charlie53 :#pubroom53
+C2 SEND INVITE Cha080 #pubroom53
+C2 EXPECT 341 Bob080 Cha080 #pubroom53
+C3 WAIT_RECV :Bob080!* INVITE Cha080 :#pubroom53
 C1 EXPECT_CONNECTED
 C2 EXPECT_CONNECTED
 C3 EXPECT_CONNECTED

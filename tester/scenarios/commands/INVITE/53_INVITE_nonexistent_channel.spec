@@ -4,11 +4,11 @@
 CLIENTS C1
 
 C1 SEND PASS 1234
-C1 SEND NICK Alice51
-C1 SEND USER alice51 0 * :Alice
-C1 EXPECT 001 Alice51 :*
+C1 SEND NICK Ali078
+C1 SEND USER ali078 0 * :Ali078
+C1 EXPECT 001 Ali078 :*
 
 # Invite to non-existent channel
-C1 SEND INVITE Bob51 #nonexistent
-C1 EXPECT 403 Alice51 #nonexistent :No such channel
+C1 SEND INVITE Bob078 #nonexistent
+C1 EXPECT 403 Ali078 #nonexistent :No such channel
 C1 EXPECT_CONNECTED

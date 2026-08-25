@@ -7,18 +7,18 @@
 CLIENTS C1
 
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali118
+C1 SEND USER ali118 0 * :Ali118
+C1 EXPECT 001 Ali118 :*
 
 # Attempt to join channel containing colon inside name
 C1 SEND JOIN #invalid:name
-C1 EXPECT 403 Alice #invalid:name :*
+C1 EXPECT 403 Ali118 #invalid:name :*
 
 # Attempt to join channel containing bell control char
 C1 SEND_RAW JOIN #bell\x07chan\r\n
-C1 EXPECT 403 Alice #bell* :*
+C1 EXPECT 403 Ali118 #bell* :*
 
 # Attempt to join excessively long channel name (> 50 chars)
 C1 SEND JOIN #ThisChannelNameIsFarTooLongAndExceedsTheMaximumAllowedLengthOfFiftyCharactersPerRFC2812Specification
-C1 EXPECT 403 Alice #* :*
+C1 EXPECT 403 Ali118 #* :*

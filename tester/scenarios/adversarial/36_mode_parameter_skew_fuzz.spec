@@ -2,21 +2,21 @@
 CLIENTS C1, C2
 
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali016
+C1 SEND USER ali016 0 * :Ali016
+C1 EXPECT 001 Ali016 :*
 
 C2 SEND PASS 1234
-C2 SEND NICK Bob
-C2 SEND USER bob 0 * :Bob
-C2 EXPECT 001 Bob :*
+C2 SEND NICK Bob016
+C2 SEND USER bob016 0 * :Bob016
+C2 EXPECT 001 Bob016 :*
 
 # C1 creates channel and C2 joins
 C1 SEND JOIN #modefuzz
-C1 EXPECT :Alice!* JOIN #modefuzz
+C1 EXPECT :Ali016!* JOIN #modefuzz
 C2 SEND JOIN #modefuzz
-C2 WAIT_RECV :Bob!* JOIN #modefuzz
-C1 WAIT_RECV :Bob!* JOIN #modefuzz
+C2 WAIT_RECV :Bob016!* JOIN #modefuzz
+C1 WAIT_RECV :Bob016!* JOIN #modefuzz
 
 # ADV-FUZZ-04: Mode flag & parameter mismatch fuzzing (must not crash, OOB read, or segfault)
 C1 SEND MODE #modefuzz +itklo
@@ -45,16 +45,16 @@ C1 SEND MODE #modefuzz +l 0
 C1 EXPECT_CONNECTED
 
 # ADV-STATE-04: Last-operator self-demotion / abandonment
-C1 SEND MODE #modefuzz -o Alice
-C1 WAIT_RECV :Alice!* MODE #modefuzz -o Alice
-C2 WAIT_RECV :Alice!* MODE #modefuzz -o Alice
+C1 SEND MODE #modefuzz -o Ali016
+C1 WAIT_RECV :Ali016!* MODE #modefuzz -o Ali016
+C2 WAIT_RECV :Ali016!* MODE #modefuzz -o Ali016
 
 # Now #modefuzz has 0 operators: op-only commands should fail with 482 without crashing
-C1 SEND KICK #modefuzz Bob :Cannot kick without op
-C1 EXPECT 482 Alice #modefuzz :*
+C1 SEND KICK #modefuzz Bob016 :Cannot kick without op
+C1 EXPECT 482 Ali016 #modefuzz :*
 
-C2 SEND KICK #modefuzz Alice :Cannot kick without op
-C2 EXPECT 482 Bob #modefuzz :*
+C2 SEND KICK #modefuzz Ali016 :Cannot kick without op
+C2 EXPECT 482 Bob016 #modefuzz :*
 
 C1 EXPECT_CONNECTED
 C2 EXPECT_CONNECTED

@@ -4,8 +4,8 @@
 # Expected: Server rejects command with 421 Unknown command per RFC 2812 §2.3.1.
 CLIENTS C1
 
-C1 SEND :spoofed.server.net USER alice 0 * :Alice
+C1 SEND :spoofed.server.net USER ali403 0 * :Ali403
 C1 EXPECT 421 * Unknown command.
 
-C1 SEND :attacker!hacker@evil.com USER alice 0 * :Alice
+C1 SEND :atk403!hacker@evil.com USER ali403 0 * :Ali403
 C1 EXPECT 421 * Unknown command.

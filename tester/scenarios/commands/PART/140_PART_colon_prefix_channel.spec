@@ -5,12 +5,12 @@
 CLIENTS C1
 
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali209
+C1 SEND USER ali209 0 * :Ali209
+C1 EXPECT 001 Ali209 :*
 C1 SEND JOIN #lobby
-C1 EXPECT :Alice!* JOIN #lobby
+C1 EXPECT :Ali209!* JOIN #lobby
 
 # Part with colon prefix on channel name
 C1 SEND PART :#lobby :Goodbye
-C1 EXPECT :Alice!* PART #lobby :Goodbye
+C1 EXPECT :Ali209!* PART #lobby :Goodbye

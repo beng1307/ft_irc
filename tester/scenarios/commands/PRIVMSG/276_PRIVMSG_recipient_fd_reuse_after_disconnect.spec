@@ -6,15 +6,15 @@ CLIENTS C1, C2, C3
 
 # Setup C1
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali308
+C1 SEND USER ali308 0 * :Ali308
+C1 EXPECT 001 Ali308 :*
 
 # Setup C2 (Bob)
 C2 SEND PASS 1234
-C2 SEND NICK Bob
-C2 SEND USER bob 0 * :Bob
-C2 EXPECT 001 Bob :*
+C2 SEND NICK Bob308
+C2 SEND USER bob308 0 * :Bob308
+C2 EXPECT 001 Bob308 :*
 
 # C2 disconnects
 C2 SEND QUIT :Leaving
@@ -23,11 +23,11 @@ C2 EXPECT_DISCONNECTED
 
 # C3 connects and registers as Charlie
 C3 SEND PASS 1234
-C3 SEND NICK Charlie
-C3 SEND USER charlie 0 * :Charlie
-C3 EXPECT 001 Charlie :*
+C3 SEND NICK Cha308
+C3 SEND USER cha308 0 * :Cha308
+C3 EXPECT 001 Cha308 :*
 
 # C1 attempts to send message to Bob
-C1 SEND PRIVMSG Bob :Are you still there Bob?
-C1 EXPECT 401 Alice Bob :No such nick/channel
-C3 NO_RECV :Alice!* PRIVMSG Bob :Are you still there Bob?
+C1 SEND PRIVMSG Bob308 :Are you still there Bob308?
+C1 EXPECT 401 Ali308 Bob308 :No such nick/channel
+C3 NO_RECV :Ali308!* PRIVMSG Bob308 :Are you still there Bob308?

@@ -3,9 +3,9 @@
 CLIENTS C1
 
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice Smith
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali275
+C1 SEND USER ali275 0 * :Ali275 Smith
+C1 EXPECT 001 Ali275 :*
 
 C1 SEND ping lowercase
 C1 EXPECT :localhost PONG localhost :lowercase

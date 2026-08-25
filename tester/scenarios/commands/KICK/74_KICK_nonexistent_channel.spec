@@ -4,10 +4,10 @@ CLIENTS C1
 
 # Register Alice
 C1 SEND PASS 1234
-C1 SEND NICK Alice
-C1 SEND USER alice 0 * :Alice
-C1 EXPECT 001 Alice :*
+C1 SEND NICK Ali129
+C1 SEND USER ali129 0 * :Ali129
+C1 EXPECT 001 Ali129 :*
 
 # Attempt to kick from a nonexistent channel
-C1 SEND KICK #GhostChannel Bob :get out
-C1 EXPECT 403 Alice #GhostChannel :No such channel
+C1 SEND KICK #GhostChannel Bob129 :get out
+C1 EXPECT 403 Ali129 #GhostChannel :No such channel

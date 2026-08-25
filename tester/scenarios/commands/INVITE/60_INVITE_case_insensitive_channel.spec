@@ -6,27 +6,27 @@ CLIENTS C1, C2
 
 # Alice58 registers and creates mixed-case invite-only channel
 C1 SEND PASS 1234
-C1 SEND NICK Alice58
-C1 SEND USER alice58 0 * :Alice
-C1 EXPECT 001 Alice58 :*
+C1 SEND NICK Ali085
+C1 SEND USER ali085 0 * :Ali085
+C1 EXPECT 001 Ali085 :*
 C1 SEND JOIN #SecretChan58
-C1 EXPECT :Alice58!* JOIN #SecretChan58
+C1 EXPECT :Ali085!* JOIN #SecretChan58
 C1 SEND MODE #SecretChan58 +i
-C1 EXPECT :Alice58!* MODE #SecretChan58 +i
+C1 EXPECT :Ali085!* MODE #SecretChan58 +i
 
 # Bob58 registers
 C2 SEND PASS 1234
-C2 SEND NICK Bob58
-C2 SEND USER bob58 0 * :Bob
-C2 EXPECT 001 Bob58 :*
+C2 SEND NICK Bob085
+C2 SEND USER bob085 0 * :Bob085
+C2 EXPECT 001 Bob085 :*
 
 # Alice58 invites Bob58 using lowercase channel name
-C1 SEND INVITE Bob58 #secretchan58
-C1 EXPECT 341 Alice58 Bob58 #secretchan58
-C2 WAIT_RECV :Alice58!* INVITE Bob58 :#secretchan58
+C1 SEND INVITE Bob085 #secretchan58
+C1 EXPECT 341 Ali085 Bob085 #secretchan58
+C2 WAIT_RECV :Ali085!* INVITE Bob085 :#secretchan58
 
 # Bob58 joins using mixed-case name
 C2 SEND JOIN #SecretChan58
-C2 WAIT_RECV :Bob58!* JOIN #SecretChan58
+C2 WAIT_RECV :Bob085!* JOIN #SecretChan58
 C1 EXPECT_CONNECTED
 C2 EXPECT_CONNECTED

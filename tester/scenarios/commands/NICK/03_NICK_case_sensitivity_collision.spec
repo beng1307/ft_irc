@@ -6,12 +6,12 @@ CLIENTS C1, C2
 
 # C1 registers as Alice03
 C1 SEND PASS 1234
-C1 SEND NICK Alice03
-C1 SEND USER user03 0 * :Alice 03
-C1 EXPECT 001 Alice03 :*
+C1 SEND NICK Ali185
+C1 SEND USER u185 0 * :Ali185 03
+C1 EXPECT 001 Ali185 :*
 
 # C2 attempts to register as lowercase 'alice03'
 C2 SEND PASS 1234
-C2 SEND NICK alice03
-C2 EXPECT 433 * alice03 :Nickname is already in use
+C2 SEND NICK ali185
+C2 EXPECT 433 * ali185 :Nickname is already in use
 

@@ -5,23 +5,23 @@ CLIENTS C1, C2
 
 # C1 registers as Alice18
 C1 SEND PASS 1234
-C1 SEND NICK Alice18
-C1 SEND USER user18 0 * :Alice 18
-C1 EXPECT 001 Alice18 :*
+C1 SEND NICK Ali200
+C1 SEND USER u200 0 * :Ali200 18
+C1 EXPECT 001 Ali200 :*
 
 # C2 registers as Bob18
 C2 SEND PASS 1234
-C2 SEND NICK Bob18
-C2 SEND USER user18 0 * :Bob 18
-C2 EXPECT 001 Bob18 :*
+C2 SEND NICK Bob200
+C2 SEND USER u200 0 * :Bob200 18
+C2 EXPECT 001 Bob200 :*
 
 C1 SEND JOIN #race18
 C2 SEND JOIN #race18
-C1 WAIT_RECV :Bob18!* JOIN #race18
+C1 WAIT_RECV :Bob200!* JOIN #race18
 
 # C1 pipelines NICK and PRIVMSG together
-C1 SEND_RAW NICK Alicia18\r\nPRIVMSG #race18 :Message from Alicia\r\n
+C1 SEND_RAW NICK Ali200\r\nPRIVMSG #race18 :Message from Ali200\r\n
 
 # C2 must receive NICK change first, then PRIVMSG from Alicia18
-C2 WAIT_RECV :Alice18!* NICK :Alicia18
-C2 WAIT_RECV :Alicia18!* PRIVMSG #race18 :Message from Alicia
+C2 WAIT_RECV :Ali200!* NICK :Ali200
+C2 WAIT_RECV :Ali200!* PRIVMSG #race18 :Message from Ali200

@@ -5,9 +5,9 @@ CLIENTS C1, C2
 
 # C2 is a regular client
 C2 SEND PASS 1234
-C2 SEND NICK Bob23
-C2 SEND USER user23 0 * :Bob 23
-C2 EXPECT 001 Bob23 :*
+C2 SEND NICK Bob205
+C2 SEND USER u205 0 * :Bob205 23
+C2 EXPECT 001 Bob205 :*
 
 # C1 sends > 512 bytes without \r\n
 C1 SEND PASS 1234
