@@ -18,18 +18,18 @@ C2 EXPECT 002 Bob398 :*
 C2 EXPECT 003 Bob398 :*
 C2 EXPECT 004 Bob398 *
 
-C1 SEND JOIN #room
-C1 EXPECT :Ali398!customuser@localhost JOIN #room
-C1 EXPECT 331 Ali398 #room :No topic is set
-C1 EXPECT 353 Ali398 = #room :@Ali398
-C1 EXPECT 366 Ali398 #room :End of /NAMES list
+C1 SEND JOIN #room03
+C1 EXPECT :Ali398!customuser@localhost JOIN #room03
+C1 EXPECT 331 Ali398 #room03 :No topic is set
+C1 EXPECT 353 Ali398 = #room03 :@Ali398
+C1 EXPECT 366 Ali398 #room03 :End of /NAMES list
 
-C2 SEND JOIN #room
-C1 EXPECT :Bob398!bby398@localhost JOIN #room
-C2 EXPECT :Bob398!bby398@localhost JOIN #room
-C2 EXPECT 331 Bob398 #room :No topic is set
-C2 EXPECT 353 Bob398 = #room :@Ali398 Bob398
-C2 EXPECT 366 Bob398 #room :End of /NAMES list
+C2 SEND JOIN #room03
+C1 EXPECT :Bob398!bby398@localhost JOIN #room03
+C2 EXPECT :Bob398!bby398@localhost JOIN #room03
+C2 EXPECT 331 Bob398 #room03 :No topic is set
+C2 EXPECT 353 Bob398 = #room03 :@Ali398 Bob398
+C2 EXPECT 366 Bob398 #room03 :End of /NAMES list
 
-C1 SEND PRIVMSG #room :hello everyone
-C2 EXPECT :Ali398!customuser@localhost PRIVMSG #room :hello everyone
+C1 SEND PRIVMSG #room03 :hello everyone
+C2 EXPECT :Ali398!customuser@localhost PRIVMSG #room03 :hello everyone

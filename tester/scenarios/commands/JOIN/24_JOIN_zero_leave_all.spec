@@ -16,18 +16,18 @@ C2 SEND NICK Bob107
 C2 SEND USER bob107 0 * :Bob107
 C2 EXPECT 001 Bob107 :*
 
-# C1 and C2 join #roomA and #roomB
-C1 SEND JOIN #roomA
-C2 SEND JOIN #roomA
-C1 WAIT_RECV :Bob107!* JOIN #roomA
+# C1 and C2 join #room2A and #room2B
+C1 SEND JOIN #room2A
+C2 SEND JOIN #room2A
+C1 WAIT_RECV :Bob107!* JOIN #room2A
 
-C1 SEND JOIN #roomB
-C2 SEND JOIN #roomB
-C1 WAIT_RECV :Bob107!* JOIN #roomB
+C1 SEND JOIN #room2B
+C2 SEND JOIN #room2B
+C1 WAIT_RECV :Bob107!* JOIN #room2B
 
 # C1 sends 'JOIN 0' to leave all channels
 C1 SEND JOIN 0
 
 # C2 should receive PART broadcasts from Alice for both channels
-C2 WAIT_RECV :Ali107!* PART #roomA*
-C2 WAIT_RECV :Ali107!* PART #roomB*
+C2 WAIT_RECV :Ali107!* PART #room2A*
+C2 WAIT_RECV :Ali107!* PART #room2B*

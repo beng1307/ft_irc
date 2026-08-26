@@ -111,8 +111,25 @@ get_free_port() {
 
 is_port_listening() {
     local port="$1"
+    if command -v ss >/dev/null 2>&1; then
+        if ss -tlnH "sport = :$port" 2>/dev/null | grep -q .; then
+            return 0
+        fi
+    fi
+    if command -v lsof >/dev/null 2>&1; then
+        if lsof -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
+            return 0
+        fi
+    fi
+    if command -v fuser >/dev/null 2>&1; then
+        if fuser "$port/tcp" >/dev/null 2>&1; then
+            return 0
+        fi
+    fi
     if command -v nc >/dev/null 2>&1; then
-        nc -z -w 1 127.0.0.1 "$port" 2>/dev/null
+        nc -z -w 2 127.0.0.1 "$port" 2>/dev/null
+    elif command -v python3 >/dev/null 2>&1; then
+        python3 -c "import socket; s = socket.socket(); s.settimeout(2.0); s.connect(('127.0.0.1', int($port))); s.close()" 2>/dev/null
     elif (echo >/dev/tcp/127.0.0.1/"$port") 2>/dev/null; then
         return 0
     else
@@ -164,7 +181,7 @@ if [ "$MODE" = "single" ]; then
         SHARED_SERVER_PID=$!
 
         started=0
-        for (( i=0; i<30; i++ )); do
+        for (( i=0; i<50; i++ )); do
             if is_port_listening "$SHARED_PORT"; then
                 started=1
                 break
@@ -177,6 +194,9 @@ if [ "$MODE" = "single" ]; then
 
         if [ "$started" -eq 1 ]; then
             echo -e "${GREEN}Started shared IRC server (PID: ${SHARED_SERVER_PID}) on port ${SHARED_PORT}${NC}\n"
+        elif is_port_listening "$SHARED_PORT"; then
+            SHARED_SERVER_PID=""
+            echo -e "${GREEN}Using existing IRC server at 127.0.0.1:${SHARED_PORT}${NC}\n"
         else
             echo -e "${RED}Error: Failed to start shared IRC server on port ${SHARED_PORT}${NC}\n"
             exit 1

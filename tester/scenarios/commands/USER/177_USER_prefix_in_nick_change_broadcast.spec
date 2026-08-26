@@ -18,18 +18,18 @@ C2 EXPECT 002 Bob399 :*
 C2 EXPECT 003 Bob399 :*
 C2 EXPECT 004 Bob399 *
 
-C1 SEND JOIN #room
-C1 EXPECT :Ali399!ali399@localhost JOIN #room
-C1 EXPECT 331 Ali399 #room :No topic is set
-C1 EXPECT 353 Ali399 = #room :@Ali399
-C1 EXPECT 366 Ali399 #room :End of /NAMES list
+C1 SEND JOIN #room04
+C1 EXPECT :Ali399!ali399@localhost JOIN #room04
+C1 EXPECT 331 Ali399 #room04 :No topic is set
+C1 EXPECT 353 Ali399 = #room04 :@Ali399
+C1 EXPECT 366 Ali399 #room04 :End of /NAMES list
 
-C2 SEND JOIN #room
-C1 EXPECT :Bob399!bby399@localhost JOIN #room
-C2 EXPECT :Bob399!bby399@localhost JOIN #room
-C2 EXPECT 331 Bob399 #room :No topic is set
-C2 EXPECT 353 Bob399 = #room :@Ali399 Bob399
-C2 EXPECT 366 Bob399 #room :End of /NAMES list
+C2 SEND JOIN #room04
+C1 EXPECT :Bob399!bby399@localhost JOIN #room04
+C2 EXPECT :Bob399!bby399@localhost JOIN #room04
+C2 EXPECT 331 Bob399 #room04 :No topic is set
+C2 EXPECT 353 Bob399 = #room04 :@Ali399 Bob399
+C2 EXPECT 366 Bob399 #room04 :End of /NAMES list
 
 C1 SEND NICK AliciaNew
 C2 EXPECT :Ali399!ali399@localhost NICK :AliciaNew
