@@ -135,9 +135,6 @@ void Server::send_to_client(int fd, const Wire &message) {
 
   if (out.empty()) {
     set_pollout(fd, false);
-    // A queued QUIT reply has now fully drained; close the connection.
-    if (client.should_disconnect())
-      disconnect_client(fd);
   } else {
     set_pollout(fd, true);
   }
@@ -148,6 +145,9 @@ void Server::handle_client_input(int client_fd) {
   char buffer[512];
 
   Client &client = get_client(client_fd);
+  if (!client)
+    return;
+
   // Recieves the message from client and saves it into the buffer.
   int bytes_received = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
   if (bytes_received == 0) {
@@ -166,9 +166,11 @@ void Server::handle_client_input(int client_fd) {
     }
     while (position != std::string::npos) {
       handle_line(client, position);
-      // If client was disconnected by QUIT or error during handle_line, stop processing immediately
-      if (!get_client(client_fd))
+      if (client.should_disconnect()) {
+        if (client.get_out_buffer().empty())
+          disconnect_client(client_fd);
         return;
+      }
       position = client.get_buffer().find("\r\n");
       if (input_exceeds_irc_line_limit(client.get_buffer())) {
         disconnect_client(client_fd);
@@ -235,9 +237,14 @@ void Server::server_loop() {
       }
 
       // A writable client socket: flush whatever output is still queued.
-      if (revents & POLLOUT)
+      if (revents & POLLOUT) {
         // tells us client might be ready to receive again
         client.send(); // flush cached messages in buffer
+        if (client.should_disconnect() && client.get_out_buffer().empty()) {
+          disconnect_client(fd);
+          continue;
+        }
+      }
 
       // The flush above may have disconnected the client on a hard error.
       if (!is_server_socket && !get_client(fd))
