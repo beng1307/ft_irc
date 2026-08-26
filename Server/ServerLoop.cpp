@@ -127,19 +127,9 @@ void Server::send_to_client(int fd, const Wire &message) {
 
   if (!out.empty()) {
     ssize_t sent = send(fd, out.c_str(), out.size(), MSG_NOSIGNAL);
+    // remove from buffer the characters we managed to send.
     if (sent > 0) {
       out.erase(0, static_cast<size_t>(sent));
-    } else if (sent == -1) {
-      // A full kernel send buffer reports EAGAIN/EWOULDBLOCK on a
-      // non-blocking socket; buffer the whole message for later.
-      if (errno != EAGAIN && errno != EWOULDBLOCK) {
-        // Any other error means the connection is dead. Disconnecting here
-        // is safe even though this call can be nested inside a channel
-        // broadcast: broadcasts iterate a temporary snapshot of member fds
-        // that disconnect_client() never touches.
-        disconnect_client(fd);
-        return;
-      }
     }
   }
 

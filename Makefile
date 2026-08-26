@@ -194,6 +194,25 @@ env:
 		echo "Usage: make env <port> <password>  (or 'make env' to remove)"; \
 	fi
 
+# Manual connection example with Netcat (nc):
+#   nc -C 127.0.0.1 6667
+#   PASS 1234
+#   NICK alice
+#   USER alice 0 * :Alice
+#   JOIN #general
+#   PRIVMSG #general :Hello world!
+nc:
+	@set -- $(filter-out $@,$(MAKECMDGOALS)); \
+	port="$${1:-$(PORT)}"; \
+	echo "Connecting to localhost:$$port with nc (-C for CRLF)..."; \
+	echo "Example sequence:"; \
+	echo "  PASS $(PASSWORD)"; \
+	echo "  NICK <nickname>"; \
+	echo "  USER <username> 0 * :<realname>"; \
+	echo "  JOIN #<channel>"; \
+	echo "  PRIVMSG #<channel> :<message>"; \
+	nc -C localhost $$port
+
 client: all
 	@set -- $(filter-out $@,$(MAKECMDGOALS)); \
 	if [ $$# -ge 2 ]; then \
@@ -231,6 +250,7 @@ help:
 	@echo "  make env <port> <password>                  - Save default port and password to .env"
 	@echo "  make env                                    - Delete .env and reset to defaults"
 	@echo ""
+	@echo "  make nc [port]                              - Connect manually via nc (netcat)"
 	@echo "  make client [password]                      - Launch irssi with custom password (port: .env or 6667)"
 	@echo "  make client <port> <password>               - Launch irssi with custom port and password"
 	@echo "  make clean / fclean / re                    - Clean object files, binary, or rebuild"
@@ -238,4 +258,4 @@ help:
 %:
 	@:
 
-.PHONY: all clean fclean re run test parallel case caseverbose env client help final
+.PHONY: all clean fclean re run test parallel case caseverbose env nc client help final
